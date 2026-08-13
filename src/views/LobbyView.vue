@@ -9,14 +9,16 @@ const lobby = useLobbyStore()
 const game = useGameStore()
 
 const roomCode = ref('')
+const invited = ref('') // 受邀进入的房间号（来自链接）
 
 onMounted(() => {
   lobby.fetchPuzzles().catch(() => {})
-  // 检查 URL 是否带房间号（分享链接直达）
+  // 检查 URL 是否带房间号（分享链接）：填入房间码 + 显示邀请提示，不自动进房
   const params = new URLSearchParams(window.location.search)
   const roomFromUrl = params.get('room')
   if (roomFromUrl) {
-    enterRoom(roomFromUrl.toUpperCase())
+    invited.value = roomFromUrl.toUpperCase()
+    roomCode.value = invited.value
   }
 })
 
@@ -98,6 +100,17 @@ function generateCode() {
           <img :src="a.url" :alt="`头像${a.id}`" class="h-full w-full object-cover" />
         </button>
       </div>
+    </div>
+
+    <!-- 邀请提示（来自分享链接） -->
+    <div
+      v-if="invited"
+      class="rounded-xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center"
+    >
+      <div class="text-sm font-semibold text-brand-300">📩 你被邀请进入房间 {{ invited }}</div>
+      <p class="mt-1 text-xs text-slate-400">
+        设置好昵称和头像，点击下方「加入」即可进入
+      </p>
     </div>
 
     <!-- 创建房间 -->
