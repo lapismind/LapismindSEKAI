@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
+import { avatarUrl } from '../game/avatars'
 import winGif from '../assets/win.gif'
 import GameBoard from '../components/GameBoard.vue'
 import DrawerPanel from '../components/DrawerPanel.vue'
@@ -9,6 +10,8 @@ import HostConfigPanel from '../components/HostConfigPanel.vue'
 import ModeratorPanel from '../components/ModeratorPanel.vue'
 import PuzzleCard from '../components/PuzzleCard.vue'
 import PlayerList from '../components/PlayerList.vue'
+
+const avatarUrlOf = (p) => avatarUrl(p.avatarId) ?? null
 
 const game = useGameStore()
 const lobby = useLobbyStore()
@@ -91,11 +94,11 @@ function resetAndLeave() {
 }
 
 const showQuestionInput = computed(
-  () => game.phase === 'playing' && !game.amModerator,
+  () => game.phase === 'playing' && !game.amModerator && !game.isSpectator,
 )
 
 const canReveal = computed(
-  () => game.phase === 'playing' && (game.amModerator || game.isHost),
+  () => game.phase === 'playing' && !game.isSpectator && (game.amModerator || game.isHost),
 )
 
 const waitingForPlayers = computed(
@@ -123,13 +126,36 @@ const hasApplied = computed(() =>
           限 {{ game.questionLimit }} 问
         </span>
       </div>
-      <button
-        type="button"
-        class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
-        @click="game.disconnect()"
-      >
-        离开
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- 观战切换（玩家 ↔ 观战） -->
+        <button
+          v-if="game.phase === 'waiting' || game.isSpectator"
+          type="button"
+          class="rounded-lg border px-3 py-1 text-xs transition"
+          :class="game.isSpectator
+            ? 'border-emerald-600/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+            : 'border-slate-700 text-slate-300 hover:bg-slate-800'"
+          @click="game.setSpectator(!game.isSpectator)"
+        >
+          {{ game.isSpectator ? '加入对局' : '转观战' }}
+        </button>
+        <!-- 揭底（房主/主持人，游戏中显示） -->
+        <button
+          v-if="canReveal"
+          type="button"
+          class="rounded-lg border border-amber-600/60 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300 transition hover:bg-amber-500/20"
+          @click="game.reveal()"
+        >
+          揭底
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
+          @click="game.disconnect()"
+        >
+          离开
+        </button>
+      </div>
     </header>
 
     <!-- 等待阶段：房主配置 + 选谜题 -->
@@ -288,10 +314,43 @@ const hasApplied = computed(() =>
             @judge="judge"
           />
         </div>
+
+        <!-- 观战区（左侧靠下，只显示头像+昵称） -->
+        <div
+          v-if="game.spectators.length > 0"
+          class="absolute bottom-2 left-2 z-20 flex flex-col gap-1.5"
+          :class="game.mode === 'human' && game.amI?.isModerator ? 'bottom-2 left-2 mt-24' : ''"
+        >
+          <div class="rounded-lg border border-slate-700/60 bg-slate-900/70 px-2 py-1.5 backdrop-blur-sm">
+            <div class="mb-1 text-[10px] font-semibold text-slate-500">👁 观战（{{ game.spectators.length }}）</div>
+            <div class="flex flex-wrap gap-2">
+              <div v-for="s in game.spectators" :key="s.id" class="flex items-center gap-1">
+                <img
+                  v-if="avatarUrlOf(s)"
+                  :src="avatarUrlOf(s)"
+                  :alt="s.nickname"
+                  class="h-6 w-6 rounded-full border border-slate-600 object-cover"
+                />
+                <div
+                  v-else
+                  class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-700 text-[10px] font-bold text-slate-200"
+                >
+                  {{ s.nickname?.slice(0, 1) }}
+                </div>
+                <span class="text-xs text-slate-300">{{ s.nickname }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 底部操作区 -->
       <footer class="flex flex-col gap-2 border-t border-slate-800 bg-slate-900/80 px-3 py-2">
+        <!-- 观战提示 -->
+        <div v-if="game.isSpectator && game.phase === 'playing'" class="py-1 text-center text-xs text-slate-500">
+          👁 观战中，可参与右侧复盘讨论
+        </div>
+
         <!-- 提问输入（玩家） -->
         <div v-if="showQuestionInput && !game.questionsExhausted" class="flex gap-2">
           <input
@@ -312,27 +371,9 @@ const hasApplied = computed(() =>
 
         <!-- 提交答案（玩家）已移除：大家问明白后由主持人/房主揭底 -->
 
-        <!-- 主持人操作 -->
+        <!-- 真人主持人提示 -->
         <div v-if="game.amI?.isModerator" class="flex items-center justify-between">
           <span class="text-xs text-sky-300">🕵️ 主持人：回答玩家问题</span>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
-              @click="game.reveal()"
-            >
-              揭底
-            </button>
-          </div>
-        </div>
-        <div v-else-if="canReveal" class="flex justify-end">
-          <button
-            type="button"
-            class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 hover:bg-slate-800"
-            @click="game.reveal()"
-          >
-            揭底
-          </button>
         </div>
 
         <!-- 真人主持人待确认答案 -->

@@ -7,6 +7,7 @@ export const Msg = {
   // ---- 房间内（WebSocket，客户端→服务器） ----
   SEND_SET_HOST_CONFIG: 'set_host_config',
   SEND_APPLY_MODERATOR: 'apply_moderator',
+  SEND_SET_SPECTATOR: 'set_spectator',
   SEND_SELECT_PUZZLE: 'select_puzzle',
   SEND_START_GAME: 'start_game',
   SEND_ASK_QUESTION: 'ask_question',

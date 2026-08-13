@@ -41,7 +41,8 @@ const seatPositions = computed(() => {
   const base = selfIdx === -1 ? 0 : selfIdx
 
   return otherPlayers.value.map((p, i) => {
-    // 从底部开始逆时针编号，但把"我"放在正下方    const rel = (i - base + count) % count
+    // 从底部开始逆时针编号，但把"我"放在正下方
+    const rel = (i - base + count) % count
     const angle = (rel / count) * 360 - 90 // -90° 让第0个在最上方
     const rad = (angle * Math.PI) / 180
     const cx = 50 + SEAT_RADIUS_PCT * Math.cos(rad)

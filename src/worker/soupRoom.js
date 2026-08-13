@@ -49,16 +49,16 @@ export class SoupRoom {
     // 同 ID 重连：复用身份
     const existing = state.players.find((p) => p.id === playerId)
     if (!existing) {
-      if (this.isFull(state)) {
-        return new Response('房间已满', { status: 403 })
-      }
+      // 玩家名额满则自动转观战（观战不占玩家名额，可无限）
+      const isSpectator = this.isPlayerFull(state)
       const player = {
         id: playerId,
         nickname,
         avatarId,
-        isHost: state.players.length === 0, // 第一个进入者当房主
-        role: 'player', // player | host-moderator
+        isHost: !isSpectator && state.players.length === 0, // 第一个玩家当房主（观战不算）
+        role: isSpectator ? 'spectator' : 'player', // player | spectator | host-moderator
         isModerator: false,
+        isSpectator,
         joinedAt: Date.now(),
         connected: true,
       }
@@ -100,6 +100,9 @@ export class SoupRoom {
         break
       case 'apply_moderator':
         await this.handleApplyModerator(playerId, msg.data)
+        break
+      case 'set_spectator':
+        await this.handleSetSpectator(playerId, msg.data)
         break
       case 'select_puzzle':
         await this.handleSelectPuzzle(playerId, msg.data)
@@ -152,14 +155,12 @@ export class SoupRoom {
       state.players.splice(idx, 1)
       state.moderatorApplicants = (state.moderatorApplicants ?? []).filter((id) => id !== playerId)
       if (wasHost && state.players.length > 0) {
-        // 房主顺位给下一个进入的人（加入时间最早者）
-        const next = [...state.players].sort((a, b) => a.joinedAt - b.joinedAt)[0]
-        next.isHost = true
-        next.role = 'player'
+        await this.ensureHost(state) // 房主顺位给最早加入的玩家（排除观战）
       }
       if (wasModerator && state.players.length > 0) {
         // 主持人退出：未开局则清空主持人，等开局时重新选
         for (const p of state.players) {
+          if (p.isSpectator) continue
           p.isModerator = false
           p.role = 'player'
         }
@@ -214,8 +215,9 @@ export class SoupRoom {
     state.mode = mode
     state.maxPlayers = maxPlayers
     state.questionLimit = questionLimit
-    // 模式切换时重置主持人选择（等待重新报名）
+    // 模式切换时重置主持人选择（等待重新报名；观战不参与）
     for (const p of state.players) {
+      if (p.isSpectator) continue
       p.isModerator = false
       p.role = 'player'
     }
@@ -244,7 +246,62 @@ export class SoupRoom {
     this.broadcastState()
   }
 
-  /** 房主选谜题 */
+  /** 玩家手动切换观战/玩家身份 */
+  async handleSetSpectator(playerId, data) {
+    const state = await this.getState()
+    const player = state.players.find((p) => p.id === playerId)
+    if (!player) return
+
+    const wantSpectator = data?.spectator === true
+    const isSpectator = player.isSpectator ?? false
+
+    if (wantSpectator === isSpectator) return // 状态没变化
+
+    if (wantSpectator) {
+      // 玩家 → 观战（随时可）
+      player.isSpectator = true
+      player.role = 'spectator'
+      player.isModerator = false // 观战不能当主持人
+      player.isHost = false // 观战不能当房主，房主顺位
+      state.moderatorApplicants = (state.moderatorApplicants ?? []).filter((id) => id !== playerId)
+      await this.saveState(state)
+      // 若离开的是房主，房主顺位给下一个玩家
+      await this.ensureHost(state)
+    } else {
+      // 观战 → 玩家（仅等待阶段且有空位）
+      if (state.phase !== 'waiting') {
+        this.sendToByPlayerId(playerId, { type: 'error', data: { message: '游戏中不能加入，等下一局' } })
+        return
+      }
+      if (this.isPlayerFull(state)) {
+        this.sendToByPlayerId(playerId, { type: 'error', data: { message: '玩家已满，无法加入' } })
+        return
+      }
+      player.isSpectator = false
+      player.role = 'player'
+      if (!this.getHostId(state)) {
+        player.isHost = true // 没房主时自动补位
+      }
+      await this.saveState(state)
+    }
+
+    this.broadcast({ type: 'player_joined', data: { playerId, hostId: this.getHostId(state) } })
+    this.broadcastState()
+  }
+
+  /** 房主顺位：当前房主离开后，给最早加入的玩家 */
+  async ensureHost(state) {
+    const hasHost = this.getHostId(state)
+    if (hasHost) return
+    const next = state.players
+      .filter((p) => !p.isSpectator)
+      .sort((a, b) => a.joinedAt - b.joinedAt)[0]
+    if (next) {
+      next.isHost = true
+      next.role = 'player'
+    }
+    await this.saveState(state)
+  }
   async handleSelectPuzzle(playerId, data) {
     const state = await this.getState()
     if (!this.isHost(state, playerId)) return
@@ -277,20 +334,22 @@ export class SoupRoom {
       return
     }
 
-    // 真人模式：开局前选定主持人（报名者优先，多人随机，无人则随机抽）
+    // 真人模式：开局前选定主持人（报名者优先，多人随机，无人则随机抽；观战不参与）
     if (state.mode === 'human') {
       for (const p of state.players) {
+        if (p.isSpectator) continue
         p.isModerator = false
         p.role = 'player'
       }
-      const applicants = (state.moderatorApplicants ?? []).filter((id) =>
-        state.players.some((p) => p.id === id),
-      )
+      const applicants = (state.moderatorApplicants ?? []).filter((id) => {
+        const p = state.players.find((x) => x.id === id)
+        return p && !p.isSpectator
+      })
       let moderatorId = null
       if (applicants.length > 0) {
         moderatorId = applicants[Math.floor(Math.random() * applicants.length)]
       } else {
-        const pool = state.players.filter((p) => p.connected !== false)
+        const pool = state.players.filter((p) => !p.isSpectator && p.connected !== false)
         if (pool.length > 0) {
           moderatorId = pool[Math.floor(Math.random() * pool.length)].id
         }
@@ -316,6 +375,11 @@ export class SoupRoom {
   async handleAskQuestion(socket, playerId, data) {
     const state = await this.getState()
     if (state.phase !== 'playing' || state.ended) return
+    const player = state.players.find((p) => p.id === playerId)
+    if (!player || player.isSpectator) {
+      this.sendTo(socket, { type: 'error', data: { message: '观战中不能提问' } })
+      return
+    }
     const question = String(data?.text ?? '').trim()
     if (!question || question.length > 200) return
 
@@ -602,9 +666,16 @@ export class SoupRoom {
     return state.players.find((p) => p.id === playerId)?.isModerator ?? false
   }
 
+  /** 玩家名额是否已满（观战不占玩家名额） */
+  isPlayerFull(state) {
+    const playerCount = state.players.filter((p) => !p.isSpectator).length
+    return playerCount >= (state.maxPlayers ?? MIN_PLAYERS)
+  }
+
+  /** 开局条件：玩家人数达到上限（观战不参与开局） */
   isFull(state) {
-    // 真人模式人数上限含主持人
-    return state.players.length >= (state.maxPlayers ?? MIN_PLAYERS)
+    const playerCount = state.players.filter((p) => !p.isSpectator).length
+    return playerCount >= (state.maxPlayers ?? MIN_PLAYERS)
   }
 
   async fetchPuzzle(puzzleId) {
@@ -687,16 +758,26 @@ export class SoupRoom {
       hostId: this.getHostId(state),
       moderatorId: this.getModeratorId(state),
       moderatorApplicants: state.moderatorApplicants ?? [],
-      amI: { isHost, isModerator },
-      players: state.players.map((p) => ({
-        id: p.id,
-        nickname: p.nickname,
-        avatarId: p.avatarId ?? '0',
-        isHost: p.isHost,
-        isModerator: p.isModerator,
-        role: p.role,
-        connected: p.connected,
-      })),
+      amI: { isHost, isModerator, isSpectator: (state.players.find((p) => p.id === playerId)?.isSpectator ?? false) },
+      players: state.players
+        .filter((p) => !p.isSpectator)
+        .map((p) => ({
+          id: p.id,
+          nickname: p.nickname,
+          avatarId: p.avatarId ?? '0',
+          isHost: p.isHost,
+          isModerator: p.isModerator,
+          role: p.role,
+          connected: p.connected,
+        })),
+      spectators: state.players
+        .filter((p) => p.isSpectator)
+        .map((p) => ({
+          id: p.id,
+          nickname: p.nickname,
+          avatarId: p.avatarId ?? '0',
+          connected: p.connected,
+        })),
       messages: state.messages,
       reviewNotes: state.reviewNotes ?? [],
       questionCount: state.questionCount,

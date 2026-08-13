@@ -22,6 +22,7 @@ export const useGameStore = defineStore('game', () => {
   const moderatorId = ref(null)
   const moderatorApplicants = ref([])
   const players = ref([])
+  const spectators = ref([])
   const messages = ref([])
   const reviewNotes = ref([])
   const questionCount = ref(0)
@@ -33,6 +34,7 @@ export const useGameStore = defineStore('game', () => {
   const me = computed(() => players.value.find((p) => p.id === myPlayerId.value) ?? null)
   const isHost = computed(() => amI.value?.isHost ?? false)
   const isModerator = computed(() => amI.value?.isModerator ?? false)
+  const isSpectator = computed(() => amI.value?.isSpectator ?? false)
   // 主持人仅指真人主持人（AI 模式下无真人主持人，全员都是玩家，包括房主）
   const amModerator = computed(() => isModerator.value && mode.value === 'human')
 
@@ -55,6 +57,7 @@ export const useGameStore = defineStore('game', () => {
     moderatorId.value = null
     moderatorApplicants.value = []
     players.value = []
+    spectators.value = []
     messages.value = []
     reviewNotes.value = []
     questionCount.value = 0
@@ -82,6 +85,10 @@ export const useGameStore = defineStore('game', () => {
 
   function applyModerator(apply) {
     wsClient.send(Msg.SEND_APPLY_MODERATOR, { apply })
+  }
+
+  function setSpectator(spectator) {
+    wsClient.send(Msg.SEND_SET_SPECTATOR, { spectator })
   }
 
   function selectPuzzle(puzzleId) {
@@ -132,6 +139,7 @@ export const useGameStore = defineStore('game', () => {
     moderatorId.value = s.moderatorId ?? null
     moderatorApplicants.value = s.moderatorApplicants ?? []
     players.value = s.players ?? []
+    spectators.value = s.spectators ?? []
     messages.value = s.messages ?? []
     reviewNotes.value = s.reviewNotes ?? []
     questionCount.value = s.questionCount ?? 0
@@ -176,6 +184,7 @@ export const useGameStore = defineStore('game', () => {
     moderatorId,
     moderatorApplicants,
     players,
+    spectators,
     messages,
     reviewNotes,
     questionCount,
@@ -186,12 +195,14 @@ export const useGameStore = defineStore('game', () => {
     me,
     isHost,
     isModerator,
+    isSpectator,
     amModerator,
     enterRoom,
     connect,
     disconnect,
     setHostConfig,
     applyModerator,
+    setSpectator,
     selectPuzzle,
     startGame,
     askQuestion,

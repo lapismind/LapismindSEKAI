@@ -34,9 +34,9 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
     <div class="flex items-center justify-between">
       <span class="text-sm font-semibold text-slate-200">
         本局人数（{{ mode === 'human' ? '含主持人' : '全部玩家' }}      </span>
-      <div class="flex gap-1">
+      <div class="flex flex-wrap gap-1">
         <button
-          v-for="n in [2, 3, 4, 6, 8]"
+          v-for="n in [2, 3, 4, 5, 6, 7, 8]"
           :key="n"
           type="button"
           class="h-7 w-7 rounded-md text-xs font-semibold transition"
