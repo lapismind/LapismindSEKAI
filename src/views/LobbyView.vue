@@ -12,6 +12,12 @@ const roomCode = ref('')
 
 onMounted(() => {
   lobby.fetchPuzzles().catch(() => {})
+  // 检查 URL 是否带房间号（分享链接直达）
+  const params = new URLSearchParams(window.location.search)
+  const roomFromUrl = params.get('room')
+  if (roomFromUrl) {
+    enterRoom(roomFromUrl.toUpperCase())
+  }
 })
 
 function createRoom() {
@@ -26,6 +32,10 @@ function joinRoom() {
 }
 
 function enterRoom(code) {
+  // 把房间号写进 URL，方便分享
+  const url = new URL(window.location.href)
+  url.searchParams.set('room', code)
+  window.history.replaceState({}, '', url)
   game.enterRoom(code, lobby.myPlayerId)
   game.connect(code, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
 }

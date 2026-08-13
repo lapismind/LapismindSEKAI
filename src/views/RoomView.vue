@@ -22,6 +22,7 @@ const storyOpen = ref(true)
 const pendingGuess = ref(null) // 真人模式下待确认的玩家答案
 const hintLoading = ref(false)
 const moderatorPending = ref(null) // 真人主持人待判定的问题
+const copied = ref(false)
 let unbind = null
 let openOff = null
 
@@ -91,6 +92,27 @@ function aiHint() {
 
 function resetAndLeave() {
   game.disconnect()
+  // 清除 URL 中的房间号，回到大厅
+  const url = new URL(window.location.href)
+  url.searchParams.delete('room')
+  window.history.replaceState({}, '', url)
+}
+
+function handleLeave() {
+  resetAndLeave()
+}
+
+async function copyRoomLink() {
+  const url = new URL(window.location.href)
+  url.searchParams.set('room', game.roomId)
+  try {
+    await navigator.clipboard.writeText(url.toString())
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    // 剪贴板不可用时提示用户手动复制
+    alert(`复制链接：${url.toString()}`)
+  }
 }
 
 const showQuestionInput = computed(
@@ -116,6 +138,14 @@ const hasApplied = computed(() =>
     <header class="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-3 py-2">
       <div class="flex items-center gap-2">
         <span class="text-sm font-semibold text-slate-200">房间 {{ game.roomId }}</span>
+        <button
+          type="button"
+          class="flex items-center gap-1 rounded-md border border-slate-700 px-2 py-0.5 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+          :title="'复制房间链接分享给朋友'"
+          @click="copyRoomLink"
+        >
+          🔗 <span v-if="copied">已复制！</span><span v-else>分享</span>
+        </button>
         <span
           class="rounded-full px-2 py-0.5 text-[10px] font-bold"
           :class="game.mode === 'ai' ? 'bg-brand-500/20 text-brand-300' : 'bg-sky-500/20 text-sky-300'"
@@ -151,7 +181,7 @@ const hasApplied = computed(() =>
         <button
           type="button"
           class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
-          @click="game.disconnect()"
+          @click="handleLeave"
         >
           离开
         </button>

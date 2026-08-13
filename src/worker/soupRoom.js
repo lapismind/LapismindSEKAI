@@ -49,8 +49,9 @@ export class SoupRoom {
     // 同 ID 重连：复用身份
     const existing = state.players.find((p) => p.id === playerId)
     if (!existing) {
-      // 玩家名额满则自动转观战（观战不占玩家名额，可无限）
-      const isSpectator = this.isPlayerFull(state)
+      // 玩家名额满，或游戏已开始 → 自动转观战（观战不占玩家名额，可无限）
+      const gameStarted = state.phase !== 'waiting'
+      const isSpectator = this.isPlayerFull(state) || gameStarted
       const player = {
         id: playerId,
         nickname,
