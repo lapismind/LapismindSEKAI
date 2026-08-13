@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, computed } from 'vue'
 import MessageList from './MessageList.vue'
 
 const props = defineProps({
@@ -44,7 +44,9 @@ function sendNote() {
   noteText.value = ''
 }
 
-const remaining = props.questionLimit ? props.questionLimit - props.questionCount : null
+const remaining = computed(() =>
+  props.questionLimit ? props.questionLimit - props.questionCount : null,
+)
 </script>
 
 <template>

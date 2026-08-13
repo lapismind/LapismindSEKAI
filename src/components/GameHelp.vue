@@ -62,10 +62,10 @@ const SECTIONS = [
 </script>
 
 <template>
-  <!-- 悬浮帮助按钮 -->
+  <!-- 悬浮帮助按钮（右上角顶栏下方，不遮挡底部操作区） -->
   <button
     type="button"
-    class="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center justify-center rounded-full border border-brand-500/40 bg-slate-900/80 text-xl text-brand-300 shadow-lg backdrop-blur-sm transition hover:scale-110 hover:bg-slate-800"
+    class="fixed right-4 top-14 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-brand-500/40 bg-slate-900/80 text-base text-brand-300 shadow-lg backdrop-blur-sm transition hover:scale-110 hover:bg-slate-800"
     title="游戏说明"
     @click="open = true"
   >
