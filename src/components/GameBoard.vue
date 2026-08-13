@@ -62,9 +62,24 @@ const lastJudge = computed(() => {
   return null
 })
 
+/** 最近一条玩家提问（用于头像旁气泡） */
+const lastQuestion = computed(() => {
+  for (let i = props.messages.length - 1; i >= 0; i--) {
+    const m = props.messages[i]
+    if (m.kind === 'question' && m.from !== 'moderator') {
+      return m
+    }
+  }
+  return null
+})
+
 /** 指向动画 + 动图：当出现新判定时，指向被回答的玩家并弹动图 */
 const pointer = ref(null) // { fromX, fromY, toX, toY, judge, targetName, gif }
 const pointerTimer = ref(null)
+
+/** 提问气泡：提问玩家头像旁显示提问内容 */
+const questionBubble = ref(null) // { x, y, text, fromName }
+const questionTimer = ref(null)
 
 function findPlayerPos(playerId) {
   const idx = otherPlayers.value.findIndex((p) => p.id === playerId)
@@ -75,26 +90,45 @@ function findPlayerPos(playerId) {
 watch(
   () => props.messages.length,
   () => {
+    // 判定动图
     const j = lastJudge.value
-    if (!j) return
-    const targetId = j.forPlayer
-    if (!targetId) return
-    const targetPos = findPlayerPos(targetId)
-    if (!targetPos) return
-    const target = otherPlayers.value.find((p) => p.id === targetId)
-    pointer.value = {
-      ...targetPos,
-      judge: j.judge,
-      targetName: target?.nickname ?? '',
-      gif: judgeHasFx(j.judge) ? JUDGE_FX[j.judge] : null,
+    if (j) {
+      const targetId = j.forPlayer
+      const targetPos = targetId ? findPlayerPos(targetId) : null
+      if (targetPos) {
+        const target = otherPlayers.value.find((p) => p.id === targetId)
+        pointer.value = {
+          ...targetPos,
+          judge: j.judge,
+          targetName: target?.nickname ?? '',
+          gif: judgeHasFx(j.judge) ? JUDGE_FX[j.judge] : null,
+        }
+        if (pointerTimer.value) clearTimeout(pointerTimer.value)
+        pointerTimer.value = setTimeout(() => (pointer.value = null), 4000)
+      }
     }
-    if (pointerTimer.value) clearTimeout(pointerTimer.value)
-    pointerTimer.value = setTimeout(() => (pointer.value = null), 4000)
+
+    // 提问气泡
+    const q = lastQuestion.value
+    if (q) {
+      const targetPos = findPlayerPos(q.from)
+      if (targetPos) {
+        const target = otherPlayers.value.find((p) => p.id === q.from)
+        questionBubble.value = {
+          ...targetPos,
+          text: q.text,
+          fromName: target?.nickname ?? '',
+        }
+        if (questionTimer.value) clearTimeout(questionTimer.value)
+        questionTimer.value = setTimeout(() => (questionBubble.value = null), 3500)
+      }
+    }
   },
 )
 
 onBeforeUnmount(() => {
   if (pointerTimer.value) clearTimeout(pointerTimer.value)
+  if (questionTimer.value) clearTimeout(questionTimer.value)
 })
 
 const judgeColor = (judge) =>
@@ -202,6 +236,21 @@ const moderatorLabel = computed(() => (props.mode === 'ai' ? AI_NAME : '主持�
         class="fx-img"
         :alt="JUDGE_LABEL[pointer.judge]"
       />
+    </div>
+
+    <!-- 提问气泡：提问玩家头像旁显示提问内容 -->
+    <div
+      v-if="questionBubble"
+      class="pointer-events-none absolute z-40"
+      :style="{ left: 'calc(' + questionBubble.x + '% + 30px)', top: 'calc(' + questionBubble.y + '% - 46px)' }"
+    >
+      <div class="relative rounded-xl border border-slate-600/60 bg-slate-800/95 px-3 py-1.5 shadow-lg animate-fade-up">
+        <!-- 小尾巴 -->
+        <div class="absolute -bottom-1 left-4 h-2 w-2 rotate-45 border-b border-r border-slate-600/60 bg-slate-800/95" />
+        <div class="max-w-[180px] text-xs leading-snug text-slate-100">
+          <span class="mr-1 font-semibold text-brand-300">{{ questionBubble.fromName }}：</span>{{ questionBubble.text }}
+        </div>
+      </div>
     </div>
   </div>
 </template>

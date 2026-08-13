@@ -47,6 +47,18 @@ function generateCode() {
       <p class="mt-2 text-sm text-slate-400">一起推理神秘的汤面，揭开汤底真相</p>
     </header>
 
+    <!-- GitHub 引导 -->
+    <a
+      href="https://github.com/lapismind/Mafuyu-Turtle-soup"
+      target="_blank"
+      rel="noopener"
+      class="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-300 transition hover:border-brand-500/50 hover:bg-slate-800 hover:text-slate-100"
+    >
+      <span class="text-lg">⭐</span>
+      <span>喜欢这个游戏？欢迎去 GitHub 点个 star 支持</span>
+      <span class="text-slate-500">→</span>
+    </a>
+
     <!-- 昵称 -->
     <div>
       <label class="mb-1 block text-xs text-slate-500">昵称</label>
