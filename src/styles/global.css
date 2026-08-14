@@ -1,1 +1,39 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+
+@theme {
+  /* 品牌主色 #8888CC（与海龟汤一致） */
+  --color-brand-50: #f2f2fa;
+  --color-brand-100: #e6e6f5;
+  --color-brand-200: #cfcfe9;
+  --color-brand-300: #b3b3dd;
+  --color-brand-400: #9999cf;
+  --color-brand-500: #8888cc;
+  --color-brand-600: #7676b8;
+  --color-brand-700: #6363a0;
+  --color-brand-800: #505085;
+  --color-brand-900: #3d3d68;
+  --color-brand-950: #2a2a48;
+}
+
+:root {
+  --bg-deep: #1c1c33;
+  --bg-panel: #282846;
+  --accent: #8888cc;
+  --accent-strong: #7676b8;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+}
+
+body {
+  background: var(--bg-deep);
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
