@@ -3,6 +3,8 @@
  * 信封格式（makeMessage/isServerMessageValid）来自 @lapismind/lobby-kit。
  */
 
+export { makeMessage, isServerMessageValid } from '@lapismind/lobby-kit'
+
 export const Msg = {
   // 客户端 → 服务端
   SEND_JOIN: 'join',
