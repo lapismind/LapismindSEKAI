@@ -49,6 +49,7 @@ export class ShowhandRoom {
         config: { mode: 'five', rounds: 10, initialChips: 1000 },
         phase: 'waiting', // waiting | playing | settled
         round: 0,
+        finished: false,
         players: [], // { id, nickname, avatarId, chips, cards, bet, folded, allIn, isHost, role, connected }
         currentPlayerId: null,
         currentBet: 0,
@@ -180,7 +181,7 @@ export class ShowhandRoom {
 
   async startGame(state, playerId) {
     if (state.hostId !== playerId) return
-    if (state.phase !== 'waiting') return
+    if (state.phase !== 'waiting' && state.phase !== 'settled') return
     const players = state.players.filter((p) => p.role === 'player')
     if (players.length < 2) {
       this.errorTo(this.socketFor(state, playerId), '至少需要 2 名玩家')
@@ -195,12 +196,14 @@ export class ShowhandRoom {
     if (state.round > state.config.rounds) {
       // 全部局数结束
       state.phase = 'settled'
+      state.finished = true
       await this.saveState(state)
       this.broadcast(state, { type: 'game_over', data: this.finalStandings(state) })
       return
     }
 
     state.phase = 'playing'
+    state.finished = false
     state.pot = 0
     const seatPlayers = state.players.filter((p) => p.role === 'player')
     const hand = createHand(state.config.mode, seatPlayers.length)
@@ -382,6 +385,7 @@ export class ShowhandRoom {
     // 广播本局结束
     state.phase = 'settled'
     await this.saveState(state)
+    this.broadcastState(state)
     this.broadcast(state, {
       type: 'game_over',
       data: {
@@ -396,29 +400,8 @@ export class ShowhandRoom {
       if (p.role === 'player' && p.chips <= 0) this.toSpectator(state, p.id)
     }
 
-    // 延迟后自动下一局（房主或 5 秒）
+    // 本局结束，等房主手动开始下一局（不自动）
     await this.saveState(state)
-    setTimeout(() => this.enqueue(() => this.maybeNextHand()), 5000)
-  }
-
-  async maybeNextHand() {
-    const state = await this.getState()
-    if (state.phase !== 'settled') return
-    const activePlayers = state.players.filter((p) => p.role === 'player' && p.chips > 0)
-    if (activePlayers.length < 2) {
-      // 不足 2 人，等新玩家加入后由房主开新局
-      return
-    }
-    await this.beginHand(state)
-  }
-
-  /** 自动下一局（供房主按钮/定时触发） */
-  async nextHand() {
-    const state = await this.getState()
-    if (state.hostId) {
-      // 由房主消息触发 start_game 来开新局
-      await this.beginHand(state)
-    }
   }
 
   finalStandings(state) {
@@ -453,6 +436,7 @@ export class ShowhandRoom {
       config: state.config,
       phase: state.phase,
       round: state.round,
+      finished: state.finished,
       currentPlayerId: state.currentPlayerId,
       currentBet: state.currentBet,
       pot: state.pot,

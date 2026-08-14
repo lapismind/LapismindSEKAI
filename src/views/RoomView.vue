@@ -63,6 +63,10 @@ function nextHand() {
   game.startGame()
 }
 
+function closeShowdown() {
+  game.clearShowdown()
+}
+
 // 观众视角：从 spectate_state 拿全桌完整牌
 const spectateHand = computed(() => {
   if (game.myRole !== 'spectator' || !game.spectateState) return {}
@@ -116,6 +120,19 @@ function seatHand(playerId) {
         >
           开始游戏
         </button>
+        <button
+          v-if="isHost && game.phase === 'settled' && !game.roomState?.finished"
+          class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold transition hover:bg-emerald-500"
+          @click="nextHand"
+        >
+          下一局
+        </button>
+        <span
+          v-else-if="game.phase === 'settled' && game.roomState?.finished"
+          class="rounded-full bg-emerald-900/40 px-2.5 py-0.5 text-xs text-emerald-300"
+        >
+          🏆 整场结束
+        </span>
       </div>
     </header>
 
@@ -214,9 +231,14 @@ function seatHand(playerId) {
     />
 
     <!-- 摊牌结果弹层 -->
-    <div v-if="game.showdown" class="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
+    <div v-if="game.showdown" class="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4" @click.self="closeShowdown">
       <div class="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6">
-        <h2 class="mb-4 text-center text-xl font-bold text-white">摊牌</h2>
+        <div class="mb-2 flex items-center justify-between">
+          <h2 class="text-xl font-bold text-white">摊牌</h2>
+          <button class="rounded-lg bg-slate-700 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-slate-600" @click="closeShowdown">
+            关闭
+          </button>
+        </div>
         <div class="mb-4 space-y-2">
           <div
             v-for="h in game.showdown.hands"
@@ -258,13 +280,11 @@ function seatHand(playerId) {
         </div>
         <div class="flex justify-center">
           <button
-            v-if="isHost && game.phase === 'settled'"
             class="rounded-lg bg-brand-600 px-6 py-2.5 font-bold text-white transition hover:bg-brand-500"
-            @click="nextHand"
+            @click="closeShowdown"
           >
-            下一局
+            关闭
           </button>
-          <span v-else class="text-sm text-slate-500">等待房主开始下一局…</span>
         </div>
       </div>
     </div>

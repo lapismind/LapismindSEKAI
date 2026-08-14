@@ -52,6 +52,11 @@ export const useGameStore = defineStore('game', () => {
   function hydrate(handlers) {
     const unsubs = [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
+        // 新一局开始（phase 从 settled 回到 playing 且 round 变化）时清掉摊牌
+        if (phase.value === 'settled' && data.phase === 'playing') {
+          showdown.value = null
+          lastGameOver.value = null
+        }
         roomState.value = data
         phase.value = data.phase
         const me = data.players.find((p) => p.id === myPlayerId)
@@ -70,7 +75,6 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
         lastGameOver.value = data
       }),
-      wsClient.on(Msg.RCV_TURN_TO, (data) => handlers.onTurnTo?.(data)),
       wsClient.on(Msg.RCV_BET_RESULT, (data) => handlers.onBetResult?.(data)),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
@@ -78,6 +82,10 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on('_open', () => handlers.onOpen?.()),
     ]
     return () => unsubs.forEach((un) => un())
+  }
+
+  function clearShowdown() {
+    showdown.value = null
   }
 
   return {
@@ -99,5 +107,6 @@ export const useGameStore = defineStore('game', () => {
     startGame,
     toSpectator,
     hydrate,
+    clearShowdown,
   }
 })
