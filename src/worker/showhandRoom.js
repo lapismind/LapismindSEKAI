@@ -15,7 +15,7 @@
 
 import { createHand } from '../core/hand'
 import { createBettingRound, advanceBet, bettingRoundDone, nextPlayer } from '../core/betting'
-import { evaluateHand, compareHands } from '../core/poker'
+import { evaluateHand, bestFive, compareHands } from '../core/poker'
 import { settlePots, awardPots } from '../core/settle'
 
 const MAX_PLAYERS = 8
@@ -331,10 +331,10 @@ export class ShowhandRoom {
     state.bettingRound = null
     this.clearTimer()
 
-    // 计算每个玩家牌型
+    // 计算每个玩家牌型（七张时从 7 张选最佳 5 张）
     const seatPlayers = state.players.filter((p) => p.role === 'player')
     const evaluated = seatPlayers.map((p) => {
-      const handRank = p.folded ? null : evaluateHand(p.cards)
+      const handRank = p.folded ? null : bestFive(p.cards)
       return {
         id: p.id,
         nickname: p.nickname,

@@ -64,3 +64,22 @@ export function compareHands(a, b) {
   }
   return 0
 }
+
+/** 7 张牌里选 5 张最佳牌型（遍历所有 5 张组合取最高） */
+export function bestFive(cards) {
+  if (cards.length <= 5) return evaluateHand(cards)
+  const idx = [0, 1, 2, 3, 4]
+  const n = cards.length
+  let best = null
+  while (idx[0] <= n - 5) {
+    const combo = idx.map((i) => cards[i])
+    const r = evaluateHand(combo)
+    if (!best || compareHands(r, best) > 0) best = r
+    let k = 4
+    while (k >= 0 && idx[k] === n - 5 + k) k--
+    if (k < 0) break
+    idx[k]++
+    for (let j = k + 1; j < 5; j++) idx[j] = idx[j - 1] + 1
+  }
+  return best
+}
