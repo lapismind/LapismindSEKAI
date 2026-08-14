@@ -4,7 +4,7 @@
 
 > 玩家根据"汤面"（谜题描述）向主持人提问，主持人只能回答"是 / 否 / 是也不是 / 无关"，大家推理出"汤底"（真相）即胜出。
 
-线上地址：https://turtle-soup.soiciactlybm.workers.dev
+线上地址：https://soup.qmzhj.top
 
 ## 功能特性
 
