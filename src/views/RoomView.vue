@@ -5,6 +5,7 @@ import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
 import PlayerSeat from '../components/PlayerSeat.vue'
 import BetPanel from '../components/BetPanel.vue'
+import GameHelp from '../components/GameHelp.vue'
 import { avatarUrl } from '../game/avatars'
 
 const route = useRoute()
@@ -13,6 +14,7 @@ const lobby = useLobbyStore()
 
 const roomCode = computed(() => String(route.params.code || '').toUpperCase())
 const showConfig = ref(false)
+const showHelp = ref(false)
 const configMode = ref('five')
 const configRounds = ref(10)
 const configChips = ref(1000)
@@ -91,6 +93,12 @@ function seatHand(playerId) {
         </span>
       </div>
       <div class="flex items-center gap-2">
+        <button
+          class="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-bold transition hover:bg-slate-600"
+          @click="showHelp = true"
+        >
+          规则
+        </button>
         <span v-if="game.myRole === 'spectator'" class="rounded-full bg-amber-900/50 px-2.5 py-0.5 text-xs text-amber-300">
           观众
         </span>
@@ -197,6 +205,13 @@ function seatHand(playerId) {
         </div>
       </div>
     </main>
+
+    <!-- 规则说明 -->
+    <GameHelp
+      v-if="showHelp"
+      :mode="game.roomState?.config.mode ?? 'five'"
+      @close="showHelp = false"
+    />
 
     <!-- 摊牌结果弹层 -->
     <div v-if="game.showdown" class="fixed inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
