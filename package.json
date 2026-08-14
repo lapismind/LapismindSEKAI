@@ -10,6 +10,7 @@
     "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
+    "@lapismind/lobby-kit": "file:../packages/lobby-kit",
     "pinia": "^4.0.3",
     "vue": "^3.5.41"
   },
