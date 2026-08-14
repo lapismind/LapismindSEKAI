@@ -75,7 +75,20 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
         lastGameOver.value = data
       }),
-      wsClient.on(Msg.RCV_BET_RESULT, (data) => handlers.onBetResult?.(data)),
+      wsClient.on(Msg.RCV_BET_RESULT, (data) => {
+        // 下注后可能轮转到下家或进入下一轮，清掉当前行动标记避免误判
+        if (roomState.value) {
+          roomState.value = { ...roomState.value, currentPlayerId: null }
+        }
+        handlers.onBetResult?.(data)
+      }),
+      wsClient.on(Msg.RCV_TURN_TO, (data) => {
+        // 同步当前行动者到 roomState（BetPanel 靠它判断 myTurn）
+        if (roomState.value) {
+          roomState.value = { ...roomState.value, currentPlayerId: data.playerId, currentBet: data.currentBet }
+        }
+        handlers.onTurnTo?.(data)
+      }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
       }),
