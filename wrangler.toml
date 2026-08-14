@@ -1,0 +1,26 @@
+name = "showhand"
+main = "src/worker/index.js"
+compatibility_date = "2025-06-01"
+
+# 自定义域名（Custom Domain：自动创建 DNS + 证书）
+[[routes]]
+pattern = "showhand.qmzhj.top"
+custom_domain = true
+
+# 前端静态资源（Vite 构建产物 dist/）
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# WebSocket 与 API 必须先进 Worker
+run_worker_first = ["/ws*", "/api/*"]
+
+# 牌桌房间：每房一个 DO 实例
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "ShowhandRoom"
+
+# 首次部署必须注册 DO 类
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ShowhandRoom"]
