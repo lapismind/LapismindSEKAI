@@ -4,12 +4,15 @@
  * 游戏侧集成（薄包装）：
  *   import { createLobbyStore } from '@lapismind/lobby-kit'
  *   import { defineStore } from 'pinia'
- *   import { reactive } from 'vue'
+ *   import { reactive, toRefs } from 'vue'
  *
  *   const useLobbyStore = defineStore('lobby', () => {
  *     const kit = createLobbyStore()
  *     const state = reactive(kit.state)
- *     return { ...state, setNickname: kit.setNickname, setAvatar: kit.setAvatar, joinByCode: kit.joinByCode }
+ *     // 两个注意点：
+ *     // 1. kit.setter 直接改原始对象，不触发响应，必须包装成操作响应式 state
+ *     // 2. 必须用 toRefs(state) 展开（`...state` 是值快照，不响应）
+ *     return { ...toRefs(state), setNickname, setAvatar, joinByCode }
  *   })
  *
  * setter 接收普通参数，返回值忽略——Pinia 侧靠 reactive(state) 自动追踪。
