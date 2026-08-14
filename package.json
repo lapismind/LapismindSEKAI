@@ -5,10 +5,13 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./avatars/list": "./avatars/list.js",
+    "./avatars/*": "./avatars/*"
   },
   "files": [
-    "src"
+    "src",
+    "avatars"
   ],
   "scripts": {
     "test": "node tests/protocol.test.mjs && node tests/room-code.test.mjs && node tests/player-id.test.mjs && node tests/ws-client.test.mjs && node tests/lobby-store.test.mjs"
