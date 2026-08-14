@@ -24,6 +24,12 @@ export default {
     }
 
     if (url.pathname.startsWith('/api/')) {
+      // 调试：ping 不碰 DO，隔离问题
+      if (url.pathname === '/api/ping') {
+        return new Response(JSON.stringify({ ok: true, from: 'worker', path: url.pathname }), {
+          headers: { 'content-type': 'application/json' },
+        })
+      }
       const id = env.PUZZLE_LIB.idFromName('global')
       const stub = env.PUZZLE_LIB.get(id)
       return stub.fetch(request)
