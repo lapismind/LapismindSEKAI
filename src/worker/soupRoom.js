@@ -201,7 +201,9 @@ export class SoupRoom {
     if (state.phase !== 'waiting') return
 
     const mode = data?.mode === 'human' ? 'human' : 'ai'
-    const maxPlayers = Math.max(MIN_PLAYERS, Math.min(MAX_PLAYERS, Number(data?.maxPlayers) || MIN_PLAYERS))
+    // AI 模式最低 1 人（单人玩），真人模式最低 2 人
+    const minPlayers = mode === 'ai' ? 1 : MIN_PLAYERS
+    const maxPlayers = Math.max(minPlayers, Math.min(MAX_PLAYERS, Number(data?.maxPlayers) || minPlayers))
 
     // 问题次数限制：null 表示不限；数字表示全场最多可提的问题数
     const rawLimit = data?.questionLimit
@@ -330,8 +332,14 @@ export class SoupRoom {
       this.sendToByPlayerId(playerId, { type: 'error', data: { message: '请先选择谜题' } })
       return
     }
-    if (!this.isFull(state)) {
-      this.sendToByPlayerId(playerId, { type: 'error', data: { message: `等待玩家加入，至少需要 ${state.maxPlayers} 人` } })
+    // 开局人数：AI 模式 1 人即可（单人玩），真人模式需满员
+    const playerCount = state.players.filter((p) => !p.isSpectator).length
+    if (state.mode === 'ai' && playerCount < 1) {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: '至少需要 1 名玩家' } })
+      return
+    }
+    if (state.mode === 'human' && !this.isFull(state)) {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: `真人模式需满 ${state.maxPlayers} 人才能开局` } })
       return
     }
 
@@ -604,15 +612,15 @@ export class SoupRoom {
   /** 组装 AI 复盘提示 prompt 并调用 */
   async callAIHint(puzzle, questions) {
     const prompt = [
-      '你是一个海龟汤游戏复盘助手。',
-      '根据玩家已问的问题，给出 1~2 条不剧透汤底核心真相的提示，帮助玩家继续推理。',
+      '你是"大肥鱼"，一位海龟汤游戏大师，主持过上千局游戏。',
+      '现在请作为复盘顾问，根据玩家已问的问题，给出 1~2 条不剧透汤底核心真相的提示，帮助玩家继续推理。',
       '',
       `【汤面】${puzzle.story}`,
       `【汤底真相】${puzzle.answer}`,
       '',
       questions.length > 0 ? `【玩家已问的问题】\n${questions.join('\n')}` : '【玩家已问的问题】暂无',
       '',
-      '要求：提示要具体、可操作，但不能直接说出答案或关键转折。只输出提示文本本身。',
+      '要求：提示要具体、可操作，指向玩家可能忽略的关键细节，但不能直接说出答案或关键转折。只输出提示文本本身。',
     ].join('\n')
 
     const baseUrl = this.env.AI_BASE_URL || 'https://opencode.ai/zen/go/v1'

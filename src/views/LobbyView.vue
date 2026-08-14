@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
 import PuzzleSubmitModal from '../components/PuzzleSubmitModal.vue'
+import FeedbackModal from '../components/FeedbackModal.vue'
 import { avatarChoices, avatarUrl } from '../game/avatars'
 
 const lobby = useLobbyStore()
@@ -10,6 +11,7 @@ const game = useGameStore()
 
 const roomCode = ref('')
 const invited = ref('') // 受邀进入的房间号（来自链接）
+const feedbackOpen = ref(false)
 
 onMounted(() => {
   lobby.fetchPuzzles().catch(() => {})
@@ -70,6 +72,19 @@ function generateCode() {
       <span>喜欢这个游戏？欢迎去 GitHub 点个 star 支持</span>
       <span class="text-slate-500">→</span>
     </a>
+
+    <!-- 反馈入口 -->
+    <button
+      type="button"
+      class="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-300 transition hover:border-sky-500/50 hover:bg-slate-800 hover:text-slate-100"
+      @click="feedbackOpen = true"
+    >
+      <span>💬</span>
+      <span>意见反馈 · 遇到问题或想提建议？</span>
+    </button>
+
+    <!-- 反馈弹窗 -->
+    <FeedbackModal v-if="feedbackOpen" @close="feedbackOpen = false" />
 
     <!-- 昵称 -->
     <div>

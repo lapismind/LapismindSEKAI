@@ -1,7 +1,9 @@
 <script setup>
 import { ref } from 'vue'
+import FeedbackModal from './FeedbackModal.vue'
 
 const open = ref(false)
+const feedbackOpen = ref(false)
 
 const SECTIONS = [
   {
@@ -103,9 +105,21 @@ const SECTIONS = [
       </div>
 
       <!-- 底部 -->
-      <div class="border-t border-slate-800 px-5 py-3 text-center text-[11px] text-slate-600">
-        祝推理愉快 🍲
+      <div class="flex flex-col gap-2 border-t border-slate-800 px-5 py-3">
+        <button
+          type="button"
+          class="rounded-lg border border-sky-600/40 bg-sky-900/20 px-3 py-2 text-xs font-semibold text-sky-300 transition hover:bg-sky-900/40"
+          @click="feedbackOpen = true"
+        >
+          💬 意见反馈
+        </button>
+        <div class="text-center text-[11px] text-slate-600">
+          祝推理愉快 🍲
+        </div>
       </div>
     </div>
   </div>
+
+  <!-- 反馈弹窗 -->
+  <FeedbackModal v-if="feedbackOpen" @close="feedbackOpen = false" />
 </template>

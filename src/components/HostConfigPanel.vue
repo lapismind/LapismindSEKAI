@@ -36,6 +36,15 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
         本局人数（{{ mode === 'human' ? '含主持人' : '全部玩家' }}      </span>
       <div class="flex flex-wrap gap-1">
         <button
+          v-if="mode === 'ai'"
+          type="button"
+          class="h-7 w-7 rounded-md text-xs font-semibold transition"
+          :class="maxPlayers === 1 ? 'bg-brand-500 text-white' : 'bg-slate-900 text-slate-400 hover:text-slate-200'"
+          @click="emit('update:maxPlayers', 1)"
+        >
+          1
+        </button>
+        <button
           v-for="n in [2, 3, 4, 5, 6, 7, 8]"
           :key="n"
           type="button"

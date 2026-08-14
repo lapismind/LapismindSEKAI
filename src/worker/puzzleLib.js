@@ -55,6 +55,30 @@ export class PuzzleLib {
       return this.json({ puzzle: this.publicPuzzle(validated.puzzle) })
     }
 
+    // POST /api/feedback —— 用户反馈（存 DO storage，无身份要求）
+    if (req.method === 'POST' && path === '/api/feedback') {
+      let body
+      try {
+        body = await req.json()
+      } catch {
+        return new Response('bad json', { status: 400 })
+      }
+      const content = String(body?.content ?? '').trim()
+      const contact = String(body?.contact ?? '').trim().slice(0, 100)
+      if (!content) {
+        return this.json({ error: '反馈内容不能为空' }, 400)
+      }
+      const feedbacks = (await this.ctx.storage.get('feedback')) ?? []
+      feedbacks.push({
+        id: `fb-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
+        content: content.slice(0, 2000),
+        contact,
+        at: Date.now(),
+      })
+      await this.ctx.storage.put('feedback', feedbacks)
+      return this.json({ ok: true })
+    }
+
     return new Response('not found', { status: 404 })
   }
 

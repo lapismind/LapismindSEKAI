@@ -24,4 +24,8 @@ export const api = {
   addPuzzle(puzzle) {
     return request('/api/puzzles', { method: 'POST', body: JSON.stringify(puzzle) })
   },
+  /** 提交反馈 */
+  feedback(data) {
+    return request('/api/feedback', { method: 'POST', body: JSON.stringify(data) })
+  },
 }
