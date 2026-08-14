@@ -269,7 +269,11 @@ export class ShowhandRoom {
 
   async doBet(state, playerId, data) {
     const player = state.players.find((p) => p.id === playerId)
-    if (!player || player.role !== 'player') return
+    if (!player) return
+    if (player.role === 'spectator') {
+      this.errorTo(this.socketFor(state, playerId), '观众不能下注')
+      return
+    }
     if (state.phase !== 'playing') return
     if (state.currentPlayerId !== playerId) {
       this.errorTo(this.socketFor(state, playerId), '不是你的回合')
