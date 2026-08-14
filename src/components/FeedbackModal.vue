@@ -10,8 +10,19 @@ const contact = ref('')
 const submitting = ref(false)
 const error = ref('')
 const done = ref(false)
+const copied = ref(false)
 
-const QQ = '123456789' // TODO: 替换为真实 QQ 号
+const QQ = '1143464926'
+
+async function copyQQ() {
+  try {
+    await navigator.clipboard.writeText(QQ)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 2000)
+  } catch {
+    /* 剪贴板不可用时静默 */
+  }
+}
 
 async function submit() {
   if (submitting.value) return
@@ -65,10 +76,11 @@ function close() {
             <span class="text-xs text-slate-400">加 QQ：</span>
             <button
               type="button"
-              class="rounded-md bg-sky-600 px-3 py-1 text-xs font-bold text-white transition hover:bg-sky-500"
-              @click="navigator.clipboard?.writeText(QQ)"
+              class="rounded-md px-3 py-1 text-xs font-bold transition"
+              :class="copied ? 'bg-emerald-600 text-white' : 'bg-sky-600 text-white hover:bg-sky-500'"
+              @click="copyQQ"
             >
-              复制 {{ QQ }}
+              {{ copied ? '✓ 已复制' : `复制 ${QQ}` }}
             </button>
           </div>
         </div>
