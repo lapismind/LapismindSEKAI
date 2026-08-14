@@ -1,0 +1,24 @@
+{
+  "name": "@lapismind/lobby-kit",
+  "version": "0.1.0",
+  "description": "多人联机游戏大厅通用件（纯逻辑层）：WebSocket 客户端、房间码、playerId、协议信封、lobby store 工厂",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node tests/protocol.test.mjs && node tests/room-code.test.mjs && node tests/player-id.test.mjs && node tests/ws-client.test.mjs && node tests/lobby-store.test.mjs"
+  },
+  "keywords": [
+    "websocket",
+    "game",
+    "lobby",
+    "vue",
+    "pinia"
+  ],
+  "license": "MIT"
+}
