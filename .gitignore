@@ -1,5 +1,8 @@
 # build output
 dist/
+
+# preview server log
+preview.log
 # generated types
 .astro/
 
