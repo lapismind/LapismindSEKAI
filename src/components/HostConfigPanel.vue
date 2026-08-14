@@ -76,12 +76,13 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
           :class="questionLimit === n ? 'bg-brand-500 text-white' : 'bg-slate-900 text-slate-400 hover:text-slate-200'"
           @click="emit('update:questionLimit', n)"
         >
-          {{ n }}        </button>
+          {{ n }}
+        </button>
       </div>
     </div>
 
     <p v-if="mode === 'human'" class="text-xs text-slate-500">
-      真人模式下，房主（你）将担任主持人，回答玩家的提问。
+      真人模式下可报名当主持人，多人报名时随机抽取；无人报名则随机选一位玩家。
     </p>
     <p v-if="questionLimit !== null" class="text-xs text-slate-500">
       全场最多 {{ questionLimit }} 个问题，用尽后由主持人揭底。

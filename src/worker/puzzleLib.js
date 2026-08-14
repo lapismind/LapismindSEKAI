@@ -8,10 +8,12 @@
  */
 
 import { getBuiltinPuzzles } from './puzzles'
+import { generateLogicProfile } from '../ai/logicProfile'
 
 export class PuzzleLib {
-  constructor(ctx) {
+  constructor(ctx, env) {
     this.ctx = ctx
+    this.env = env
   }
 
   async fetch(req) {
@@ -48,6 +50,13 @@ export class PuzzleLib {
       const validated = this.validatePuzzle(body)
       if (!validated.ok) {
         return this.json({ error: validated.reason }, 400)
+      }
+      // 自定义谜题：用 AI 生成逻辑档案（失败降级，不阻塞提交）
+      if (!validated.puzzle.logicProfile) {
+        const profile = await generateLogicProfile(validated.puzzle, this.env)
+        if (profile) {
+          validated.puzzle.logicProfile = profile
+        }
       }
       const custom = (await this.ctx.storage.get('custom')) ?? []
       custom.push(validated.puzzle)

@@ -27,7 +27,8 @@ export const JUDGE_LABEL = {
 
 /**
  * 解析 AI 主持的判定结果。
- * 约定 AI 输出必须是严格的 JSON：{"judge":"yes|no|irrelevant|correct","reason":"一句话"}
+ * 约定 AI 输出必须是严格的 JSON：{"judge":"yes|no|irrelevant|ambiguous|correct","reason":"一句话"}
+ * 兼容 AI 可能输出中文值（是/否/无关/是也不是/猜中）。
  * 解析失败时兜底为 irrelevant，避免整局卡住。
  * @param {string} raw LLM 原始输出
  * @returns {{judge:string, reason:string}}
@@ -36,7 +37,24 @@ export function parseAIJudge(raw) {
   try {
     const cleaned = raw.trim().replace(/^```json\s*/i, '').replace(/```$/, '').trim()
     const obj = JSON.parse(cleaned)
-    const judge = obj.judge
+    const rawJudge = obj.judge
+    // 兼容中文值
+    const map = {
+      是: JUDGE.YES,
+      对: JUDGE.YES,
+      正确: JUDGE.YES,
+      不是: JUDGE.NO,
+      否: JUDGE.NO,
+      不对: JUDGE.NO,
+      无关: JUDGE.IRRELEVANT,
+      没关系: JUDGE.IRRELEVANT,
+      不重要: JUDGE.IRRELEVANT,
+      是也不是: JUDGE.AMBIGUOUS,
+      不完全对: JUDGE.AMBIGUOUS,
+      猜中: JUDGE.CORRECT,
+      猜对了: JUDGE.CORRECT,
+    }
+    const judge = map[rawJudge] ?? rawJudge
     if (Object.values(JUDGE).includes(judge)) {
       return { judge, reason: obj.reason ?? '' }
     }

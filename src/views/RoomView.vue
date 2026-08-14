@@ -341,15 +341,15 @@ const hasApplied = computed(() =>
         <div v-if="game.mode === 'human' && game.amI?.isModerator" class="absolute bottom-2 left-2 z-30 w-64">
           <ModeratorPanel
             :pending="moderatorPending"
+            :players="game.players"
             @judge="judge"
           />
         </div>
 
-        <!-- 观战区（左侧靠下，只显示头像+昵称） -->
+        <!-- 观战区（左侧居中，避开左下角主持人面板） -->
         <div
           v-if="game.spectators.length > 0"
-          class="absolute bottom-2 left-2 z-20 flex flex-col gap-1.5"
-          :class="game.mode === 'human' && game.amI?.isModerator ? 'bottom-2 left-2 mt-24' : ''"
+          class="absolute left-2 top-1/2 z-20 -translate-y-1/2"
         >
           <div class="rounded-lg border border-slate-700/60 bg-slate-900/70 px-2 py-1.5 backdrop-blur-sm">
             <div class="mb-1 text-[10px] font-semibold text-slate-500">👁 观战（{{ game.spectators.length }}）</div>

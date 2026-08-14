@@ -27,6 +27,15 @@ export class SoupRoom {
     this.ctx = ctx
     this.env = env
     this.roomId = ctx.name
+    // 串行队列：DO 的 storage 读写是异步的，并发请求必须按序执行，
+    // 否则多条消息可能交错导致状态错乱（判定与提问配对错误）
+    this.queue = Promise.resolve()
+  }
+
+  /** 把操作排入串行队列，保证房间状态一致 */
+  enqueue(task) {
+    this.queue = this.queue.then(task, task)
+    return this.queue
   }
 
   async fetch(req) {
@@ -95,49 +104,52 @@ export class SoupRoom {
     } catch {
       return
     }
-    switch (msg.type) {
-      case 'set_host_config':
-        await this.handleSetHostConfig(playerId, msg.data)
-        break
-      case 'apply_moderator':
-        await this.handleApplyModerator(playerId, msg.data)
-        break
-      case 'set_spectator':
-        await this.handleSetSpectator(playerId, msg.data)
-        break
-      case 'select_puzzle':
-        await this.handleSelectPuzzle(playerId, msg.data)
-        break
-      case 'start_game':
-        await this.handleStartGame(playerId)
-        break
-      case 'ask_question':
-        await this.handleAskQuestion(socket, playerId, msg.data)
-        break
-      case 'moderator_judge':
-        await this.handleModeratorJudge(playerId, msg.data)
-        break
-      case 'guess_answer':
-        await this.handleGuessAnswer(socket, playerId, msg.data)
-        break
-      case 'reveal':
-        await this.handleReveal(playerId)
-        break
-      case 'review_note':
-        await this.handleReviewNote(playerId, msg.data)
-        break
-      case 'ai_hint':
-        await this.handleAIHint(socket, playerId)
-        break
-      case 'add_puzzle':
-        await this.handleAddPuzzle(playerId, msg.data)
-        break
-      case 'chat':
-        this.broadcast({ type: 'chat', data: { playerId, text: msg.data?.text } })
-        break
-      default:
-        break
-    }
+    // 所有涉及房间状态的操作串行执行，避免并发竞态
+    await this.enqueue(async () => {
+      switch (msg.type) {
+        case 'set_host_config':
+          await this.handleSetHostConfig(playerId, msg.data)
+          break
+        case 'apply_moderator':
+          await this.handleApplyModerator(playerId, msg.data)
+          break
+        case 'set_spectator':
+          await this.handleSetSpectator(playerId, msg.data)
+          break
+        case 'select_puzzle':
+          await this.handleSelectPuzzle(playerId, msg.data)
+          break
+        case 'start_game':
+          await this.handleStartGame(playerId)
+          break
+        case 'ask_question':
+          await this.handleAskQuestion(socket, playerId, msg.data)
+          break
+        case 'moderator_judge':
+          await this.handleModeratorJudge(playerId, msg.data)
+          break
+        case 'guess_answer':
+          await this.handleGuessAnswer(socket, playerId, msg.data)
+          break
+        case 'reveal':
+          await this.handleReveal(playerId)
+          break
+        case 'review_note':
+          await this.handleReviewNote(playerId, msg.data)
+          break
+        case 'ai_hint':
+          await this.handleAIHint(socket, playerId)
+          break
+        case 'add_puzzle':
+          await this.handleAddPuzzle(playerId, msg.data)
+          break
+        case 'chat':
+          this.broadcast({ type: 'chat', data: { playerId, text: msg.data?.text } })
+          break
+        default:
+          break
+      }
+    })
   }
 
   async webSocketClose(socket) {
