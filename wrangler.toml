@@ -6,8 +6,7 @@ compatibility_date = "2025-06-01"
 pattern = "blog.qmzhj.top"
 custom_domain = true
 
-# 前端静态资源（Astro 构建产物 dist/）
+# 前端静态资源（Astro 构建产物 dist/，纯静态站点）
 [assets]
 directory = "./dist"
-binding = "ASSETS"
 not_found_handling = "404-page"
