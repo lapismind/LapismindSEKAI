@@ -1,0 +1,121 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import SoupLobby from '../../assets/soup-lobby.png';
+import { SITE_TITLE } from '../../consts';
+import { projects } from '../../data/projects';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`作品集 - ${SITE_TITLE}`} description="Lapismind 的作品集" />
+		<style>
+			main {
+				width: 960px;
+			}
+			h1 {
+				font-size: 2.441em;
+				margin-bottom: 1.5em;
+			}
+			.card-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+				gap: 1.5rem;
+			}
+			.project-card {
+				background: white;
+				border-radius: 16px;
+				overflow: hidden;
+				box-shadow: var(--box-shadow);
+				text-decoration: none;
+				display: block;
+				transition: transform 0.2s ease, box-shadow 0.2s ease;
+			}
+			.project-card:hover {
+				transform: translateY(-4px);
+				box-shadow: 0 8px 32px rgba(var(--gray), 33%);
+			}
+			.project-card img {
+				width: 100%;
+				height: 180px;
+				object-fit: cover;
+				border-radius: 0;
+				margin: 0;
+			}
+			.project-card .body {
+				padding: 1em 1.2em 1.2em;
+			}
+			.project-card h2 {
+				font-size: 1.563em;
+				margin: 0 0 0.2em;
+				color: rgb(var(--black));
+			}
+			.project-card .subtitle {
+				margin: 0 0 0.6em;
+				font-size: 0.85em;
+				color: rgb(var(--gray));
+			}
+			.project-card p {
+				font-size: 0.9em;
+				color: rgb(var(--gray-dark));
+			}
+			.tag {
+				font-size: 0.75em;
+				padding: 0.2em 0.7em;
+				border-radius: 999px;
+				background: rgb(var(--gray-light));
+				color: rgb(var(--gray-dark));
+			}
+			.status-badge {
+				font-size: 0.7em;
+				padding: 0.15em 0.6em;
+				border-radius: 999px;
+				margin-left: 0.5em;
+				vertical-align: middle;
+				font-weight: 700;
+			}
+			.status-online {
+				background: #d1fae5;
+				color: #065f46;
+			}
+			.status-developing {
+				background: #fef3c7;
+				color: #92400e;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<h1>作品集</h1>
+			<div class="card-grid">
+				{
+					projects.map((p) => (
+						<a class="project-card" href={`/projects/${p.slug}/`}>
+							{p.slug === 'turtle-soup' && <Image src={SoupLobby} alt={`${p.name} 截图`} />}
+							<div class="body">
+								<h2>
+									{p.name}
+									<span class={`status-badge status-${p.status}`}>
+										{p.status === 'online' ? '已上线' : '开发中'}
+									</span>
+								</h2>
+								<p class="subtitle">{p.subtitle}</p>
+								<p>{p.description}</p>
+								<div class="tag">
+									{p.tech.map((t) => (
+										<span class="tag">{t}</span>
+									))}
+								</div>
+							</div>
+						</a>
+					))
+				}
+			</div>
+		</main>
+		<Footer />
+	</body>
+</html>

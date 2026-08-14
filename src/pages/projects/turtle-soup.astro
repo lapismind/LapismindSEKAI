@@ -1,0 +1,152 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import SoupLobby from '../../assets/soup-lobby.png';
+import { SITE_TITLE } from '../../consts';
+import { projects } from '../../data/projects';
+
+const project = projects.find((p) => p.slug === 'turtle-soup')!;
+const { name, subtitle, description, tech, links } = project;
+
+const features = [
+	'AI 主持 & 真人主持双模式',
+	'完整规则：提问节流、问题上限、模糊回答',
+	'观战系统：2-8 人完整可选，房间满员自动转观战',
+	'复盘系统：共享笔记 + AI 复盘提示',
+	'可视化反馈：主持人居中、玩家环形环绕，判定动图反馈',
+	'玩家体验：26 张头像、可折叠汤面卡片、自定义谜题提交',
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			main {
+				width: 860px;
+			}
+			.back-link {
+				display: inline-block;
+				margin-bottom: 1.5em;
+				font-size: 0.9em;
+			}
+			h1 {
+				margin-bottom: 0.3em;
+			}
+			.subtitle {
+				color: rgb(var(--gray));
+				font-size: 1.2em;
+				margin-bottom: 1.5em;
+			}
+			.hero-img {
+				width: 100%;
+				border-radius: 16px;
+				box-shadow: var(--box-shadow);
+				margin-bottom: 2em;
+			}
+			.links {
+				display: flex;
+				gap: 1em;
+				margin-bottom: 2em;
+			}
+			.link-btn {
+				display: inline-block;
+				padding: 0.6em 1.4em;
+				border-radius: 999px;
+				background: var(--accent);
+				color: white;
+				text-decoration: none;
+				font-size: 0.95em;
+			}
+			.link-btn:hover {
+				background: var(--accent-dark);
+				color: white;
+			}
+			.link-btn.ghost {
+				background: transparent;
+				color: var(--accent);
+				border: 2px solid var(--accent);
+			}
+			.link-btn.ghost:hover {
+				background: var(--accent);
+				color: white;
+			}
+			h2 {
+				font-size: 1.563em;
+				margin-top: 1.5em;
+			}
+			.feature-list {
+				padding-left: 1.2em;
+			}
+			.feature-list li {
+				margin-bottom: 0.5em;
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5em;
+			}
+			.tag {
+				font-size: 0.85em;
+				padding: 0.3em 0.8em;
+				border-radius: 999px;
+				background: rgb(var(--gray-light));
+				color: rgb(var(--gray-dark));
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main>
+			<a class="back-link" href="/projects/">← 返回作品集</a>
+			<h1>{name}</h1>
+			<p class="subtitle">{subtitle}</p>
+
+			<Image class="hero-img" src={SoupLobby} alt={`${name} 大厅截图`} />
+
+			<div class="links">
+				{
+					links.online && (
+						<a class="link-btn" href={links.online} target="_blank">
+							在线体验
+						</a>
+					)
+				}
+				{links.github && (
+					<a class="link-btn ghost" href={links.github} target="_blank">
+						GitHub 源码
+					</a>
+				)}
+			</div>
+
+			<h2>项目简介</h2>
+			<p>{description}</p>
+
+			<h2>功能特性</h2>
+			<ul class="feature-list">
+				{features.map((f) => (
+					<li>{f}</li>
+				))}
+			</ul>
+
+			<h2>技术栈</h2>
+			<div class="tech-list">
+				{tech.map((t) => (
+					<span class="tag">{t}</span>
+				))}
+			</div>
+
+			<h2>架构说明</h2>
+			<p>
+				浏览器通过 WebSocket 连接 Worker，每局游戏对应一个 Durable Objects 实例（房间状态与自定义谜题用
+				SQLite 持久化，Hibernation 休眠不计费）；AI 主持调用 OpenCode Go 的 deepseek-v4-flash
+				判定玩家提问，失败时自动降级为关键词兜底判定，保证游戏继续。前端按 core / game / network
+				三层隔离组织，通过 Pinia 管理状态。
+			</p>
+		</main>
+		<Footer />
+	</body>
+</html>
