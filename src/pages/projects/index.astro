@@ -4,6 +4,7 @@ import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import SoupLobby from '../../assets/soup-lobby.png';
+import AiforumPreview from '../../assets/aiforum-preview.png';
 import { SITE_TITLE } from '../../consts';
 import { projects } from '../../data/projects';
 ---
@@ -96,6 +97,7 @@ import { projects } from '../../data/projects';
 					projects.map((p) => (
 						<a class="project-card" href={`/projects/${p.slug}/`}>
 							{p.slug === 'turtle-soup' && <Image src={SoupLobby} alt={`${p.name} 截图`} />}
+						{p.slug === 'aiforum' && <Image src={AiforumPreview} alt={`${p.name} 截图`} />}
 							<div class="body">
 								<h2>
 									{p.name}
