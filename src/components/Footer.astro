@@ -1,5 +1,6 @@
 ---
 import { GITHUB_URL, SITE_TITLE } from '../consts';
+import IntroOverlay from './IntroOverlay.astro';
 import MusicDock from './MusicDock.astro';
 const today = new Date();
 ---
@@ -58,6 +59,8 @@ const today = new Date();
 </footer>
 
 <MusicDock />
+
+<IntroOverlay />
 
 <canvas class="snow-canvas" aria-hidden="true"></canvas>
 

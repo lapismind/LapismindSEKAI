@@ -50,6 +50,16 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				background-size: cover;
 				background-position: center 22%;
 				z-index: 0;
+				background-color: color-mix(in oklab, var(--primary-soft) 55%, var(--page-bg));
+				animation: hero-fade 0.9s ease 0.15s both;
+			}
+			@keyframes hero-fade {
+				from {
+					opacity: 0;
+				}
+				to {
+					opacity: 1;
+				}
 			}
 			.hero-photo::after {
 				content: '';
