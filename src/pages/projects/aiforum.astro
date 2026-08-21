@@ -1,137 +1,32 @@
 ---
-import { Image } from 'astro:assets';
 import BaseHead from '../../components/BaseHead.astro';
-import Footer from '../../components/Footer.astro';
-import Header from '../../components/Header.astro';
-import AiforumPreview from '../../assets/aiforum-preview.png';
-import { SITE_TITLE } from '../../consts';
-import { projects } from '../../data/projects';
-
-const project = projects.find((p) => p.slug === 'aiforum')!;
-const { name, subtitle, description, tech, links } = project;
 ---
 
 <!doctype html>
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<BaseHead title="AI 平台 - Lapismind 的博客" description="AI 学习平台已迁移到新栏目" />
+		<meta http-equiv="refresh" content="0; url=/ai/" />
 		<style>
-			main {
-				width: 860px;
+			body {
+				display: grid;
+				place-items: center;
+				min-height: 100vh;
+				margin: 0;
+				font-family: var(--font-body);
+				background: var(--page-bg);
+				color: var(--ink);
+				text-align: center;
 			}
-			.back-link {
-				display: inline-block;
-				margin-bottom: 1.5em;
-				font-size: 0.9em;
-			}
-			h1 {
-				margin-bottom: 0.3em;
-			}
-			.subtitle {
-				color: rgb(var(--gray));
-				font-size: 1.2em;
-				margin-bottom: 1.5em;
-			}
-			.hero-img {
-				width: 100%;
-				border-radius: 16px;
-				box-shadow: var(--box-shadow);
-				margin-bottom: 2em;
-			}
-			.links {
-				display: flex;
-				gap: 1em;
-				margin-bottom: 2em;
-			}
-			.link-btn {
-				display: inline-block;
-				padding: 0.6em 1.4em;
-				border-radius: 999px;
-				background: var(--accent);
-				color: white;
-				text-decoration: none;
-				font-size: 0.95em;
-			}
-			.link-btn:hover {
-				background: var(--accent-dark);
-				color: white;
-			}
-			.link-btn.ghost {
-				background: transparent;
-				color: var(--accent);
-				border: 2px solid var(--accent);
-			}
-			.link-btn.ghost:hover {
-				background: var(--accent);
-				color: white;
-			}
-			h2 {
-				font-size: 1.563em;
-				margin-top: 1.5em;
-			}
-			.feature-list {
-				padding-left: 1.2em;
-			}
-			.feature-list li {
-				margin-bottom: 0.5em;
-			}
-			.tech-list {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.5em;
-			}
-			.tag {
-				font-size: 0.85em;
-				padding: 0.3em 0.8em;
-				border-radius: 999px;
-				background: rgb(var(--gray-light));
-				color: rgb(var(--gray-dark));
+			a {
+				color: var(--primary);
 			}
 		</style>
 	</head>
 	<body>
-		<Header />
-		<main>
-			<a class="back-link" href="/projects/">← 返回作品集</a>
-			<h1>{name}</h1>
-			<p class="subtitle">{subtitle}</p>
-
-			<Image class="hero-img" src={AiforumPreview} alt={`${name} 页面截图`} />
-
-			<div class="links">
-				{links.online && (
-					<a class="link-btn" href={links.online} target="_blank">
-						访问平台
-					</a>
-				)}
-			</div>
-
-			<h2>项目简介</h2>
-			<p>{description}</p>
-
-			<h2>平台内容</h2>
-			<ul class="feature-list">
-				<li>新手教程：从零教员工使用星辰超级智能体，理解 Skill 与 AI 概念</li>
-				<li>实战任务：周报自动生成、文档归档、数据洞察，附项目结构与提示词写法</li>
-				<li>进阶知识：API / 端点 / MCP / Agent / Token 等名词科普，智能体 vs 问答助手区别</li>
-				<li>案例库：公诚业务与日常办公的 AI 落地案例</li>
-				<li>高进阶演示：展示把 Skill 发展成本地可视化网页的操作系统</li>
-			</ul>
-
-			<h2>技术栈</h2>
-			<div class="tech-list">
-				{tech.map((t) => (
-					<span class="tag">{t}</span>
-				))}
-			</div>
-
-			<h2>部署说明</h2>
-			<p>
-				纯静态站点（HTML + CSS + JavaScript），通过 Cloudflare Workers 托管在自定义域名
-				aiforum.qmzhj.top，无需后端服务，云端 24h 常驻、低成本维护。内容以 Markdown 和
-				结构化数据组织，便于持续更新。
-			</p>
-		</main>
-		<Footer />
+		<div>
+			<p>AI 学习平台已迁移到新栏目，正在跳转……</p>
+			<p><a href="/ai/">如果没有自动跳转，点这里</a></p>
+		</div>
 	</body>
 </html>

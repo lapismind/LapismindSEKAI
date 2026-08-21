@@ -1,40 +1,219 @@
 ---
-import { GITHUB_URL } from '../consts';
+import { GITHUB_URL, SITE_TITLE } from '../consts';
+import MusicDock from './MusicDock.astro';
 const today = new Date();
 ---
 
-<footer>
-	&copy; {today.getFullYear()} Lapismind. All rights reserved.
-	<div class="social-links">
-		<a href={GITHUB_URL} target="_blank">
-			<span class="sr-only">Go to GitHub</span>
-			<svg viewBox="0 0 16 16" aria-hidden="true" width="32" height="32" astro-icon="social/github"
-				><path
-					fill="currentColor"
-					d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-				></path></svg
-			>
-		</a>
+<footer class="site-footer">
+	<div class="footer-wave" aria-hidden="true">
+		<svg viewBox="0 0 1440 72" preserveAspectRatio="none">
+			<path
+				d="M0,40 C240,80 480,0 720,28 C960,56 1200,12 1440,44 L1440,72 L0,72 Z"
+				fill="currentColor"
+			></path>
+		</svg>
+	</div>
+	<div class="container">
+		<div class="footer-inner glass">
+			<div class="footer-top">
+				<div class="footer-brand">
+					<span class="brand-mark" aria-hidden="true">L</span>
+					<div>
+						<p class="footer-title">{SITE_TITLE}</p>
+						<p class="footer-desc">把想法做成能跑起来的东西。</p>
+					</div>
+				</div>
+				<div class="social-links">
+					<a href={GITHUB_URL} target="_blank" rel="noopener" aria-label="GitHub">
+						<svg viewBox="0 0 16 16" aria-hidden="true" width="18" height="18"
+							><path
+								fill="currentColor"
+								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
+							></path></svg
+						>
+					</a>
+					<a class="rss" href="/rss.xml" aria-label="RSS">
+						<svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor"
+							><path
+								d="M6.18 17.82a2.18 2.18 0 1 1 0 4.36 2.18 2.18 0 0 1 0-4.36zM4 4.44v3.06c6.93 0 12.56 5.63 12.56 12.56h3.06C19.62 10.32 13.68 4.44 4 4.44zm0 6.1v3.06c4.66 0 8.4 3.74 8.4 8.4h3.06c0-6.33-5.13-11.46-11.46-11.46z"
+							></path></svg
+						>
+					</a>
+				</div>
+			</div>
+			<div class="footer-tech">
+				<span class="tag">Astro</span>
+				<span class="tag">Tailwind CSS</span>
+				<span class="tag">Cloudflare Workers</span>
+			</div>
+			<div class="footer-bottom">
+				<p>&copy; {today.getFullYear()} Lapismind. 保留所有权利。</p>
+				<p class="built">Built with Astro & Powered by Cloudflare</p>
+			</div>
+			<p class="footer-credit">
+				首页背景卡面素材来自 pjsk.moe 粉丝资源站，版权归 SEGA / Colorful Palette 所有。
+			</p>
+		</div>
 	</div>
 </footer>
+
+<MusicDock />
+
+<canvas class="snow-canvas" aria-hidden="true"></canvas>
+
+<button class="back-to-top" type="button" aria-label="回到顶部">
+	<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+		stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+		><path d="M12 19V5M5 12l7-7 7 7"></path
+	></svg>
+</button>
+
 <style>
-	footer {
-		padding: 2em 1em 6em 1em;
-		background: linear-gradient(var(--gray-gradient)) no-repeat;
-		color: rgb(var(--gray));
-		text-align: center;
+	.site-footer {
+		position: relative;
+		padding: 0 0 3rem;
+		margin-top: 4rem;
+	}
+	.snow-canvas {
+		position: fixed;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		z-index: 45;
+	}
+	.back-to-top {
+		position: fixed;
+		right: 1.4rem;
+		bottom: 1.4rem;
+		z-index: 70;
+		display: grid;
+		place-items: center;
+		width: 46px;
+		height: 46px;
+		border-radius: 50%;
+		border: 1px solid var(--line);
+		background: var(--card-solid);
+		color: var(--ink-soft);
+		box-shadow: var(--shadow-md);
+		cursor: var(--cursor-pointer);
+		opacity: 0;
+		visibility: hidden;
+		transform: translateY(10px);
+		transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease,
+			color 0.2s ease, border-color 0.2s ease;
+	}
+	.back-to-top.visible {
+		opacity: 1;
+		visibility: visible;
+		transform: none;
+	}
+	.back-to-top:hover {
+		color: var(--primary);
+		border-color: var(--primary);
+	}
+	.footer-wave {
+		color: color-mix(in oklab, var(--page-bg-deep) 70%, var(--primary-soft) 30%);
+		line-height: 0;
+	}
+	.footer-wave svg {
+		width: 100%;
+		height: 64px;
+		display: block;
+	}
+	.container {
+		position: relative;
+		margin-top: -14px;
+	}
+	.footer-inner {
+		padding: 2rem 2.2rem 1.6rem;
+	}
+	.footer-top {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		flex-wrap: wrap;
+	}
+	.footer-brand {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+	}
+	.brand-mark {
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
+		background: var(--gradient);
+		color: #fff;
+		font-family: var(--font-mono);
+		font-weight: 700;
+		font-size: 1rem;
+		box-shadow: var(--shadow-sm);
+	}
+	.footer-title {
+		margin: 0;
+		color: var(--ink);
+		font-weight: 700;
+	}
+	.footer-desc {
+		margin: 0;
+		font-size: 0.88rem;
+		color: var(--muted);
 	}
 	.social-links {
 		display: flex;
-		justify-content: center;
-		gap: 1em;
-		margin-top: 1em;
+		gap: 0.6rem;
 	}
 	.social-links a {
+		display: grid;
+		place-items: center;
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		border: 1px solid var(--line);
+		background: var(--card-solid);
+		color: var(--muted);
 		text-decoration: none;
-		color: rgb(var(--gray));
+		transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 	}
 	.social-links a:hover {
-		color: rgb(var(--gray-dark));
+		color: var(--primary);
+		border-color: var(--primary);
+		transform: translateY(-2px);
+	}
+	.footer-tech {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		justify-content: center;
+		margin-top: 1.5rem;
+	}
+	.footer-bottom {
+		margin-top: 1.5rem;
+		padding-top: 1.2rem;
+		border-top: 1px dashed var(--line);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.8rem;
+		flex-wrap: wrap;
+		font-size: 0.86rem;
+		color: var(--muted);
+	}
+	.footer-bottom p {
+		margin: 0;
+	}
+	.built {
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+	}
+	.footer-credit {
+		margin: 1.2rem 0 0;
+		text-align: center;
+		font-size: 0.75rem;
+		color: var(--muted);
 	}
 </style>

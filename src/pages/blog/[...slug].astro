@@ -13,8 +13,14 @@ type Props = CollectionEntry<'blog'>;
 
 const post = Astro.props;
 const { Content } = await render(post);
+
+// 阅读时长估算：中文约 350 字/分钟，英文约 200 词/分钟
+const body = post.body || '';
+const cjk = (body.match(/[\u4e00-\u9fff]/g) || []).length;
+const words = (body.match(/[a-zA-Z0-9]+/g) || []).length;
+const readingTime = Math.max(1, Math.round(cjk / 350 + words / 200));
 ---
 
-<BlogPost {...post.data}>
+<BlogPost {...post.data} readingTime={readingTime}>
 	<Content />
 </BlogPost>

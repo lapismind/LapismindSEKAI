@@ -25,6 +25,19 @@
 - 修复：纯静态直接省略 binding 字段，`[assets]` 只留 directory + not_found_handling。
 - 教训：先 dry-run 验证再正式部署。
 
+## 2026-08-22
+
+### 5. 找 pjsk.moe 的素材先走资产浏览器，别猜 URL / 抓包
+- 现象：为拿歌曲音频与曲绘，走了"抓页面请求 + 猜命名规律 + 批量探测 URL"的弯路（如 `vs_/se_` 前缀、`0062_01` 裸路径都是探测出来的）。
+- 正解：pjsk.moe 自带"资产浏览器" Asset Viewer——`/asset-viewer/?server=jp` 等，按目录浏览 + 文件名搜索，直接给出真实资源路径。
+- 元数据与歌词接口：`metadata.exmeaning.com/cn/master/*.json`、`translation.exmeaning.com/files/translation/lyrics/music_<id>.json`。
+- 教训：先查官方/站方提供的浏览入口，再考虑逆向；拿到路径后再下载并自托管，示例见 `docs/site-features.md` 第 5 节。
+
+### 6. Astro 模块脚本内不能用 frontmatter 数据，需经 JSON script 标签传递
+- 现象：播放器初始化静默失败（DOM 渲染正常、JS 不生效），因为 `<script>`（打包模块）拿不到 frontmatter 里的 songs。
+- 修复：`<script type="application/json" set:html={JSON.stringify(songs)}>` 注入 DOM，脚本内 `JSON.parse` 读取。
+- 教训：Astro 组件脚本与 frontmatter 的数据传递必须显式做；动态创建的元素也收不到 scoped 样式——涉及动态 DOM 的组件样式用 `is:global`。
+
 ## 未解决
 
 （无）

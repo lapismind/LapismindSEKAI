@@ -12,20 +12,8 @@ export interface Project {
 	featured?: boolean;
 }
 
-export const projects: Project[] = [
-	{
-		slug: 'aiforum',
-		name: '公诚咨询AI赋能学习平台',
-		subtitle: 'AI 赋能传统业务的内部学习平台',
-		description:
-			'以 AI 技术赋能招标、监理等传统业务部门的学习平台，包含新手教程、实战任务、进阶知识科普，教员工使用星辰超级智能体、理解 Skill 与 AI 概念。',
-		status: 'online',
-		tech: ['HTML', 'CSS', 'JavaScript', 'Cloudflare Workers', 'Markdown'],
-		links: {
-			online: 'https://aiforum.qmzhj.top',
-		},
-		featured: true,
-	},
+/** 个人游戏作品（二次元玩家概念） */
+export const games: Project[] = [
 	{
 		slug: 'turtle-soup',
 		name: '真冬的海龟汤',
@@ -49,5 +37,22 @@ export const projects: Project[] = [
 		status: 'developing',
 		tech: ['Vue3', 'Pinia', 'Vite', 'Tailwind', 'Cloudflare Workers'],
 		links: {},
+		featured: true,
+	},
+];
+
+/** 企业/工作中项目（AI 学习平台栏目） */
+export const workProjects: Project[] = [
+	{
+		slug: 'aiforum',
+		name: '公诚咨询AI赋能学习平台',
+		subtitle: 'AI 赋能传统业务的内部学习平台',
+		description:
+			'以 AI 技术赋能招标、监理等传统业务部门的学习平台，包含新手教程、实战任务、进阶知识科普，教员工使用星辰超级智能体、理解 Skill 与 AI 概念。',
+		status: 'online',
+		tech: ['HTML', 'CSS', 'JavaScript', 'Cloudflare Workers', 'Markdown'],
+		links: {
+			online: 'https://aiforum.qmzhj.top',
+		},
 	},
 ];

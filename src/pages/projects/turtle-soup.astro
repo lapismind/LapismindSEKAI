@@ -5,10 +5,10 @@ import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import SoupLobby from '../../assets/soup-lobby.png';
 import { SITE_TITLE } from '../../consts';
-import { projects } from '../../data/projects';
+import { games } from '../../data/projects';
 
-const project = projects.find((p) => p.slug === 'turtle-soup')!;
-const { name, subtitle, description, tech, links } = project;
+const project = games.find((p) => p.slug === 'turtle-soup')!;
+const { name, subtitle, description, tech, links, status } = project;
 
 const features = [
 	'AI 主持 & 真人主持双模式',
@@ -25,127 +25,136 @@ const features = [
 	<head>
 		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
 		<style>
-			main {
-				width: 860px;
-			}
 			.back-link {
-				display: inline-block;
-				margin-bottom: 1.5em;
-				font-size: 0.9em;
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
 			}
-			h1 {
-				margin-bottom: 0.3em;
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
 			}
-			.subtitle {
-				color: rgb(var(--gray));
-				font-size: 1.2em;
-				margin-bottom: 1.5em;
+			.page-head {
+				margin-bottom: 2.2rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
 			}
 			.hero-img {
 				width: 100%;
-				border-radius: 16px;
-				box-shadow: var(--box-shadow);
-				margin-bottom: 2em;
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-md);
+				margin-bottom: 2.2rem;
 			}
 			.links {
 				display: flex;
-				gap: 1em;
-				margin-bottom: 2em;
-			}
-			.link-btn {
-				display: inline-block;
-				padding: 0.6em 1.4em;
-				border-radius: 999px;
-				background: var(--accent);
-				color: white;
-				text-decoration: none;
-				font-size: 0.95em;
-			}
-			.link-btn:hover {
-				background: var(--accent-dark);
-				color: white;
-			}
-			.link-btn.ghost {
-				background: transparent;
-				color: var(--accent);
-				border: 2px solid var(--accent);
-			}
-			.link-btn.ghost:hover {
-				background: var(--accent);
-				color: white;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				margin-bottom: 1.6rem;
 			}
 			h2 {
-				font-size: 1.563em;
-				margin-top: 1.5em;
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
 			}
 			.feature-list {
-				padding-left: 1.2em;
+				padding-left: 1.3em;
 			}
 			.feature-list li {
-				margin-bottom: 0.5em;
+				margin-bottom: 0.55em;
+			}
+			.feature-list li::marker {
+				color: var(--primary);
 			}
 			.tech-list {
 				display: flex;
 				flex-wrap: wrap;
-				gap: 0.5em;
-			}
-			.tag {
-				font-size: 0.85em;
-				padding: 0.3em 0.8em;
-				border-radius: 999px;
-				background: rgb(var(--gray-light));
-				color: rgb(var(--gray-dark));
+				gap: 0.5rem;
 			}
 		</style>
 	</head>
 	<body>
 		<Header />
-		<main>
+		<main class="container-narrow page-main">
 			<a class="back-link" href="/projects/">← 返回作品集</a>
-			<h1>{name}</h1>
-			<p class="subtitle">{subtitle}</p>
+			<header class="page-head reveal">
+				<p class="eyebrow">game · {status}</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class={`status-badge status-${status}`}>{status === 'online' ? 'online' : '开发中'}</span>
+			</header>
 
-			<Image class="hero-img" src={SoupLobby} alt={`${name} 大厅截图`} />
+			<div class="hero-img reveal">
+				<Image src={SoupLobby} alt={`${name} 大厅截图`} />
+			</div>
 
-			<div class="links">
+			<div class="links reveal">
 				{
 					links.online && (
-						<a class="link-btn" href={links.online} target="_blank">
-							在线体验
+						<a class="btn btn-primary" href={links.online} target="_blank" rel="noopener">
+							在线体验 <span aria-hidden="true">→</span>
 						</a>
 					)
 				}
 				{links.github && (
-					<a class="link-btn ghost" href={links.github} target="_blank">
+					<a class="btn btn-ghost" href={links.github} target="_blank" rel="noopener">
 						GitHub 源码
 					</a>
 				)}
 			</div>
 
-			<h2>项目简介</h2>
-			<p>{description}</p>
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<p>{description}</p>
+			</section>
 
-			<h2>功能特性</h2>
-			<ul class="feature-list">
-				{features.map((f) => (
-					<li>{f}</li>
-				))}
-			</ul>
+			<section class="reveal">
+				<h2>功能特性</h2>
+				<ul class="feature-list">
+					{features.map((f) => (
+						<li>{f}</li>
+					))}
+				</ul>
+			</section>
 
-			<h2>技术栈</h2>
-			<div class="tech-list">
-				{tech.map((t) => (
-					<span class="tag">{t}</span>
-				))}
-			</div>
+			<section class="reveal">
+				<h2>技术栈</h2>
+				<div class="tech-list">
+					{tech.map((t) => (
+						<span class="tag">{t}</span>
+					))}
+				</div>
+			</section>
 
-			<h2>架构说明</h2>
-			<p>
-				浏览器通过 WebSocket 连接 Worker，每局游戏对应一个 Durable Objects 实例（房间状态与自定义谜题用
-				SQLite 持久化，Hibernation 休眠不计费）；AI 主持调用 OpenCode Go 的 deepseek-v4-flash
-				判定玩家提问，失败时自动降级为关键词兜底判定，保证游戏继续。前端按 core / game / network
-				三层隔离组织，通过 Pinia 管理状态。
-			</p>
+			<section class="reveal">
+				<h2>架构说明</h2>
+				<p>
+					浏览器通过 WebSocket 连接 Worker，每局游戏对应一个 Durable Objects 实例（房间状态与自定义谜题用
+					SQLite 持久化，Hibernation 休眠不计费）；AI 主持调用 OpenCode Go 的 deepseek-v4-flash
+					判定玩家提问，失败时自动降级为关键词兜底判定，保证游戏继续。前端按 core / game / network
+					三层隔离组织，通过 Pinia 管理状态。
+				</p>
+			</section>
 		</main>
 		<Footer />
 	</body>

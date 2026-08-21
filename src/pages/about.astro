@@ -1,26 +1,480 @@
 ---
-import Layout from '../layouts/BlogPost.astro';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import Mascot from '../assets/mascot.png';
+import { SITE_TITLE } from '../consts';
+import { oshiCard, profileIdentity, profileStatus, profileTech } from '../data/profile';
 ---
 
-<Layout
-	title="关于我"
-	description="Lapismind 的前端开发与作品"
-	pubDate={new Date('August 14 2026')}
->
-	<p>你好，我是 Lapismind，前端开发者。</p>
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`关于 - ${SITE_TITLE}`} description={profileIdentity.bio} />
+		<style>
+			.page-head {
+				margin-bottom: 2.6rem;
+			}
+			.profile-card {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 1.8rem;
+				align-items: center;
+				padding: 2rem 2.2rem;
+				margin-bottom: 1.6rem;
+				position: relative;
+				overflow: hidden;
+			}
+			.profile-card::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				background: radial-gradient(
+					420px 180px at 88% 8%,
+					oklch(0.72 0.14 var(--hue-accent) / 0.12),
+					transparent 70%
+				);
+			}
+			.avatar-wrap {
+				position: relative;
+			}
+			.avatar-wrap :global(img) {
+				width: 116px;
+				height: 116px;
+				border-radius: 28px;
+				object-fit: cover;
+				border: 3px solid var(--card-solid);
+				box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md);
+			}
+			.avatar-level {
+				position: absolute;
+				left: 50%;
+				bottom: -12px;
+				transform: translateX(-50%);
+				background: var(--gradient);
+				color: #fff;
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				padding: 0.22em 0.9em;
+				border-radius: 999px;
+				white-space: nowrap;
+				box-shadow: var(--shadow-sm);
+			}
+			.identity {
+				position: relative;
+				min-width: 0;
+			}
+			.identity .name-line {
+				display: flex;
+				align-items: center;
+				gap: 0.7rem;
+				flex-wrap: wrap;
+				margin-bottom: 0.35rem;
+			}
+			.identity h1 {
+				margin: 0;
+				font-size: 1.9rem;
+			}
+			.online-badge {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				font-family: var(--font-mono);
+				font-size: 0.75rem;
+				letter-spacing: 0.12em;
+				color: oklch(0.52 0.13 155);
+				text-transform: uppercase;
+			}
+			.online-badge .dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: oklch(0.68 0.16 150);
+				box-shadow: 0 0 0 3px oklch(0.68 0.16 150 / 0.18);
+			}
+			.identity .role {
+				margin: 0 0 0.7rem;
+				color: var(--primary);
+				font-size: 0.95rem;
+				font-family: var(--font-mono);
+			}
+			.identity .bio {
+				margin: 0;
+				color: var(--ink-soft);
+				line-height: 1.8;
+			}
 
-	<p>
-		我热爱把想法做成能跑起来的东西。这个博客记录我的作品和技术文章，第一个作品是联机海龟汤推理游戏（
-		<a href="/projects/turtle-soup/">真冬的海龟汤</a>），部署在 Cloudflare Workers 免费版上。
-	</p>
+			.section-block {
+				margin-top: 2rem;
+			}
+			.tech-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 0.9rem;
+			}
+			.tech-item {
+				padding: 1rem 1.15rem;
+				transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+			}
+			.tech-item:hover {
+				transform: translateY(-3px);
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-md);
+			}
+			.tech-item b {
+				display: block;
+				font-size: 0.98rem;
+				color: var(--ink);
+				margin-bottom: 0.2rem;
+			}
+			.tech-item span {
+				font-size: 0.84rem;
+				color: var(--muted);
+			}
 
-	<p>
-		我的技术栈：Vue3 / Vite / Tailwind，后端用 Cloudflare Workers + Durable Objects，最近在学习
-		Astro 生态。技术上的偏好是：先理解再动手，选方案看机制而不是看当下。
-	</p>
+			.status-list {
+				display: flex;
+				flex-direction: column;
+			}
+			.status-row {
+				display: grid;
+				grid-template-columns: 6em 1fr;
+				gap: 1rem;
+				padding: 0.75em 0;
+				border-bottom: 1px dashed var(--line);
+			}
+			.status-row:last-child {
+				border-bottom: none;
+			}
+			.status-row .label {
+				font-family: var(--font-mono);
+				font-size: 0.78rem;
+				letter-spacing: 0.14em;
+				color: var(--primary);
+			}
+			.status-row .text {
+				margin: 0;
+				color: var(--ink-soft);
+				font-size: 0.95rem;
+			}
 
-	<p>
-		在 <a href="/projects/">作品集</a> 可以看到我的项目，在 <a href="/blog/">博客</a>
-		可以读到开发记录。欢迎交流。
-	</p>
-</Layout>
+			.worlds {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+				gap: 1rem;
+			}
+			.world-card {
+				display: block;
+				text-decoration: none;
+				padding: 1.3rem 1.4rem;
+				transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+			}
+			.world-card:hover {
+				transform: translateY(-4px);
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-lg);
+			}
+			.world-card .w-eyebrow {
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				letter-spacing: 0.2em;
+				text-transform: uppercase;
+				color: var(--primary);
+				margin: 0 0 0.5rem;
+			}
+			.world-card h3 {
+				margin: 0 0 0.4rem;
+				font-size: 1.15rem;
+			}
+			.world-card p {
+				margin: 0;
+				font-size: 0.88rem;
+				color: var(--muted);
+				line-height: 1.7;
+			}
+			.world-card .go {
+				margin-top: 0.8rem;
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35em;
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				color: var(--primary);
+				transition: gap 0.25s ease;
+			}
+			.world-card:hover .go {
+				gap: 0.7em;
+			}
+
+			/* 单推角色卡 */
+			.oshi-card {
+				position: relative;
+				overflow: hidden;
+				padding: 1.6rem 1.8rem;
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+				background: linear-gradient(
+					160deg,
+					oklch(0.93 0.03 var(--hue-accent) / 0.9),
+					oklch(0.87 0.045 calc(var(--hue-accent) - 12) / 0.9)
+				);
+			}
+			:root[data-theme='dark'] .oshi-card {
+				background: linear-gradient(
+					160deg,
+					oklch(0.24 0.04 var(--hue-accent) / 0.95),
+					oklch(0.19 0.035 calc(var(--hue-accent) - 8) / 0.95)
+				);
+			}
+			.oshi-moon {
+				position: absolute;
+				top: -70px;
+				right: -60px;
+				width: 220px;
+				height: 220px;
+				border-radius: 50%;
+				background: radial-gradient(
+					circle at 40% 40%,
+					oklch(0.97 0.01 var(--hue-accent) / 0.9),
+					oklch(0.88 0.03 calc(var(--hue-accent) - 10) / 0.35) 60%,
+					transparent 70%
+				);
+				pointer-events: none;
+			}
+			:root[data-theme='dark'] .oshi-moon {
+				background: radial-gradient(
+					circle at 40% 40%,
+					oklch(0.85 0.03 var(--hue-accent) / 0.95),
+					oklch(0.6 0.05 var(--hue-accent) / 0.3) 60%,
+					transparent 70%
+				);
+			}
+			.oshi-snow {
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				overflow: hidden;
+			}
+			.oshi-snow i {
+				position: absolute;
+				top: -12px;
+				width: 6px;
+				height: 6px;
+				border-radius: 50%;
+				background: oklch(0.99 0 0 / 0.75);
+				animation: snow-fall linear infinite;
+			}
+			:root[data-theme='dark'] .oshi-snow i {
+				background: oklch(0.95 0.01 235 / 0.6);
+			}
+			.oshi-snow i:nth-child(1) { left: 12%; animation-duration: 9s; animation-delay: -2s; }
+			.oshi-snow i:nth-child(2) { left: 30%; width: 4px; height: 4px; animation-duration: 13s; animation-delay: -6s; }
+			.oshi-snow i:nth-child(3) { left: 55%; width: 5px; height: 5px; animation-duration: 11s; animation-delay: -4s; }
+			.oshi-snow i:nth-child(4) { left: 74%; width: 7px; height: 7px; animation-duration: 15s; animation-delay: -8s; }
+			.oshi-snow i:nth-child(5) { left: 90%; width: 4px; height: 4px; animation-duration: 10s; animation-delay: -3s; }
+			.oshi-snow i:nth-child(6) { left: 44%; width: 3px; height: 3px; animation-duration: 12s; animation-delay: -7s; }
+			@keyframes snow-fall {
+				to {
+					transform: translateY(420px) translateX(24px);
+					opacity: 0.25;
+				}
+			}
+			.oshi-head {
+				position: relative;
+				display: flex;
+				align-items: baseline;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				margin-bottom: 0.7rem;
+			}
+			.oshi-head h3 {
+				margin: 0;
+				font-size: 1.4rem;
+			}
+			.oshi-head .jp {
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				color: var(--ink-soft);
+			}
+			.oshi-unit {
+				position: relative;
+				display: inline-block;
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				letter-spacing: 0.06em;
+				padding: 0.25em 0.9em;
+				border-radius: 999px;
+				background: oklch(0.99 0 0 / 0.55);
+				border: 1px solid oklch(0.6 0.1 var(--hue-accent) / 0.25);
+				color: var(--ink-soft);
+				margin-bottom: 1rem;
+			}
+			.oshi-facts {
+				position: relative;
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+				gap: 0.7rem 1.4rem;
+				max-width: 34em;
+			}
+			.oshi-fact .k {
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				letter-spacing: 0.16em;
+				text-transform: uppercase;
+				color: var(--muted);
+				margin-bottom: 0.1rem;
+			}
+			.oshi-fact .v {
+				font-size: 0.98rem;
+				font-weight: 600;
+				color: var(--ink);
+			}
+			.oshi-theme {
+				position: relative;
+				margin: 1.2rem 0 0;
+				font-size: 0.98rem;
+				color: var(--ink-soft);
+			}
+			.oshi-tagline {
+				position: relative;
+				margin-top: 0.5rem;
+				font-size: 1.05rem;
+				font-weight: 700;
+				color: var(--primary);
+			}
+			.oshi-note {
+				position: relative;
+				margin-top: 0.7rem;
+				font-size: 0.78rem;
+				color: var(--muted);
+				line-height: 1.7;
+			}
+			.oshi-note a {
+				font-weight: 600;
+			}
+
+			@media (max-width: 640px) {
+				.profile-card {
+					grid-template-columns: 1fr;
+					text-align: center;
+					justify-items: center;
+				}
+				.identity .name-line {
+					justify-content: center;
+				}
+				.status-row {
+					grid-template-columns: 1fr;
+					gap: 0.25rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<header class="page-head reveal">
+				<p class="eyebrow">player profile</p>
+				<h1>关于我</h1>
+			</header>
+
+			<section class="profile-card glass reveal">
+				<div class="avatar-wrap">
+					<img src={Mascot.src} alt={`${profileIdentity.displayName} 玩家形象`} width="116" height="116" />
+					<span class="avatar-level">{profileIdentity.level}</span>
+				</div>
+				<div class="identity">
+					<div class="name-line">
+						<h1>{profileIdentity.displayName}</h1>
+						<span class="online-badge"><span class="dot"></span>online</span>
+					</div>
+					<p class="role">{profileIdentity.role}</p>
+					<p class="bio">{profileIdentity.bio}</p>
+				</div>
+			</section>
+
+			<section class="section-block reveal">
+				<p class="eyebrow">now · 现在在做</p>
+				<div class="status-list glass" style="padding: 0.6rem 1.4rem;">
+					{
+						profileStatus.map((s) => (
+							<div class="status-row">
+								<span class="label">{s.label}</span>
+								<p class="text">{s.text}</p>
+							</div>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="section-block reveal">
+				<p class="eyebrow">tech · 技术栈</p>
+				<div class="tech-grid">
+					{
+						profileTech.map((t) => (
+							<div class="tech-item glass">
+								<b>{t.name}</b>
+								<span>{t.note}</span>
+							</div>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="section-block reveal">
+				<p class="eyebrow">oshi · 单推</p>
+				<div class="oshi-card">
+					<div class="oshi-moon" aria-hidden="true"></div>
+					<div class="oshi-snow" aria-hidden="true">
+						<i></i><i></i><i></i><i></i><i></i><i></i>
+					</div>
+					<div class="oshi-head">
+						<h3>{oshiCard.name}</h3>
+						<span class="jp">{oshiCard.nameEn}</span>
+					</div>
+					<span class="oshi-unit">{oshiCard.unit} · {oshiCard.role}</span>
+					<div class="oshi-facts">
+						<div class="oshi-fact"><p class="k">生日</p><p class="v">{oshiCard.birthday} · {oshiCard.zodiac}</p></div>
+						<div class="oshi-fact"><p class="k">年龄</p><p class="v">{oshiCard.age} 岁</p></div>
+						<div class="oshi-fact"><p class="k">身高</p><p class="v">{oshiCard.height}</p></div>
+						<div class="oshi-fact"><p class="k">CV</p><p class="v">{oshiCard.cv}</p></div>
+						<div class="oshi-fact"><p class="k">趣味</p><p class="v">{oshiCard.likes}</p></div>
+						<div class="oshi-fact"><p class="k">擅长</p><p class="v">{oshiCard.skill}</p></div>
+						<div class="oshi-fact"><p class="k">喜欢的食物</p><p class="v">{oshiCard.food}</p></div>
+						<div class="oshi-fact"><p class="k">不擅长</p><p class="v">{oshiCard.weak}</p></div>
+					</div>
+					<p class="oshi-theme">{oshiCard.themeLine}</p>
+					<p class="oshi-tagline">{oshiCard.tagline}</p>
+					<p class="oshi-note">
+						《世界计划 缤纷舞台！feat. 初音未来》及其角色、商标归 SEGA / Colorful Palette 所有；
+						本站为非官方粉丝向个人站，角色资料整理自
+						<a href={oshiCard.officialUrl} target="_blank" rel="noopener">官方角色页</a>
+						与<a href={oshiCard.wikiUrl} target="_blank" rel="noopener">萌娘百科</a>。
+					</p>
+				</div>
+			</section>
+
+			<section class="section-block reveal">
+				<p class="eyebrow">worlds · 这个站的两个世界</p>
+				<div class="worlds">
+					<a class="world-card glass" href="/projects/">
+						<p class="w-eyebrow">game world</p>
+						<h3>游戏作品</h3>
+						<p>我作为独立开发者做的个人游戏——海龟汤、卡牌对战，以及未来更多。</p>
+						<span class="go">进入 <span aria-hidden="true">→</span></span>
+					</a>
+					<a class="world-card glass" href="/ai/">
+						<p class="w-eyebrow">enterprise world</p>
+						<h3>AI 平台</h3>
+						<p>工作中的企业项目——公诚咨询 AI 赋能学习平台，独立打理。</p>
+						<span class="go">进入 <span aria-hidden="true">→</span></span>
+					</a>
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
