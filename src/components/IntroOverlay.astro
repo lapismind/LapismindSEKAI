@@ -27,8 +27,8 @@ import Heart from '../assets/intro-heart.webp';
 		position: absolute;
 		inset: 0;
 		background-size: cover;
-		background-position: center 28%;
-		animation: intro-ken 8s ease-out both;
+		background-position: 0% 50%;
+		animation: intro-ken 12s ease-out both;
 	}
 	.intro::after {
 		content: '';
@@ -45,16 +45,14 @@ import Heart from '../assets/intro-heart.webp';
 	}
 	.intro-p1 {
 		clip-path: polygon(0 0, 25% 0, 42% 100%, 0 100%);
-		background-position: 34% 32%;
+		background-position: 3% 50%;
 	}
 	.intro-p2 {
 		clip-path: polygon(25% 0, 60% 0, 73% 100%, 42% 100%);
-		background-position: 50% 46%;
 		animation-delay: 0.15s;
 	}
 	.intro-p3 {
 		clip-path: polygon(60% 0, 100% 0, 100% 100%, 73% 100%);
-		background-position: 66% 40%;
 		animation-delay: 0.3s;
 	}
 	@keyframes intro-ken {
@@ -135,16 +133,16 @@ import Heart from '../assets/intro-heart.webp';
 		transform: translateY(-14px);
 	}
 	.intro-panel {
-		transition: transform 0.9s cubic-bezier(0.7, 0, 0.2, 1), opacity 0.7s ease;
+		transition: transform 1.2s cubic-bezier(0.7, 0, 0.2, 1), opacity 0.8s ease;
 	}
 	.intro.exit .intro-panel {
 		transform: translateY(-115%);
 	}
 	.intro.exit .intro-p2 {
-		transition-delay: 0.12s;
+		transition-delay: 0.2s;
 	}
 	.intro.exit .intro-p3 {
-		transition-delay: 0.24s;
+		transition-delay: 0.4s;
 	}
 	.intro.gone {
 		opacity: 0;
@@ -175,20 +173,20 @@ import Heart from '../assets/intro-heart.webp';
 		requestAnimationFrame(() => {
 			setTimeout(() => {
 				el.classList.add('exit');
-				setTimeout(() => el.classList.add('gone'), 900);
-				setTimeout(() => el.remove(), 1600);
+				setTimeout(() => el.classList.add('gone'), 1500);
+				setTimeout(() => el.remove(), 2800);
 				try {
 					sessionStorage.setItem('lapismind-intro', '1');
 				} catch {}
-			}, 1250);
+			}, 2000);
 		});
-		// 兜底：3.5s 后无论如何清掉
+		// 兜底：6.5s 后无论如何清掉
 		setTimeout(() => {
 			if (document.getElementById('intro')) {
 				el.classList.add('gone');
 				setTimeout(() => el.remove(), 500);
 			}
-		}, 3500);
+		}, 6500);
 	}
 
 	document.addEventListener('astro:page-load', runIntro);
