@@ -1,0 +1,102 @@
+// 杀戮尖塔 · 事件数据库
+
+function event(id,title,desc,options){
+  return {id,title,desc,options}
+}
+
+export const EVENTS=[
+  event('golden_idol','金色神像','你发现一尊镶满宝石的金色神像。拿走它可能招致诅咒……',[
+    {text:'拿走神像（获得大量金币）',effect:{type:'gold',amount:100}},
+    {text:'拿走神像并接受诅咒（金币 + 遗物）',effect:{type:'gold',amount:150,extra:{type:'curse',cardId:'regret'}}},
+    {text:'离开',effect:{type:'nothing'}},
+  ]),
+
+  event('living_wall','活墙','一面由血肉组成的墙挡住了去路。它渴望生命……',[
+    {text:'献祭 6 点生命换一张随机牌',effect:{type:'lose_hp',amount:6,grant:{type:'card',rarity:'random'}}},
+    {text:'献祭 12 点最大生命换一张稀有牌',effect:{type:'max_hp',amount:-12,grant:{type:'card',rarity:'rare'}}},
+    {text:'离开',effect:{type:'nothing'}},
+  ]),
+
+  event('giant_mushroom','巨大蘑菇','一朵散发孢子云的巨型蘑菇横在路中央。',[
+    {text:'攻击它（战斗）',effect:{type:'combat'}},
+    {text:'吃掉它（回复生命或中毒）',effect:{type:'gamble_heal_or_poison',heal:15,poison_hp:8}},
+    {text:'绕开它',effect:{type:'nothing'}},
+  ]),
+
+  event('bonfire_spirits','篝火精灵','篝火旁浮现出几个小精灵，想要供品。',[
+    {text:'供奉 50 金币（获得遗物）',effect:{type:'gold',amount:-50,grant:{type:'relic',rarity:'common'}}},
+    {text:'供奉一张牌（被诅咒）',effect:{type:'curse',cardId:'regret'}},
+    {text:'什么都不做',effect:{type:'nothing'}},
+  ]),
+
+  event('library','图书馆','一座废弃的图书馆静静矗立，书架间弥漫着魔力。',[
+    {text:'阅读禁书（升级一张牌）',effect:{type:'upgrade_card'}},
+    {text:'翻阅医疗典籍（回血）',effect:{type:'heal',amount:20}},
+    {text:'偷取禁忌典籍（拿诅咒 + 遗物）',effect:{type:'curse',cardId:'injury',grant:{type:'relic',rarity:'uncommon'}}},
+  ]),
+
+  event('vampire','吸血鬼','一位苍白优雅的绅士邀请你共进晚餐。',[
+    {text:'接受契约：移除所有打击牌，获得「咬」',effect:{type:'remove_card',filterCardIds:['strike_r','strike_g'],grant:{type:'card',cardId:'bite'}}},
+    {text:'拒绝',effect:{type:'nothing'}},
+  ]),
+
+  event('big_fish','大鱼','一条巨鱼跃出水面，嘴里叼着三个闪闪发光的东西。',[
+    {text:'抓最亮的东西（50% 回血 / 50% 失去生命）',effect:{type:'coin_flip',heads:{type:'heal',amount:20},tails:{type:'lose_hp',amount:10}}},
+    {text:'抓中间的东西（升级一张牌）',effect:{type:'upgrade_card'}},
+    {text:'抓最深的东西（随机稀有牌 + 诅咒）',effect:{type:'card',rarity:'rare',extra:{type:'curse',cardId:'pain'}}},
+  ]),
+
+  event('cleric','神职者','一位白衣神职者愿意为你提供服务，但需要报酬。',[
+    {text:'治疗（35 金币）',effect:{type:'gold',amount:-35,grant:{type:'heal',amount:25}}},
+    {text:'祈祷（75 金币，移除一张牌）',effect:{type:'gold',amount:-75,grant:{type:'remove_card'}}},
+    {text:'离开',effect:{type:'nothing'}},
+  ]),
+
+  event('scrap_ooze','废料软泥','一团吞噬了无数装备的软泥正在消化战利品。',[
+    {text:'伸手进去掏（失去生命 + 获得遗物）',effect:{type:'lose_hp',amount:8,grant:{type:'relic',rarity:'common'}}},
+    {text:'离开',effect:{type:'nothing'}},
+  ]),
+
+  event('shining_light','闪光','一道神秘光芒照亮了一个盒子。',[
+    {text:'打开盒子（失去 30 金币，获得随机稀有卡）',effect:{type:'gold',amount:-30,grant:{type:'card',rarity:'rare'}}},
+    {text:'无视',effect:{type:'nothing'}},
+  ]),
+
+  event('secret_portal','秘密传送门','墙缝里藏着一扇微微发光的传送门。',[
+    {text:'进入（跳过下一层）',effect:{type:'skip_floor'}},
+    {text:'留在原地',effect:{type:'nothing'}},
+  ]),
+
+  event('mind_bloom','心灵绽放','一朵奇异的花在你面前绽放，散发出心灵感应的波动。',[
+    {text:'触碰花朵（复制手牌中一张牌）',effect:{type:'duplicate_hand_card'}},
+    {text:'摘下带走（获得药水）',effect:{type:'potion'}},
+  ]),
+
+  event('wheel_of_fate','命运之轮','一座布满符文的古老转盘矗立在祭坛上。',[
+    {text:'转动轮盘（随机结果）',effect:{type:'random_outcome',outcomes:[
+      {weight:2,effect:{type:'heal',amount:20}},
+      {weight:2,effect:{type:'lose_hp',amount:8}},
+      {weight:1,effect:{type:'gold',amount:80}},
+      {weight:1,effect:{type:'curse',cardId:'regret'}},
+      {weight:1,effect:{type:'max_hp',amount:5}},
+      {weight:1,effect:{type:'potion'}},
+    ]}},
+    {text:'离开',effect:{type:'nothing'}},
+  ]),
+
+  event('forgotten_altar','被遗忘的祭坛','一座爬满藤蔓的古老祭坛，上面刻着褪色的祷文。',[
+    {text:'献上鲜血（失去 7 生命，移除一张牌）',effect:{type:'lose_hp',amount:7,grant:{type:'remove_card'}}},
+    {text:'献上黄金（-100 金币，获得稀有遗物）',effect:{type:'gold',amount:-100,grant:{type:'relic',rarity:'rare'}}},
+    {text:'破坏祭坛（获得诅咒）',effect:{type:'curse',cardId:'pain'}},
+  ]),
+
+  event('dead_adventurer','死去的冒险者','一名冒险者的尸体倒在路边，行囊半开。',[
+    {text:'搜刮尸体（获得金币和药水）',effect:{type:'gold',amount:40,extra:{type:'potion'}}},
+    {text:'搜刮尸体（50% 触发伏击）',effect:{type:'ambush_combat',chance:0.5,reward_gold:60}},
+    {text:'为其默哀后离开',effect:{type:'nothing'}},
+  ]),
+]
+
+export function getEvent(id){
+  return EVENTS.find(e=>e.id===id)
+}
