@@ -44,14 +44,17 @@ import Heart from '../assets/intro-heart.webp';
 		pointer-events: none;
 	}
 	.intro-p1 {
-		clip-path: polygon(0 0, 40% 0, 64% 100%, 0 100%);
+		clip-path: polygon(0 0, 25% 0, 42% 100%, 0 100%);
+		background-position: 34% 32%;
 	}
 	.intro-p2 {
-		clip-path: polygon(40% 0, 70% 0, 88% 100%, 64% 100%);
+		clip-path: polygon(25% 0, 60% 0, 73% 100%, 42% 100%);
+		background-position: 50% 46%;
 		animation-delay: 0.15s;
 	}
 	.intro-p3 {
-		clip-path: polygon(70% 0, 100% 0, 100% 100%, 88% 100%);
+		clip-path: polygon(60% 0, 100% 0, 100% 100%, 73% 100%);
+		background-position: 66% 40%;
 		animation-delay: 0.3s;
 	}
 	@keyframes intro-ken {
@@ -73,12 +76,19 @@ import Heart from '../assets/intro-heart.webp';
 		justify-content: center;
 		text-align: center;
 		z-index: 2;
+		padding: 2rem 3rem 5vh;
+		background: radial-gradient(
+			58% 62% at 50% 52%,
+			oklch(0.11 0.03 270 / 0.72),
+			transparent 72%
+		);
+		pointer-events: none;
 		transition: opacity 0.5s ease, transform 0.5s ease;
 	}
 	.intro-center h1 {
 		margin: 0 0 1.2rem;
 		color: #fff;
-		font-size: clamp(1.8rem, 1.2rem + 3.4vw, 3.2rem);
+		font-size: clamp(1.6rem, 1.1rem + 2.8vw, 2.6rem);
 		text-shadow: 0 3px 24px oklch(0 0 0 / 0.55);
 	}
 	.intro-center h1 span {
