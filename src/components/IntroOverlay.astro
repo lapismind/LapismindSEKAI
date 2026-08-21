@@ -9,8 +9,8 @@ import Heart from '../assets/intro-heart.webp';
 	<div class="intro-panel intro-p2" style={`background-image:url('${Magic.src}')`}></div>
 	<div class="intro-panel intro-p3" style={`background-image:url('${Heart.src}')`}></div>
 	<div class="intro-center">
-		<p class="intro-eyebrow">25時、ナイトコードで。 · 欢迎光临</p>
-		<h1>欢迎来到 <span>Lapismind</span> 的游戏小屋</h1>
+		<p class="intro-eyebrow">25時、ナイトコードで。</p>
+		<h1>欢迎来到 <span>Lapismind</span> 的 SEKAI</h1>
 		<div class="intro-bar"><i></i></div>
 	</div>
 </div>
@@ -73,7 +73,8 @@ import Heart from '../assets/intro-heart.webp';
 		justify-content: center;
 		text-align: center;
 		z-index: 2;
-		padding: 2rem 3rem 5vh;
+		padding: 2rem 3rem;
+		transform: translateY(25vh);
 		background: radial-gradient(
 			58% 62% at 50% 52%,
 			oklch(0.11 0.03 270 / 0.72),
@@ -129,7 +130,6 @@ import Heart from '../assets/intro-heart.webp';
 	/* 收场：文字淡出，三块斜板依次上掀 */
 	.intro.exit .intro-center {
 		opacity: 0;
-		transform: translateY(-14px);
 	}
 	.intro-panel {
 		transition: transform 1.2s cubic-bezier(0.7, 0, 0.2, 1), opacity 0.8s ease;
@@ -191,3 +191,4 @@ import Heart from '../assets/intro-heart.webp';
 	document.addEventListener('astro:page-load', runIntro);
 	runIntro();
 </script>
+
