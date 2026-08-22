@@ -40,9 +40,9 @@ function enterRoom(code) {
 
 <template>
   <div class="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
-    <header class="text-center">
-      <h1 class="text-3xl font-bold text-white">🃏 Showhand 梭哈</h1>
-      <p class="mt-2 text-sm text-slate-400">多人联机梭哈，五张 / 七张双玩法</p>
+    <header class="text-center drop-shadow-sm">
+      <h1 class="text-3xl font-bold text-white drop-shadow">🃏 Showhand 梭哈</h1>
+      <p class="mt-2 text-sm text-slate-100/80">多人联机梭哈，五张 / 七张双玩法</p>
     </header>
 
     <!-- 邀请提示（来自分享链接） -->

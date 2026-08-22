@@ -41,7 +41,7 @@ const betLabel = computed(() => {
 <template>
   <div
     class="flex flex-col items-center gap-1.5 rounded-2xl p-2.5"
-    :class="isActive ? 'bg-brand-500/15 ring-2 ring-brand-400' : 'bg-slate-800/60'"
+    :class="isActive ? 'bg-brand-500/25 ring-2 ring-brand-300' : 'bg-[#544a75]/70'"
   >
     <!-- 头像 + 信息 -->
     <div class="flex items-center gap-2">

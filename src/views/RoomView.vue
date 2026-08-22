@@ -158,9 +158,9 @@ function seatHand(playerId) {
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100">
+    <div class="flex min-h-screen flex-col bg-gradient-to-br from-[#413860] via-[#4d4173] to-[#3a3153] text-slate-100">
     <!-- 顶部栏 -->
-    <header class="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-4 py-3 backdrop-blur">
+    <header class="flex items-center justify-between border-b border-white/10 bg-[#453b66]/80 px-4 py-3 backdrop-blur">
       <div class="flex items-center gap-3">
         <a href="/" class="text-sm text-slate-400 hover:text-slate-200">← 退出</a>
         <span class="font-mono text-sm font-bold text-brand-300">房间 {{ roomCode }}</span>
@@ -286,7 +286,7 @@ function seatHand(playerId) {
      >
        <div
          ref="stageRef"
-         class="relative rounded-[50%] border border-slate-700/60 bg-emerald-900/20 shadow-inner"
+        class="relative rounded-[50%] border border-white/15 bg-[#5d7a6c]/30 shadow-inner"
          :style="{ width: STAGE_W * stageScale + 'px', height: STAGE_H * stageScale + 'px' }"
        >
         <!-- 底池 -->
