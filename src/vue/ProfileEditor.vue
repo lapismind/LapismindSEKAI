@@ -45,17 +45,17 @@ defineProps({
 .lk-field {
   margin-bottom: 4px;
   font-size: 12px;
-  color: #64748b;
+  color: #8a8299;
 }
 
 .lk-input {
   width: 100%;
   border-radius: 8px;
-  border: 1px solid #334155;
-  background: #1e293b;
+  border: 1px solid #d8d0e4;
+  background: #ffffff;
   padding: 10px 12px;
   font-size: 14px;
-  color: #fff;
+  color: #333333;
   outline: none;
 }
 
@@ -75,19 +75,19 @@ defineProps({
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 9999px;
-  border: 2px solid #334155;
+  border: 2px solid #d8d0e4;
   transition: border-color 0.15s ease;
   padding: 0;
   cursor: pointer;
 }
 
 .lk-avatar:hover {
-  border-color: #64748b;
+  border-color: #8a8299;
 }
 
 .lk-avatar.is-active {
-  border-color: #9999cf;
-  box-shadow: 0 0 0 2px rgba(136, 136, 204, 0.4);
+  border-color: #8888cc;
+  box-shadow: 0 0 0 2px rgba(136, 136, 204, 0.3);
 }
 
 .lk-avatar img {
@@ -97,3 +97,4 @@ defineProps({
   display: block;
 }
 </style>
+
