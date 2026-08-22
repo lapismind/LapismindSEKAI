@@ -54,10 +54,12 @@ function enemyClick(idx){
 <template>
   <section class="screen combat-screen">
     <div class="enemies-row">
-      <EnemySprite v-for="(e,i) in enemies" :key="e.instanceId"
+      <template v-for="(e,i) in enemies" :key="e.instanceId">
+        <EnemySprite v-if="e.alive"
         :enemy="e"
         :is-targeting="targetingMode && e.alive"
         @click="enemyClick(i)" />
+      </template>
     </div>
     <div class="battle-mid"></div>
     <PlayerHud :player="player" :buffs="combatState?.playerBuffs||{}" />

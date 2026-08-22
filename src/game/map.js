@@ -51,6 +51,20 @@ export function generateMap(act=1, seedFn=Math.random){
         }
       }
     }
+    // 确保每个下一层节点至少有一个父节点（防止孤岛）
+    for(const cid of layer){
+      const c=nodes.get(cid)
+      if(c.parents.length===0){
+        // 找 x 最接近的 prev 节点连上
+        let best=prevLayer[0],bestDist=Math.abs(nodes.get(prevLayer[0]).x-c.x)
+        for(const pid of prevLayer){
+          const d=Math.abs(nodes.get(pid).x-c.x)
+          if(d<bestDist){bestDist=d;best=pid}
+        }
+        nodes.get(best).children.push(cid)
+        c.parents.push(best)
+      }
+    }
     prevLayer=layer
   }
   return { nodes, roots:[startId], act }

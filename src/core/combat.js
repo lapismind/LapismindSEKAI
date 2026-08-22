@@ -130,7 +130,10 @@ export function enemyTakeTurn(s){
         logs.push(e.name+' 攻击造成 '+r.dealt+' 伤害(格挡'+r.blocked+')')
       }
       const inst=s.enemies.find(x=>x.instanceId===e.instanceId)
-      if(inst&&src.hp!==undefined)inst.hp=src.hp
+      if(inst&&src.hp!==undefined){
+        inst.hp=Math.max(0,src.hp)
+        if(inst.hp<=0&&inst.alive){inst.alive=false;slog(s,inst.name+' 被荆棘击败！')}
+      }
     }
     if(mv.block){e.block=(e.block||0)+mv.block;logs.push(e.name+' 获得 '+mv.block+' 格挡')}
     if(mv.strength)applyBuff(e,'strength',mv.strength)
