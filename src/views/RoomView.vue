@@ -304,7 +304,7 @@ function seatHand(playerId) {
           v-for="(p, i) in ringSeats"
           :key="p.id"
           class="absolute w-max"
-          :style="[{ transform: 'translate(-50%, -50%) scale(' + stageScale + ')', left: seatStyle(i, ringSeats.length).left, top: seatStyle(i, ringSeats.length).top }]"
+          :style="[{ transform: 'translate(-50%, -50%) scale(' + stageScale * 2 + ')', left: seatStyle(i, ringSeats.length).left, top: seatStyle(i, ringSeats.length).top }]"
         >
           <PlayerSeat
             :player="p"
@@ -421,6 +421,8 @@ function seatHand(playerId) {
     </div>
   </div>
 </template>
+
+
 
 
 
