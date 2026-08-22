@@ -18,7 +18,7 @@ const avatar = computed(() => avatarUrl(props.player.avatarId) ?? null)
 //   看别人：明牌翻开 + 暗牌显示牌背占位
 const displayCards = computed(() => {
   if (props.spectate || props.isMe) {
-    return (props.hand || []).map((c) => ({ ...c, hidden: false }))
+    return (props.hand || []).map((c) => ({ ...c, hidden: false, revealed: !!c.hidden }))
   }
   const pub = props.player.publicCards || []
   const total = props.player.cardCount ?? pub.length
