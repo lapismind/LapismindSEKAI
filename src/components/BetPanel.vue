@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   currentBet: { type: Number, default: 0 }, // 当前最高注额
@@ -12,25 +12,51 @@ const props = defineProps({
 const emit = defineEmits(['bet'])
 
 const raiseAmount = ref(0)
-const timeLeft = ref(props.timeoutMs / 1000)
+const timeLeft = ref(Math.ceil(props.timeoutMs / 1000))
 let timer = null
+let deadlineTs = 0
 
 const toCall = computed(() => Math.max(0, props.currentBet - props.myBet))
-const minRaise = computed(() => props.currentBet + Math.max(props.currentBet, 10))
-const canRaise = computed(() => props.enabled && props.myChips > toCall.value && props.myChips >= minRaise.value - props.myBet)
+// 服务端 advanceBet 语义：raise.amount 是“加注到的总额”，实际支付 toPay = amount - myBet
+const maxRaiseTo = computed(() => props.myBet + props.myChips)
+// 常规最小加注到的总额；筹码不足以常规加注时，上限退化为全下额度
+const minRaiseTo = computed(() =>
+  Math.min(props.currentBet + Math.max(props.currentBet, 10), maxRaiseTo.value),
+)
+const canRaise = computed(
+  () => props.enabled && props.myChips > toCall.value && maxRaiseTo.value > props.currentBet,
+)
 
 function tick() {
-  timeLeft.value = Math.max(0, Math.round((Date.now() - startTs) / 1000))
+  timeLeft.value = Math.max(0, Math.ceil((deadlineTs - Date.now()) / 1000))
   if (timeLeft.value <= 0) {
-    emit('bet', { action: 'fold', timeout: true })
     clearInterval(timer)
+    // 归零后仅保留红色视觉标记，超时弃牌由服务端 Alarm 处理
   }
 }
 
-let startTs = Date.now()
-onMounted(() => {
-  startTs = Date.now()
+function startCountdown() {
+  clearInterval(timer)
+  deadlineTs = Date.now() + props.timeoutMs
+  timeLeft.value = Math.ceil(props.timeoutMs / 1000)
   timer = setInterval(tick, 500)
+}
+
+// 每次轮到我（enabled 由 false 变 true）都重新计时，避免沿用上一回合的旧进度
+watch(
+  () => props.enabled,
+  (enabled) => {
+    if (enabled) {
+      startCountdown()
+    } else {
+      clearInterval(timer)
+      timeLeft.value = Math.ceil(props.timeoutMs / 1000)
+    }
+  },
+)
+
+onMounted(() => {
+  if (props.enabled) startCountdown()
 })
 onUnmounted(() => clearInterval(timer))
 
@@ -92,14 +118,14 @@ function doAllIn() {
           <input
             v-model.number="raiseAmount"
             type="number"
-            :min="minRaise"
-            :max="myChips"
+            :min="minRaiseTo"
+            :max="maxRaiseTo"
             class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2.5 text-center text-sm font-bold text-white outline-none focus:border-brand-500"
-            placeholder="加注额"
+            placeholder="加注到总额"
           />
-          <button
-            class="whitespace-nowrap rounded-lg bg-brand-600 px-3 py-2.5 font-bold text-white transition hover:bg-brand-500 disabled:opacity-40"
-            :disabled="!canRaise || !raiseAmount || raiseAmount <= currentBet"
+        <button
+          class="whitespace-nowrap rounded-lg bg-brand-600 px-3 py-2.5 font-bold text-white transition hover:bg-brand-500 disabled:opacity-40"
+            :disabled="!canRaise || !raiseAmount || raiseAmount <= currentBet || raiseAmount > maxRaiseTo"
             @click="doRaise"
           >
             加注

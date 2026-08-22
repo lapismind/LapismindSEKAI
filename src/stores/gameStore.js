@@ -20,6 +20,7 @@ export const useGameStore = defineStore('game', () => {
   const showdown = ref(null) // 最近一次摊牌
   const lastGameOver = ref(null)
   const error = ref(null)
+  let errorClearTimer = null
   const myPlayerId = useLobbyStore().myPlayerId
 
   function connect(roomCode, nickname, playerId, avatarId) {
@@ -91,6 +92,12 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
+        // 连续报错时先清掉旧定时器，避免前一个提前把新错误清掉
+        if (errorClearTimer) clearTimeout(errorClearTimer)
+        errorClearTimer = setTimeout(() => {
+          error.value = null
+          errorClearTimer = null
+        }, 5000)
       }),
       wsClient.on('_open', () => handlers.onOpen?.()),
     ]
