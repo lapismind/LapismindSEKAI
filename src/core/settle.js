@@ -43,7 +43,12 @@ export function awardPots(pots) {
   for (const pot of pots) {
     if (pot.eligible.length === 0) continue
     const best = pot.eligible.reduce((a, b) => (compareRank(a.handRank, b.handRank) > 0 ? a : b))
-    winners.push({ id: best.id, amount: pot.amount })
+    const tiedWinners = pot.eligible.filter((p) => compareRank(p.handRank, best.handRank) === 0)
+    const baseShare = Math.floor(pot.amount / tiedWinners.length)
+    const remainder = pot.amount % tiedWinners.length
+    for (let i = 0; i < tiedWinners.length; i++) {
+      winners.push({ id: tiedWinners[i].id, amount: baseShare + (i < remainder ? 1 : 0) })
+    }
   }
   return winners
 }
