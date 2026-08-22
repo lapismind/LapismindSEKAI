@@ -46,8 +46,8 @@ const ringSeats = computed(() => {
 const pot = computed(() => game.roomState?.pot ?? 0)
 
 // 虚拟牌桌坐标系：所有座位按 620×400 布局，再整体缩放适配屏幕
-const STAGE_W = 620
-const STAGE_H = 400
+const STAGE_W = 760
+const STAGE_H = 500
 const stageRef = ref(null)
 const stageWrapRef = ref(null)
 const stageScale = ref(1)
@@ -56,8 +56,8 @@ const stageScale = ref(1)
 function seatXY(i, total) {
   const angle = Math.PI / 2 + (2 * Math.PI * i) / Math.max(total, 1)
   return {
-    x: STAGE_W / 2 + 235 * Math.cos(angle),
-    y: STAGE_H / 2 + 138 * Math.sin(angle),
+    x: STAGE_W / 2 + 290 * Math.cos(angle),
+    y: STAGE_H / 2 + 185 * Math.sin(angle),
   }
 }
 function seatStyle(i, total) {
@@ -421,6 +421,8 @@ function seatHand(playerId) {
     </div>
   </div>
 </template>
+
+
 
 
 

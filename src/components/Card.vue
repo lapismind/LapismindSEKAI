@@ -26,14 +26,14 @@ const sizeClass = computed(() => ({
 <template>
   <div
     v-if="isDark"
-    class="flex items-center justify-center border border-slate-600 bg-gradient-to-br from-indigo-700 to-indigo-900 text-indigo-300 shadow"
+    class="group flex items-center justify-center border border-slate-600 bg-gradient-to-br from-indigo-700 to-indigo-900 text-indigo-300 shadow transition-transform duration-150 ease-out hover:scale-[1.6] hover:z-50 relative cursor-pointer"
     :class="sizeClass"
   >
     <span class="text-lg">?</span>
   </div>
   <div
     v-else
-    class="flex flex-col items-center justify-between bg-white p-0.5 font-bold shadow"
+    class="group relative flex flex-col items-center justify-between bg-white p-0.5 font-bold shadow transition-transform duration-150 ease-out hover:scale-[1.6] hover:z-50 cursor-pointer"
     :class="[sizeClass, colorClass, isRevealed ? 'card-hidden border-2 border-indigo-500' : 'border border-slate-300']"
   >
     <span class="leading-none">{{ label }}</span>
@@ -70,3 +70,5 @@ const sizeClass = computed(() => ({
   }
 }
 </style>
+
+
