@@ -206,45 +206,100 @@ export class ShowhandRoom {
     state.finished = false
     state.pot = 0
     const seatPlayers = state.players.filter((p) => p.role === 'player')
-    const hand = createHand(state.config.mode, seatPlayers.length)
 
-    // 发完全部牌（发牌节奏由 hand 管理，下注轮在每轮之间进行——先全部发出，简化第一版）
-    // 实际梭哈是边发边下注；v1 简化：发完所有牌后统一下注 4 轮
     for (const p of seatPlayers) {
       p.cards = []
       p.bet = 0
       p.folded = false
       p.allIn = false
     }
-    // 底注：每人入底池 initialChips 的 1%
+
+    // 底注：每人入底池 initialChips 的 1%（筹码不够付底注则直接全下保护）
     const ante = Math.max(1, Math.floor(state.config.initialChips / 100))
     for (const p of seatPlayers) {
-      p.chips -= ante
-      p.bet = ante
-      state.pot += ante
+      if (p.chips <= ante) {
+        p.bet = p.chips
+        p.chips = 0
+        p.allIn = true
+      } else {
+        p.chips -= ante
+        p.bet = ante
+      }
+      state.pot += p.bet
     }
 
-    // 发牌（全部发出）
-    const dealTargets = []
-    for (const p of seatPlayers) dealTargets.push(p.id)
-    // 用 hand 顺序发：记录每玩家牌
-    while (hand.dealNextStage()) {
-      // 每轮发完，非最后阶段执行下注轮——v1 简化：发完后统一下注
+    // 边发边下注：只发第一阶段（preflop）。
+    // hand 必须以纯数据形式持久化（含剩余 deck），跨消息 / hibernation 唤醒后仍能续发。
+    const freshHand = createHand(state.config.mode, seatPlayers.length)
+    state.hand = {
+      mode: freshHand.mode,
+      stage: 'preflop',
+      deck: freshHand.deck,
+      playerIds: seatPlayers.map((p) => p.id),
     }
-    // hand 发完，把牌写回玩家
-    for (let i = 0; i < seatPlayers.length; i++) {
-      seatPlayers[i].cards = hand.players[i].cards
-    }
-
-    state.hand = { cardsByPlayer: {} }
-    for (const p of seatPlayers) {
-      state.hand.cardsByPlayer[p.id] = p.cards
-    }
+    this.dealNextStageData(state)
 
     await this.saveState(state)
     this.broadcastState(state)
-    for (const p of state.players) this.sendHandTo(state, this.socketFor(state, p.id))
-    this.beginBettingRound(state)
+    for (const p of state.players) {
+      if (p.role === 'player') this.sendHandTo(state, this.socketFor(state, p.id))
+    }
+    await this.beginBettingRound(state)
+  }
+
+  /** 纯数据驱动的发下一阶段牌，节奏与 core/hand.js 的 dealNextStage 完全一致 */
+  dealNextStageData(state) {
+    const hand = state.hand
+    if (!hand || hand.stage === 'showdown') return false
+    // 以开局时的座位快照为准，避免中途转观众影响发牌对象
+    const participants = (hand.playerIds || [])
+      .map((id) => state.players.find((p) => p.id === id))
+      .filter(Boolean)
+    const dealCard = (hidden) => {
+      const card = hand.deck.pop()
+      return { suit: card.suit, rank: card.rank, hidden }
+    }
+    const dealEach = (hidden) => {
+      for (const p of participants) p.cards.push(dealCard(hidden))
+    }
+    const isFive = hand.mode === 'five'
+    const isSeven = hand.mode === 'seven'
+
+    if (hand.stage === 'preflop') {
+      if (isFive) {
+        dealEach(true) // 1 暗
+        dealEach(false) // 1 明
+      } else if (isSeven) {
+        dealEach(true)
+        dealEach(true) // 2 暗
+        dealEach(false) // 1 明
+      }
+      hand.stage = 'flop'
+      return true
+    }
+    if (hand.stage === 'flop') {
+      dealEach(false)
+      hand.stage = 'turn'
+      return true
+    }
+    if (hand.stage === 'turn') {
+      dealEach(false)
+      hand.stage = 'river'
+      return true
+    }
+    if (hand.stage === 'river') {
+      dealEach(false)
+      if (isSeven) dealEach(true) // 七张第 7 张为暗牌
+      hand.stage = 'showdown'
+      return true
+    }
+    return false
+  }
+
+  /** 本局实际参与者的快照；中途转观众/掉线者仍按开局座位结算 */
+  handParticipants(state) {
+    const ids = state.hand && state.hand.playerIds ? state.hand.playerIds : []
+    return ids.map((id) => state.players.find((p) => p.id === id)).filter(Boolean)
   }
 
   /** 开始一轮下注 */
@@ -256,8 +311,8 @@ export class ShowhandRoom {
       return
     }
     const firstId = alive[0].id
-    // 当前注额 = 已有底注的最大 bet
-    const currentBet = Math.max(...state.players.map((p) => p.bet), 0)
+    // 当前注额 = 本局参与者已有投入的最大值（排除往局残留的观众数据）
+    const currentBet = Math.max(...this.handParticipants(state).map((p) => p.bet), 0)
     state.currentBet = currentBet
     state.lastRaiser = null
     state.bettingRound = createBettingRound(state.players, firstId, currentBet)
@@ -294,7 +349,7 @@ export class ShowhandRoom {
     }
 
     // 更新底池 = 所有玩家累计 bet 之和
-    state.pot = state.players.reduce((s, p) => s + p.bet, 0)
+    state.pot = this.handParticipants(state).reduce((sum, p) => sum + p.bet, 0)
 
     // 广播下注结果
     const allIn = player.allIn
@@ -308,7 +363,7 @@ export class ShowhandRoom {
       state.currentPlayerId = null
       state.bettingRound = null
       await this.saveState(state)
-      this.armNextStage(state)
+      await this.armNextStage(state)
       return
     }
 
@@ -321,15 +376,25 @@ export class ShowhandRoom {
     this.armTimer(state)
   }
 
-  /** 一轮下注结束 → 下一阶段（发牌已完成，直接到摊牌）或摊牌 */
+  /** 一轮下注结束 → 发下一阶段牌并开新一轮下注；最后阶段结束则摊牌 */
   async armNextStage(state) {
     const alive = state.players.filter((p) => p.role === 'player' && !p.folded && !p.allIn)
     if (alive.length <= 1) {
       await this.settleHand(state)
       return
     }
-    // v1：发牌已全部完成，这里直接摊牌
-    await this.settleHand(state)
+    if (!state.hand || state.hand.stage === 'showdown') {
+      await this.settleHand(state)
+      return
+    }
+
+    this.dealNextStageData(state)
+    await this.saveState(state)
+    this.broadcastState(state)
+    for (const p of state.players) {
+      if (p.role === 'player') this.sendHandTo(state, this.socketFor(state, p.id))
+    }
+    await this.beginBettingRound(state)
   }
 
   /** 摊牌 + 结算 */
@@ -339,7 +404,8 @@ export class ShowhandRoom {
     this.clearTimer()
 
     // 计算每个玩家牌型（七张时从 7 张选最佳 5 张）
-    const seatPlayers = state.players.filter((p) => p.role === 'player')
+    // 按开局座位快照结算：中途转观众的玩家，其底池投入和应得奖励不会丢失
+    const seatPlayers = this.handParticipants(state)
     const evaluated = seatPlayers.map((p) => {
       const handRank = p.folded ? null : bestFive(p.cards)
       return {
@@ -391,13 +457,15 @@ export class ShowhandRoom {
       data: {
         round: state.round,
         totalRounds: state.config.rounds,
-        standings: seatPlayers.map((p) => ({ playerId: p.id, nickname: p.nickname, chips: p.chips })),
+      standings: this.handParticipants(state)
+        .map((p) => ({ playerId: p.id, nickname: p.nickname, chips: p.chips }))
+        .sort((a, b) => b.chips - a.chips),
       },
     })
 
     // 输光玩家转观众
     for (const p of state.players) {
-      if (p.role === 'player' && p.chips <= 0) this.toSpectator(state, p.id)
+      if (this.handParticipants(state).includes(p) && p.chips <= 0) this.toSpectator(state, p.id)
     }
 
     // 本局结束，等房主手动开始下一局（不自动）
@@ -428,6 +496,8 @@ export class ShowhandRoom {
   broadcastState(state) {
     const data = this.publicState(state)
     this.broadcast(state, { type: 'room_state', data })
+    // 每次公开状态广播时，观众同步收到上帝视角数据
+    this.broadcastSpectateState(state)
   }
 
   publicState(state) {
@@ -440,6 +510,7 @@ export class ShowhandRoom {
       currentPlayerId: state.currentPlayerId,
       currentBet: state.currentBet,
       pot: state.pot,
+      stage: state.hand ? state.hand.stage : 'idle',
       players: state.players.map((p) => ({
         id: p.id,
         nickname: p.nickname,
@@ -502,42 +573,53 @@ export class ShowhandRoom {
     }
   }
 
-  /** 超时：30 秒未行动自动弃牌 */
+  /**
+   * 超时：30 秒未行动自动弃牌。
+   * 用 DO Alarm 而不是内存 setTimeout：hibernation 回收实例后内存 timer 会丢，
+   * alarm 持久化在 storage 上，唤醒后仍会触发。
+   */
   armTimer(state) {
-    this.clearTimer()
-    this.timer = setTimeout(() => {
-      this.enqueue(async () => {
-        const st = await this.getState()
-        if (st.currentPlayerId && st.phase === 'playing') {
-          const pid = st.currentPlayerId
-          const player = st.players.find((p) => p.id === pid)
-          if (player && !player.folded && !player.allIn) {
-            player.folded = true
-            st.pot = st.players.reduce((s, p) => s + p.bet, 0)
-            await this.saveState(st)
-            this.broadcast(st, { type: 'bet_result', data: { playerId: pid, action: 'fold', timeout: true, pot: st.pot } })
-            if (bettingRoundDone(st.bettingRound, st.players)) {
-              st.currentPlayerId = null
-              st.bettingRound = null
-              await this.saveState(st)
-              await this.armNextStage(st)
-            } else {
-              st.currentPlayerId = st.bettingRound.currentPlayer
-              await this.saveState(st)
-              this.broadcast(st, { type: 'turn_to', data: { playerId: st.currentPlayerId, currentBet: st.currentBet } })
-              this.armTimer(st)
-            }
-          }
-        }
+    this.ctx.storage.setAlarm(Date.now() + BET_TIMEOUT_MS)
+  }
+
+  /** DO Alarm 生命周期钩子：从持久化状态恢复后执行超时弃牌 */
+  async alarm() {
+    await this.enqueue(async () => {
+      const state = await this.getState()
+      if (!state.currentPlayerId || state.phase !== 'playing') return
+      const playerId = state.currentPlayerId
+      const player = state.players.find((p) => p.id === playerId)
+      if (!player || player.folded || player.allIn || !state.bettingRound) return
+
+      // 超时按弃牌处理，其余逻辑与正常下注一致
+      player.folded = true
+      state.pot = this.handParticipants(state).reduce((sum, p) => sum + p.bet, 0)
+      await this.saveState(state)
+      this.broadcast(state, {
+        type: 'bet_result',
+        data: { playerId, action: 'fold', timeout: true, pot: state.pot },
       })
-    }, BET_TIMEOUT_MS)
+
+      if (bettingRoundDone(state.bettingRound, state.players)) {
+        state.currentPlayerId = null
+        state.bettingRound = null
+        await this.saveState(state)
+        await this.armNextStage(state)
+        return
+      }
+
+      state.currentPlayerId = state.bettingRound.currentPlayer
+      await this.saveState(state)
+      this.broadcast(state, {
+        type: 'turn_to',
+        data: { playerId: state.currentPlayerId, currentBet: state.currentBet },
+      })
+      this.armTimer(state)
+    })
   }
 
   clearTimer() {
-    if (this.timer) {
-      clearTimeout(this.timer)
-      this.timer = null
-    }
+    this.ctx.storage.deleteAlarm()
   }
 
   socketFor(state, playerId) {
