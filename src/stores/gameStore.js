@@ -23,10 +23,20 @@ export const useGameStore = defineStore('game', () => {
   let errorClearTimer = null
   const myPlayerId = useLobbyStore().myPlayerId
 
-  function connect(roomCode, nickname, playerId, avatarId) {
+  async function connect(roomCode, nickname, playerId, avatarId) {
+    // 先换取身份 token（失败则无 token 直接连，服务端拒绝）
+    let token = null
+    try {
+      const res = await fetch('/api/identity?playerId=' + encodeURIComponent(playerId))
+      if (res.ok) {
+        const body = await res.json()
+        token = body.token ?? null
+        if (token) sessionStorage.setItem("identity_token", token)
+      }
+    } catch { /* offline or server error */ }
     roomId.value = roomCode
     inRoom.value = true
-    wsClient.connect({ roomId: roomCode, nickname, playerId, avatarId })
+    wsClient.connect({ roomId: roomCode, nickname, playerId, avatarId, token })
   }
 
   function disconnect() {

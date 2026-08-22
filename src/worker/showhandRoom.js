@@ -17,6 +17,7 @@ import { createHand } from '../core/hand'
 import { createBettingRound, advanceBet, bettingRoundDone, nextPlayer } from '../core/betting'
 import { evaluateHand, bestFive, compareHands } from '../core/poker'
 import { settlePots, awardPots } from '../core/settle'
+import { verifyIdentityToken } from '@lapismind/lobby-kit'
 
 const MAX_PLAYERS = 8
 const BET_TIMEOUT_MS = 30000 // 30 秒超时自动弃牌
@@ -68,8 +69,22 @@ export class ShowhandRoom {
   async handleWebSocketUpgrade(req) {
     const url = new URL(req.url)
     const nickname = url.searchParams.get('nickname') || '玩家'
-    const playerId = url.searchParams.get('playerId') || crypto.randomUUID()
     const avatarId = url.searchParams.get('avatarId') || '0'
+
+    // 验证身份 token —— 无有效 token 则拒绝连接
+    const secret = this.env?.IDENTITY_SECRET
+    const token = url.searchParams.get('token')
+    let playerId
+    if (secret) {
+      const identity = await verifyIdentityToken(token, secret, 24 * 60 * 60 * 1000)
+      if (!identity || identity.playerId !== (url.searchParams.get('playerId') || '')) {
+        return new Response('invalid token', { status: 401 })
+      }
+      playerId = identity.playerId
+    } else {
+      // 未配置密钥时降级为旧行为（信任 URL 参数）
+      playerId = url.searchParams.get('playerId') || crypto.randomUUID()
+    }
 
     const state = await this.getState()
 
