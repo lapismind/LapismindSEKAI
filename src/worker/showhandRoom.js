@@ -446,6 +446,15 @@ export class ShowhandRoom {
     const winners = awardPots(pots)
     const winMap = {}
     for (const w of winners) winMap[w.id] = (winMap[w.id] || 0) + w.amount
+    // 多个分池时同一玩家会出现在 winners 里多次；按玩家聚合成一条再广播，
+    // 避免前端把重复的 netDelta 累加出错误总额
+    const aggWinners = Object.values(
+      winners.reduce((acc, w) => {
+        acc[w.id] = acc[w.id] || { playerId: w.id, amount: 0 }
+        acc[w.id].amount += w.amount
+        return acc
+      }, {})
+    )
 
     // 结算筹码
     for (const p of state.players) {
@@ -467,10 +476,9 @@ export class ShowhandRoom {
           // 本局净变化 = 赢得的池份额 - 自己累计投入（弃牌者必为负）
           delta: (winMap[e.id] || 0) - e.totalBet,
         })),
-        winners: winners.map((w) => ({
-          playerId: w.id,
-          amount: w.amount,
-          netDelta: winMap[w.id],
+        winners: aggWinners.map((w) => ({
+          ...w,
+          netDelta: winMap[w.playerId] ?? 0,
         })),
         pot: state.pot,
       },
