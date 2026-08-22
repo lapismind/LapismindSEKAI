@@ -2,6 +2,8 @@
 import { onMounted, ref } from 'vue'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
+import { readRoomCodeFromUrl } from '@lapismind/lobby-kit'
+import { ProfileEditor } from '@lapismind/lobby-kit/vue'
 import PuzzleSubmitModal from '../components/PuzzleSubmitModal.vue'
 import FeedbackModal from '../components/FeedbackModal.vue'
 import { avatarChoices, avatarUrl } from '../game/avatars'
@@ -11,15 +13,15 @@ const game = useGameStore()
 
 const roomCode = ref('')
 const invited = ref('') // 受邀进入的房间号（来自链接）
+const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
 const feedbackOpen = ref(false)
 
 onMounted(() => {
   lobby.fetchPuzzles().catch(() => {})
   // 检查 URL 是否带房间号（分享链接）：填入房间码 + 显示邀请提示，不自动进房
-  const params = new URLSearchParams(window.location.search)
-  const roomFromUrl = params.get('room')
+  const roomFromUrl = readRoomCodeFromUrl()
   if (roomFromUrl) {
-    invited.value = roomFromUrl.toUpperCase()
+    invited.value = roomFromUrl
     roomCode.value = invited.value
   }
 })
@@ -36,6 +38,8 @@ function joinRoom() {
 }
 
 function enterRoom(code) {
+  lobby.setNickname(profileDraft.value.nickname)
+  lobby.setAvatar(profileDraft.value.avatarId)
   // 把房间号写进 URL，方便分享
   const url = new URL(window.location.href)
   url.searchParams.set('room', code)
@@ -86,36 +90,8 @@ function generateCode() {
     <!-- 反馈弹窗 -->
     <FeedbackModal v-if="feedbackOpen" @close="feedbackOpen = false" />
 
-    <!-- 昵称 -->
-    <div>
-      <label class="mb-1 block text-xs text-slate-500">昵称</label>
-      <input
-        v-model="lobby.myNickname"
-        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500"
-        maxlength="12"
-        placeholder="给自己取个名字"
-        @change="lobby.setNickname(lobby.myNickname)"
-      />
-    </div>
-
-    <!-- 默认头像选择 -->
-    <div>
-      <label class="mb-1.5 block text-xs text-slate-500">选择头像</label>
-      <div class="grid grid-cols-7 gap-2">
-        <button
-          v-for="a in avatarChoices"
-          :key="a.id"
-          type="button"
-          class="relative aspect-square overflow-hidden rounded-full border-2 transition"
-          :class="lobby.myAvatarId === a.id
-            ? 'border-brand-400 ring-2 ring-brand-400/40'
-            : 'border-slate-700 hover:border-slate-500'"
-          @click="lobby.setAvatar(a.id)"
-        >
-          <img :src="a.url" :alt="`头像${a.id}`" class="h-full w-full object-cover" />
-        </button>
-      </div>
-    </div>
+    <!-- 昵称 + 头像（共享组件） -->
+    <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
 
     <!-- 邀请提示（来自分享链接） -->
     <div

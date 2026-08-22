@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
+import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
 import { avatarUrl } from '../game/avatars'
 import winGif from '../assets/win.gif'
 import GameBoard from '../components/GameBoard.vue'
@@ -103,15 +104,14 @@ function handleLeave() {
 }
 
 async function copyRoomLink() {
-  const url = new URL(window.location.href)
-  url.searchParams.set('room', game.roomId)
+  const url = buildInviteUrl(window.location.origin, game.roomId)
   try {
-    await navigator.clipboard.writeText(url.toString())
+    await copyToClipboard(url)
     copied.value = true
     setTimeout(() => (copied.value = false), 2000)
   } catch {
     // 剪贴板不可用时提示用户手动复制
-    alert(`复制链接：${url.toString()}`)
+    alert('复制链接：' + url)
   }
 }
 
