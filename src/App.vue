@@ -261,7 +261,7 @@ onMounted(()=>{
     @node-click="nodeClicked" />
   <CombatView v-if="screen==='combat'"
     :combat-state="combatState"
-    :player="{...run, block:combatState.playerBlock, energy:combatState.energy, energyMax:combatState.energyMax}"
+    :player="{...run, hp:combatState.playerHp??run.hp, maxHp:combatState.playerMaxHp??run.maxHp, block:combatState.playerBlock, energy:combatState.energy, energyMax:combatState.energyMax}"
     @card-played="onCardPlayed"
     @end-turn="onEndTurn"
     @combat-won="onCombatWon" />
