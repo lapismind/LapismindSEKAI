@@ -41,8 +41,8 @@ function enterRoom(code) {
 <template>
   <div class="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
     <header class="text-center drop-shadow-sm">
-      <h1 class="text-3xl font-bold text-white drop-shadow">🃏 Showhand 梭哈</h1>
-      <p class="mt-2 text-sm text-slate-100/80">多人联机梭哈，五张 / 七张双玩法</p>
+      <h1 class="text-3xl font-bold text-slate-800">🃏 Showhand 梭哈</h1>
+      <p class="mt-2 text-sm text-slate-500">多人联机梭哈，五张 / 七张双玩法</p>
     </header>
 
     <!-- 邀请提示（来自分享链接） -->
@@ -50,8 +50,8 @@ function enterRoom(code) {
       v-if="invited"
       class="rounded-xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center"
     >
-      <div class="text-sm font-semibold text-brand-300">📩 你被邀请进入房间 {{ invited }}</div>
-      <p class="mt-1 text-xs text-slate-400">
+      <div class="text-sm font-semibold text-brand-700">📩 你被邀请进入房间 {{ invited }}</div>
+      <p class="mt-1 text-xs text-slate-500">
         设置好昵称和头像，点击下方「加入」即可进入
       </p>
     </div>
@@ -72,21 +72,21 @@ function enterRoom(code) {
     <div class="flex gap-2">
       <input
         v-model="roomCode"
-        class="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-white outline-none focus:border-brand-500"
+        class="flex-1 rounded-lg border border-brand-300 bg-white px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-slate-800 outline-none focus:border-brand-500"
         placeholder="输入房间码"
         maxlength="6"
         @keyup.enter="joinRoom"
       />
       <button
         type="button"
-        class="rounded-lg bg-slate-700 px-5 font-bold text-white transition hover:bg-slate-600"
+        class="rounded-lg bg-brand-600 px-5 font-bold text-white transition hover:bg-brand-500"
         @click="joinRoom"
       >
         加入
       </button>
     </div>
 
-    <p class="text-center text-xs text-slate-600">
+    <p class="text-center text-xs text-slate-400">
       房主创建房间后可选择五张或七张梭哈，开局后设定局数与初始筹码
     </p>
   </div>

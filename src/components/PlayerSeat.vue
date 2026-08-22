@@ -41,7 +41,7 @@ const betLabel = computed(() => {
 <template>
   <div
     class="flex flex-col items-center gap-1.5 rounded-2xl p-2.5"
-    :class="isActive ? 'bg-brand-500/25 ring-2 ring-brand-300' : 'bg-[#544a75]/70'"
+    :class="isActive ? 'bg-brand-200/60 ring-2 ring-brand-400' : 'bg-white/85 shadow-sm'"
   >
     <!-- 头像 + 信息 -->
     <div class="flex items-center gap-2">
@@ -51,18 +51,18 @@ const betLabel = computed(() => {
           :src="avatar"
           :alt="player.nickname"
           class="h-10 w-10 rounded-full border-2 object-cover"
-          :class="player.connected ? 'border-slate-500' : 'border-slate-700 opacity-40'"
+          :class="player.connected ? 'border-brand-300' : 'border-brand-200 opacity-40'"
         />
         <span
           v-else
-          class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-slate-600 bg-slate-700 text-lg"
+          class="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brand-300 bg-brand-50 text-lg"
         >{{ player.nickname?.[0] }}</span>
         <span v-if="player.isHost" class="absolute -top-1 -right-1 text-xs">👑</span>
       </div>
       <div class="text-left">
-        <div class="text-sm font-bold text-white">
+        <div class="text-sm font-bold text-slate-800">
           {{ player.nickname }}
-          <span v-if="isMe" class="text-xs text-brand-300">(我)</span>
+          <span v-if="isMe" class="text-xs text-brand-600">(我)</span>
         </div>
         <div class="text-xs text-amber-400">🪙 {{ player.chips }}</div>
       </div>
@@ -79,7 +79,7 @@ const betLabel = computed(() => {
     </div>
 
     <!-- 状态 -->
-    <div class="h-4 text-xs font-semibold" :class="player.folded ? 'text-slate-500' : 'text-sky-300'">
+    <div class="h-4 text-xs font-semibold" :class="player.folded ? 'text-slate-400' : 'text-sky-600'">
       {{ betLabel }}
     </div>
   </div>

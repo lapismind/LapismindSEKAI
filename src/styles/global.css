@@ -16,9 +16,9 @@
 }
 
 :root {
-  /* 淡粉紫底色：柔和低饱和，白字仍清晰 */
-  --bg-deep: #3a3153;
-  --bg-panel: #4a4066;
+  /* 淡粉紫浅底色（香芋调 #F2EBF7），正文用深灰保证可读性 */
+  --bg-deep: #f2ebf7;
+  --bg-panel: #ffffff;
   --accent: #8888cc;
   --accent-strong: #7676b8;
 }
@@ -33,7 +33,7 @@ body,
 
 body {
   background: var(--bg-deep);
-  color: #f3f0fa;
+  color: #444444;
   font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
     "Microsoft YaHei", sans-serif;
   -webkit-tap-highlight-color: transparent;

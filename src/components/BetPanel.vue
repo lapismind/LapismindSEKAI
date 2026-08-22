@@ -75,15 +75,15 @@ function doAllIn() {
 </script>
 
 <template>
-  <div class="rounded-2xl border border-slate-700 bg-slate-800/80 p-4">
+  <div class="rounded-2xl border border-brand-200 bg-white/90 p-4 shadow-sm">
     <!-- 倒计时 -->
     <div class="mb-3 flex items-center justify-between">
-      <span class="text-xs text-slate-400">行动倒计时</span>
-      <span class="font-mono text-sm font-bold" :class="timeLeft <= 5 ? 'text-red-400' : 'text-slate-200'">
+      <span class="text-xs text-slate-500">行动倒计时</span>
+      <span class="font-mono text-sm font-bold" :class="timeLeft <= 5 ? 'text-red-500' : 'text-slate-700'">
         {{ timeLeft }}s
       </span>
     </div>
-    <div class="mb-4 h-1.5 overflow-hidden rounded-full bg-slate-700">
+    <div class="mb-4 h-1.5 overflow-hidden rounded-full bg-brand-100">
       <div
         class="h-full rounded-full transition-all duration-500"
         :class="timeLeft <= 5 ? 'bg-red-500' : 'bg-brand-500'"
@@ -92,12 +92,12 @@ function doAllIn() {
     </div>
 
     <div v-if="enabled" class="flex flex-col gap-2">
-      <div class="text-sm text-slate-300">
+      <div class="text-sm text-slate-600">
         跟注 <span class="font-bold text-white">{{ toCall }}</span>（我还有 {{ myChips }}）
       </div>
       <div class="grid grid-cols-2 gap-2">
         <button
-          class="rounded-lg bg-slate-600 py-2.5 font-bold text-white transition hover:bg-slate-500"
+          class="rounded-lg bg-brand-600 py-2.5 font-bold text-white transition hover:bg-brand-500"
           @click="doCall"
         >
           跟注 {{ toCall }}
@@ -120,7 +120,7 @@ function doAllIn() {
             type="number"
             :min="minRaiseTo"
             :max="maxRaiseTo"
-            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-2.5 text-center text-sm font-bold text-white outline-none focus:border-brand-500"
+            class="w-full rounded-lg border border-brand-300 bg-white px-2 py-2.5 text-center text-sm font-bold text-slate-800 outline-none focus:border-brand-500"
             placeholder="加注到总额"
           />
         <button
