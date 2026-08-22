@@ -182,6 +182,7 @@ export class ShowhandRoom {
   async startGame(state, playerId) {
     if (state.hostId !== playerId) return
     if (state.phase !== 'waiting' && state.phase !== 'settled') return
+    if (state.finished) return // 整场已结束，防止误开新一局
     const players = state.players.filter((p) => p.role === 'player')
     if (players.length < 2) {
       this.errorTo(this.socketFor(state, playerId), '至少需要 2 名玩家')
@@ -448,8 +449,11 @@ export class ShowhandRoom {
       },
     })
 
-    // 广播本局结束
+    // 广播本局结束；固定局数打满则立即标记整场完成（前端据此直接揭晓冠军）
     state.phase = 'settled'
+    if (state.round >= state.config.rounds) {
+      state.finished = true
+    }
     await this.saveState(state)
     this.broadcastState(state)
     this.broadcast(state, {
