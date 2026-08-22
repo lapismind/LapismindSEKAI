@@ -463,8 +463,15 @@ export class ShowhandRoom {
           cards: e.cards,
           handName: e.handName,
           folded: e.folded,
+          totalBet: e.totalBet,
+          // 本局净变化 = 赢得的池份额 - 自己累计投入（弃牌者必为负）
+          delta: (winMap[e.id] || 0) - e.totalBet,
         })),
-        winners: winners.map((w) => ({ playerId: w.id, amount: w.amount })),
+        winners: winners.map((w) => ({
+          playerId: w.id,
+          amount: w.amount,
+          netDelta: winMap[w.id],
+        })),
         pot: state.pot,
       },
     })

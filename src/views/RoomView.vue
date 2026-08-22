@@ -317,8 +317,16 @@ function seatHand(playerId) {
                 <div class="text-xs text-slate-400">{{ h.folded ? '弃牌' : (h.handName || '') }}</div>
               </div>
             </div>
+            <div class="flex items-center gap-2">
             <div v-if="!h.folded" class="flex gap-0.5">
               <Card v-for="(c, i) in h.cards" :key="i" :card="{ ...c, hidden: false }" size="sm" />
+            </div>
+              <span
+                class="min-w-14 rounded-md px-2 py-0.5 text-right text-sm font-bold"
+                :class="h.delta > 0 ? 'bg-emerald-900/50 text-emerald-300' : h.delta < 0 ? 'bg-red-900/40 text-red-300' : 'bg-slate-700/60 text-slate-400'"
+              >
+                {{ h.delta > 0 ? '+' : '' }}{{ h.delta }}
+              </span>
             </div>
           </div>
         </div>
@@ -326,7 +334,7 @@ function seatHand(playerId) {
           <span class="text-sm text-amber-300">赢家</span>
           <span class="ml-2 text-lg font-bold text-amber-200">
             {{ game.showdown.winners.map(w => players.find(p => p.id === w.playerId)?.nickname || w.playerId).join(', ') }}
-            +{{ game.showdown.winners.reduce((s, w) => s + w.amount, 0) }}
+            净赢 +{{ game.showdown.winners.reduce((s, w) => s + (w.netDelta ?? 0), 0) }}
           </span>
         </div>
         <div v-if="game.lastGameOver" class="mb-4 rounded-xl bg-slate-800 px-4 py-3">

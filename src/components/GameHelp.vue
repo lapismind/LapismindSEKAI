@@ -17,9 +17,29 @@ const open = ref(true)
       <section class="mb-4">
         <h3 class="mb-1.5 text-sm font-bold text-brand-300">发牌</h3>
         <p class="text-sm text-slate-300">
-          {{ mode === 'seven' ? '七张梭哈：每人 3 张暗牌 + 4 张明牌（共 7 张）' : '五张梭哈：每人 1 张暗牌 + 4 张明牌（共 5 张）' }}
+          {{ mode === 'seven' ? '七张梭哈：每人最终 3 张暗牌 + 4 张明牌（共 7 张）' : '五张梭哈：每人 1 张暗牌 + 4 张明牌（共 5 张）' }}
           ，明牌全桌可见，暗牌只有自己知道。
         </p>
+      </section>
+
+      <section class="mb-4">
+        <h3 class="mb-1.5 text-sm font-bold text-brand-300">每局流程</h3>
+        <ol class="list-inside list-decimal space-y-1.5 text-sm text-slate-300">
+          <li>开局：每人先付底注（初始筹码的 1%）入池</li>
+          <template v-if="mode === 'five'">
+            <li><b>第 1 轮</b>：每人发 1 张暗牌 + 1 张明牌 → 下注</li>
+            <li><b>第 2 轮</b>：每人再发 1 张明牌 → 下注</li>
+            <li><b>第 3 轮</b>：每人再发 1 张明牌 → 下注</li>
+            <li><b>第 4 轮</b>：每人发最后 1 张明牌 → 下注</li>
+          </template>
+          <template v-else>
+            <li><b>第 1 轮</b>：每人发 2 张暗牌 + 1 张明牌 → 下注</li>
+            <li><b>第 2 轮</b>：每人再发 1 张明牌 → 下注</li>
+            <li><b>第 3 轮</b>：每人再发 1 张明牌 → 下注</li>
+            <li><b>第 4 轮</b>：每人发最后 1 张明牌 + 1 张暗牌 → 下注</li>
+          </template>
+          <li>第 4 轮下注结束 → 全部亮牌摊牌，比大小分底池</li>
+        </ol>
       </section>
 
       <section class="mb-4">
@@ -27,8 +47,8 @@ const open = ref(true)
         <ul class="space-y-1 text-sm text-slate-300">
           <li>· 跟注：补足到当前最高下注</li>
           <li>· 加注：提高当前下注额（可多次）</li>
-          <li>· 弃牌：放弃本局，退出比牌</li>
-          <li>· 全下：押上全部筹码</li>
+          <li>· 弃牌：放弃本局，已投入的筹码不退</li>
+          <li>· 全下：押上全部筹码，之后不再行动但保留比牌资格</li>
           <li>· 每轮 30 秒倒计时，超时自动弃牌</li>
         </ul>
       </section>
