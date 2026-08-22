@@ -83,4 +83,27 @@ const unsub = c4.on('evt', () => { throw new Error('不应触发') })
 unsub()
 c4._emit('evt', {})
 
+// --- token 透传 ---
+FakeWS.instances = []
+const c5 = makeClient()
+c5.connect({ roomId: 'T1', nickname: 'n', playerId: 'p9', avatarId: '3', token: 'abc.123sig' })
+assert.match(FakeWS.instances[0].url, /token=abc\.123sig/, 'URL 带 token 参数')
+assert.match(FakeWS.instances[0].url, /avatarId=3/, 'URL 带 avatarId')
+
+// --- 无 token 时 URL 不包含 token ---
+FakeWS.instances = []
+const c6 = makeClient()
+c6.connect({ roomId: 'T2', nickname: 'n', playerId: 'p10' })
+assert.ok(!FakeWS.instances[0].url.includes('token='), '无 token 时不拼接 token 参数')
+
+// --- 断线重连后 session 保留 token ---
+FakeWS.instances = []
+const c7 = makeClient({ reconnectDelayMs: 1 })
+c7.connect({ roomId: 'T3', nickname: 'n', playerId: 'p11', token: 'rt.sig' })
+FakeWS.instances[0]._open()
+FakeWS.instances[0]._close()
+await new Promise((r) => setTimeout(r, 15))
+assert.ok(FakeWS.instances.length >= 2)
+assert.match(FakeWS.instances[1].url, /token=rt\.sig/, '重连后 URL 仍带 token')
+
 console.log('ws-client tests passed')

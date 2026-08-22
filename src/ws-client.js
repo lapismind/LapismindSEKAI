@@ -52,8 +52,8 @@ export function createWSClient({
     emit(parsed.type, parsed.data)
   }
 
-  function connect({ roomId, nickname, playerId, avatarId, url }) {
-    session = { roomId, nickname, playerId, avatarId }
+  function connect({ roomId, nickname, playerId, avatarId, token, url }) {
+    session = { roomId, nickname, playerId, avatarId, token }
     const wsUrl =
       url ??
       `${typeof location !== 'undefined' && location.protocol === 'https:' ? 'wss' : 'ws'}://${
@@ -62,6 +62,8 @@ export function createWSClient({
         nickname,
       )}&playerId=${encodeURIComponent(playerId)}${
         avatarId ? `&avatarId=${encodeURIComponent(avatarId)}` : ''
+      }${
+        token ? `&token=${encodeURIComponent(token)}` : ''
       }`
 
     ws = new wsImpl(wsUrl)
