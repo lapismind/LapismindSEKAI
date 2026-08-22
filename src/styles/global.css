@@ -41,8 +41,8 @@
 	--shadow-lg:
 		0 4px 12px oklch(0.3 0.02 250 / 0.08), 0 24px 60px oklch(0.3 0.02 250 / 0.13);
 	/* 自定义鼠标：图片失效/不支持时回退系统光标 */
-	--cursor-default: url('/cursors/arrow.png') 4 2, default;
-	--cursor-pointer: url('/cursors/pointer.png') 5 2, pointer;
+	--cursor-default: url('/cursors/mfy-normal.png') 6 3, default;
+	--cursor-pointer: url('/cursors/mfy-link.png') 10 6, pointer;
 	--radius-sm: 10px;
 	--radius: 18px;
 	--radius-lg: 26px;

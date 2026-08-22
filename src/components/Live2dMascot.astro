@@ -1,0 +1,411 @@
+---
+// 左下角 Live2D 看板娘：YUKI（真冬·normal）/ OWN（真冬·黑化）双模型切换
+---
+
+<div id="l2d-widget">
+	<div class="l2d-ground"></div>
+	<canvas class="l2d-particles" aria-hidden="true"></canvas>
+	<div class="l2d-card">
+		<span class="l2d-age" id="l2d-age" title="自 2020-09-30 起">SEKAI · -- 天</span>
+		<span class="l2d-sep"></span>
+		<div class="l2d-switch" id="l2d-switch">
+			<button type="button" data-key="yuki" class="active">YUKI</button>
+			<button type="button" data-key="own">OWN</button>
+		</div>
+	</div>
+</div>
+
+<style>
+	#l2d-widget {
+		position: fixed;
+		left: 12px;
+		bottom: 0;
+		width: 300px;
+		height: 420px;
+		z-index: 60;
+		pointer-events: none;
+		opacity: 0;
+		animation: l2d-fade-in 0.8s ease 0.4s forwards;
+	}
+	/* 模型画布：只有它接收点击 */
+	#l2d-widget :global(.l2d-stage) {
+		position: absolute;
+		inset: 0;
+		width: 100% !important;
+		height: 100% !important;
+		pointer-events: auto;
+		cursor: var(--cursor-pointer);
+	}
+	/* 地面遮罩：贴底、边缘横向淡出，只盖住模型脚下 */
+	#l2d-widget .l2d-ground {
+		position: absolute;
+		left: 0;
+		bottom: 0;
+		width: 100%;
+		height: 78px;
+		background: linear-gradient(
+			to bottom,
+			color-mix(in oklab, var(--primary) 22%, transparent) 0%,
+			color-mix(in oklab, var(--page-bg-deep) 72%, var(--primary) 10%) 38%,
+			color-mix(in oklab, var(--page-bg-deep) 96%, transparent) 100%
+		);
+		box-shadow:
+			inset 0 14px 24px -12px color-mix(in oklab, var(--primary) 28%, transparent),
+			inset 0 -8px 16px -8px color-mix(in oklab, var(--page-bg-deep) 90%, transparent);
+		border-radius: 36% 36% 0 0 / 20px 20px 0 0;
+		-webkit-mask-image: radial-gradient(130% 105% at 50% 100%, black 52%, transparent 98%);
+		mask-image: radial-gradient(130% 105% at 50% 100%, black 52%, transparent 98%);
+	}
+	/* 星屑：只在模型正下方的窄区域里飘 */
+	#l2d-widget .l2d-particles {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		bottom: 0;
+		width: 224px;
+		height: 150px;
+		opacity: 0.85;
+	}
+	/* 地面小卡片：左·SEKAI 时间，右·模型开关 */
+	#l2d-widget .l2d-card {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		bottom: 12px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 5px 10px;
+		border-radius: 13px;
+		background: color-mix(in oklab, var(--page-bg-deep) 78%, transparent);
+		backdrop-filter: blur(8px);
+		-webkit-backdrop-filter: blur(8px);
+		border: 1px solid color-mix(in oklab, var(--primary) 20%, transparent);
+		box-shadow: 0 4px 14px -6px rgb(0 0 0 / 0.25);
+		font-size: 11px;
+		line-height: 1;
+		white-space: nowrap;
+		pointer-events: auto;
+		z-index: 64;
+	}
+	#l2d-widget .l2d-age {
+		color: color-mix(in oklab, var(--primary) 82%, var(--page-bg-deep));
+		font-weight: 600;
+		letter-spacing: 0.02em;
+	}
+	#l2d-widget .l2d-sep {
+		width: 1px;
+		height: 12px;
+		background: color-mix(in oklab, var(--primary) 26%, transparent);
+	}
+	#l2d-widget .l2d-switch {
+		display: flex;
+		gap: 3px;
+	}
+	#l2d-widget .l2d-switch button {
+		appearance: none;
+		border: none;
+		background: transparent;
+		color: color-mix(in oklab, var(--page-bg-deep) 30%, var(--primary));
+		font-size: 10px;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		padding: 3px 8px;
+		border-radius: 999px;
+		cursor: var(--cursor-pointer);
+		transition: background 0.18s ease, color 0.18s ease;
+	}
+	#l2d-widget .l2d-switch button.active {
+		background: color-mix(in oklab, var(--primary) 88%, transparent);
+		color: color-mix(in oklab, var(--page-bg-deep) 92%, white);
+	}
+	@media (max-width: 720px) {
+		#l2d-widget {
+			left: 6px;
+			width: 190px;
+			height: 260px;
+		}
+		#l2d-widget .l2d-ground {
+			height: 56px;
+		}
+		#l2d-widget .l2d-particles {
+			width: 150px;
+			height: 96px;
+		}
+		#l2d-widget .l2d-card {
+			bottom: 8px;
+			gap: 5px;
+			padding: 4px 7px;
+			font-size: 9px;
+			border-radius: 10px;
+		}
+		#l2d-widget .l2d-switch button {
+			font-size: 8px;
+			padding: 2px 6px;
+		}
+	}
+	@keyframes l2d-fade-in {
+		to { opacity: 1; }
+	}
+</style>
+
+<script>
+	const MODELS = {
+		yuki: {
+			base: '/live2d/mafuyu/',
+			defaultPose: 'w-normal-pose01',
+			exclude: ['w-normal-default01', 'w-normal-pose02']
+		},
+		own: {
+			base: '/live2d/own/',
+			defaultPose: 'w-normal-pose01',
+			exclude: ['w-normal-default01', 'w-normal-pose02']
+		}
+	};
+	const STORE_KEY = 'l2d-character';
+	const SEKAI_BIRTH = new Date('2026-08-14T00:00:00+08:00'); // 你的 SEKAI 起点
+
+	let app = null;
+	let currentKey = null;
+	let widgetModel = null;
+	let motionIndex = {};
+	let poseIdx = -1;
+	let clickLock = false;
+	let idleReturnTimer = null;
+	let focusTarget = { x: 0, y: 0 };   // 目标注视点（-1..1）
+	let focusCurrent = { x: 0, y: 0 };  // 当前平滑值
+	let lastFocusAt = 0;                // 上次鼠标活动时间
+	let focusRAF = null;
+
+	function loadScript(src) {
+		return new Promise((resolve, reject) => {
+			if (document.querySelector('script[src="' + src + '"]')) { resolve(); return; }
+			const s = document.createElement('script');
+			s.src = src;
+			s.onload = () => resolve();
+			s.onerror = () => reject(new Error('failed to load ' + src));
+			document.head.appendChild(s);
+		});
+	}
+
+	function pickInitialKey() {
+		try {
+			const saved = localStorage.getItem(STORE_KEY);
+			if (saved && MODELS[saved]) return saved;
+		} catch (_) {}
+		return 'yuki';
+	}
+
+	function place(model) {
+		const scale = app.screen.height / model.internalModel.originalHeight;
+		model.scale.set(scale);
+		model.x = (app.screen.width - model.internalModel.originalWidth * scale) / 2;
+		app.stage.addChild(model);
+		// 先渲染一帧，让顶点就位，再量真实边界把脚下透明区压出屏幕
+		app.render();
+		const b = model.getBounds();
+		if (b && b.height > 0 && isFinite(b.bottom)) {
+			model.y += app.screen.height - b.bottom;
+		} else {
+			model.y += app.screen.height * 0.15;
+		}
+	}
+
+	async function loadCharacter(key) {
+		if (!app || !MODELS[key] || key === currentKey && widgetModel) return;
+		const conf = MODELS[key];
+		currentKey = key;
+		try { localStorage.setItem(STORE_KEY, key); } catch (_) {}
+
+		clearTimeout(idleReturnTimer);
+		if (widgetModel) {
+			app.stage.removeChild(widgetModel);
+			try { widgetModel.destroy(); } catch (_) {}
+			widgetModel = null;
+		}
+
+		const cfgRes = await fetch(conf.base + 'model.model3.json');
+		const cfg = await cfgRes.json();
+		const defs = (cfg.FileReferences.Motions && cfg.FileReferences.Motions.idle) || [];
+		motionIndex = {};
+		defs.forEach((d, i) => {
+			motionIndex[d.File.split('/').pop().replace('.motion3.json', '')] = i;
+		});
+
+		const model = await PIXI.live2d.Live2DModel.from(conf.base + 'model.model3.json');
+		widgetModel = model;
+		place(model);
+
+		poseIdx = motionIndex[conf.defaultPose] !== undefined ? motionIndex[conf.defaultPose] : 0;
+		if (key === 'own') {
+			// 黑化版：库的初始待机会覆盖直接设置的姿势，
+			// 改为自动触发一次随机动作，播完经 backToPose 稳定落在默认站姿
+			setTimeout(() => {
+				if (widgetModel === model && currentKey === key) playRandomMotion();
+			}, 200);
+		} else {
+			const applyDefault = () => { if (widgetModel === model) model.motion('idle', poseIdx, 3); };
+			setTimeout(applyDefault, 120);
+			setTimeout(applyDefault, 600);
+		}
+		window.dispatchEvent(new CustomEvent('l2d:model-changed', { detail: key }));
+	}
+
+	function playRandomMotion() {
+		if (!widgetModel || clickLock || !currentKey) return;
+		const conf = MODELS[currentKey];
+		const pool = Object.entries(motionIndex)
+			.filter(([name]) => !conf.exclude.includes(name) && name !== conf.defaultPose)
+			.map(([, idx]) => idx);
+		if (!pool.length) return;
+		clickLock = true;
+		widgetModel.motion('idle', pool[Math.floor(Math.random() * pool.length)], 3);
+		clearTimeout(idleReturnTimer);
+		idleReturnTimer = setTimeout(() => {
+			if (widgetModel && poseIdx >= 0) widgetModel.motion('idle', poseIdx, 2);
+		}, 2600);
+		setTimeout(() => { clickLock = false; }, 1200);
+	}
+
+	function bindUI(host) {
+		// 按钮高亮跟随实际加载的模型（刷新后从 localStorage 恢复的场景）
+		const syncSwitchUI = (key) => {
+			document.querySelectorAll('#l2d-switch button').forEach(b =>
+				b.classList.toggle('active', b.dataset.key === key));
+		};
+		host.addEventListener('click', (e) => {
+			if (e.target.closest('.l2d-card')) return;
+			playRandomMotion();
+		});
+		window.addEventListener('pointermove', (e) => {
+			if (!widgetModel) return;
+			const headEl = widgetModel.internalModel;
+			if (!headEl) return;
+			// 以模型头部为锚点：容器顶部中央附近即头部位置
+			const r = host.getBoundingClientRect();
+			const hx = r.left + r.width / 2;
+			const hy = r.top + r.height * 0.22;
+			// 按视口尺度归一化：全屏移动才到极限，避免小幅移动就转头到底
+			focusTarget.x = clamp((e.clientX - hx) / (window.innerWidth * 0.5), -1, 1);
+			focusTarget.y = clamp((e.clientY - hy) / (window.innerHeight * 0.5), -1, 1);
+			lastFocusAt = performance.now();
+		});
+
+		function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+		// 平滑追踪 + 停止移动后目光缓缓回正
+		function focusTick(now) {
+			focusRAF = requestAnimationFrame(focusTick);
+			if (!widgetModel) return;
+			// 鼠标静止 3 秒后目标点慢慢回中心
+			if (now - lastFocusAt > 3000) {
+				focusTarget.x *= 0.94;
+				focusTarget.y *= 0.94;
+			}
+			// 指数平滑，接近目标但永不到达，动作柔和
+			focusCurrent.x += (focusTarget.x - focusCurrent.x) * 0.06;
+			focusCurrent.y += (focusTarget.y - focusCurrent.y) * 0.06;
+			if (Math.abs(focusCurrent.x) < 0.001 && Math.abs(focusCurrent.y) < 0.001 && now - lastFocusAt > 3000) {
+				focusCurrent.x = 0; focusCurrent.y = 0;
+			}
+			const fc = widgetModel.internalModel && widgetModel.internalModel.focusController;
+			if (fc) fc.focus(focusCurrent.x, focusCurrent.y);
+		}
+		focusRAF = requestAnimationFrame(focusTick);
+		document.getElementById('l2d-switch').addEventListener('click', (e) => {
+			const btn = e.target.closest('button[data-key]');
+			if (!btn) return;
+			const key = btn.dataset.key;
+			if (key === currentKey) return;
+			document.querySelectorAll('#l2d-switch button').forEach(b =>
+				b.classList.toggle('active', b.dataset.key === key));
+			syncSwitchUI(key);
+			loadCharacter(key).catch(err => console.error('[l2d] switch failed:', err));
+		});
+		window.addEventListener('l2d:model-changed', (e) => syncSwitchUI(e.detail));
+	}
+
+	function updateAge() {
+		const el = document.getElementById('l2d-age');
+		if (!el) return;
+		const days = Math.max(0, Math.floor((Date.now() - SEKAI_BIRTH.getTime()) / 86400000));
+		el.textContent = 'SEKAI · ' + days.toLocaleString() + ' 天';
+	}
+
+	function initParticles() {
+		const cv = document.querySelector('.l2d-particles');
+		if (!cv) return;
+		const ctx = cv.getContext('2d');
+		const DPR = Math.min(window.devicePixelRatio || 1, 2);
+		function resize() {
+			cv.width = cv.clientWidth * DPR;
+			cv.height = cv.clientHeight * DPR;
+			ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+		}
+		resize();
+		window.addEventListener('resize', resize);
+
+		const P = [];
+		for (let i = 0; i < 14; i++) {
+			P.push({
+				x: Math.random(), y: Math.random(),
+				vy: -(0.0006 + Math.random() * 0.0012),
+				vx: (Math.random() - 0.5) * 0.0004,
+				r: 0.8 + Math.random() * 1.5,
+				a: 0.2 + Math.random() * 0.45,
+				tw: Math.random() * Math.PI * 2,
+				twSpd: 0.02 + Math.random() * 0.04
+			});
+		}
+		function tick() {
+			const w = cv.clientWidth, h = cv.clientHeight;
+			ctx.clearRect(0, 0, w, h);
+			const dark = document.documentElement.dataset.theme === 'dark';
+			for (const p of P) {
+				p.y += p.vy; p.x += p.vx + Math.sin(p.y * 24) * 0.0004; p.tw += p.twSpd;
+				if (p.y < 0.18 || p.a <= 0) { p.x = Math.random(); p.y = 0.95 + Math.random() * 0.05; p.a = 0.2 + Math.random() * 0.45; }
+				ctx.beginPath();
+				ctx.arc(p.x * w, p.y * h, p.r, 0, Math.PI * 2);
+				ctx.fillStyle = (dark ? 'rgba(196,181,253,' : 'rgba(124,58,237,') +
+					(p.a * (0.55 + Math.sin(p.tw) * 0.45)).toFixed(3) + ')';
+				ctx.fill();
+			}
+			requestAnimationFrame(tick);
+		}
+		requestAnimationFrame(tick);
+	}
+
+	async function setupMascot() {
+		const host = document.getElementById('l2d-widget');
+		if (!host || app) return;
+		updateAge();
+		setInterval(updateAge, 60000);
+		initParticles();
+		try {
+			await loadScript('/live2d/live2dcubismcore.min.js');
+			await loadScript('/live2d/pixi.min.js');
+			await loadScript('/live2d/pixi-live2d-cubism4.min.js');
+			app = new PIXI.Application({
+				backgroundAlpha: 0,
+				antialias: true,
+				resolution: Math.min(window.devicePixelRatio || 1, 2),
+				autoDensity: true,
+				width: host.clientWidth,
+				height: host.clientHeight
+			});
+			app.view.className = 'l2d-stage';
+			host.appendChild(app.view);
+			bindUI(host);
+			await loadCharacter(pickInitialKey());
+			console.log('[l2d] mascot ready:', currentKey);
+		} catch (err) {
+			console.error('[l2d] init failed:', err);
+		}
+	}
+
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', setupMascot);
+	} else {
+		setupMascot();
+	}
+</script>

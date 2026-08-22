@@ -1,0 +1,104 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "model.moc3",
+    "Textures": [
+      "texture_00.png"
+    ],
+    "Physics": "model.physics3.json",
+    "Motions": {
+      "idle": [
+        {
+          "File": "motions/w-normal-armescape01n.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-blushed01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-default01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-fidget01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-forward01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-glad01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-glad02.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-greeting01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-lookaway01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-nod01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-nod02.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose02.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose03.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose04.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose05.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose06.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-purpose01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-relief01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-sad01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-shakehead01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-shy01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-sigh01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-tilthead01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-tilthead02.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-trouble01.motion3.json"
+        }
+      ]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    },
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": []
+    }
+  ]
+}

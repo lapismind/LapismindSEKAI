@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEKAI 漫游 · 角色互动 Demo</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body{height:100%;overflow:hidden;}
+body{
+font-family:'LXGW WenKai Screen','PingFang SC','Microsoft YaHei',sans-serif;
+background:
+radial-gradient(ellipse 90% 70% at 50% 115%, oklch(0.30 0.07 283 / 0.40), transparent),
+linear-gradient(180deg, oklch(0.12 0.03 266) 0%, oklch(0.16 0.04 274) 55%, oklch(0.21 0.05 283) 100%);
+cursor:default;
+user-select:none;
+}
+canvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:5;}
+.title{
+position:fixed;top:1.6rem;left:0;right:0;text-align:center;
+color:oklch(0.88 0.03 280 / 0.55);
+font-size:0.72rem;letter-spacing:0.32em;text-indent:.32em;
+pointer-events:none;z-index:10;font-family:ui-monospace,monospace;
+}
+.stage{position:fixed;inset:0;z-index:3;}
+.chara{
+position:absolute;width:110px;margin-left:-55px;cursor:pointer;transition:filter .3s ease;}
+.chara .bob{animation:floaty 4s ease-in-out infinite;will-change:transform;}
+.chara img{width:100%;display:block;border-radius:14px;
+filter:drop-shadow(0 6px 16px oklch(0.72 0.13 283 / 0.35));
+pointer-events:none;}
+.chara:hover img{filter:drop-shadow(0 6px 22px oklch(0.78 0.15 283 / 0.65)) brightness(1.08);}
+.chara .name{
+position:absolute;left:50%;bottom:-1.7em;transform:translateX(-50%);
+color:oklch(0.85 0.04 283 / 0.75);font-size:0.72rem;letter-spacing:0.15em;
+white-space:nowrap;opacity:0;transition:opacity .3s ease;pointer-events:none;}
+.chara:hover .name{opacity:1;}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.chara.bounce{animation:bounce .7s cubic-bezier(.28,1.7,.4,1);}
+@keyframes bounce{
+0%{transform:scale(1,1) translateY(0);}
+22%{transform:scale(1.22,.78) translateY(4px);}
+45%{transform:scale(.86,1.24) translateY(-26px);}
+68%{transform:scale(1.1,.9) translateY(0);}
+84%{transform:scale(.96,1.05) translateY(-8px);}
+100%{transform:scale(1,1) translateY(0);}
+}
+.bubble{
+position:absolute;z-index:8;pointer-events:none;
+background:oklch(0.98 0.01 283 / 0.95);
+color:#3a3560;border-radius:14px;
+padding:0.6em 1em;font-size:0.92rem;line-height:1.5;
+box-shadow:0 4px 20px oklch(0.4 0.08 283 / 0.35), 0 0 0 1px oklch(0.85 0.06 283 / 0.4);
+max-width:240px;width:max-content;
+opacity:0;transform:translateY(8px) scale(.92);
+transition:opacity .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.bubble.show{opacity:1;transform:translateY(0) scale(1);}
+.bubble::after{
+content:'';position:absolute;left:50%;bottom:-9px;transform:translateX(-50%);
+border:9px solid transparent;border-top-color:oklch(0.98 0.01 283 / 0.95);
+border-bottom:0;
+}
+.credit{
+position:fixed;left:1rem;bottom:0.8rem;z-index:10;
+color:oklch(0.8 0.02 280 / 0.4);font-size:0.68rem;
+font-family:ui-monospace,monospace;letter-spacing:0.05em;
+}
+.credit a{color:oklch(0.82 0.06 283 / 0.65);text-decoration:none;}
+</style>
+</head>
+<body>
+<div class="title">SEKAI ROAM · NIGHT CODE DEMO</div>
+<div class="stage" id="stage"></div>
+<canvas id="fx"></canvas>
+<div class="credit">SD 素材来源：<a href="https://pjsk.moe" target="_blank" rel="noopener">pjsk.moe</a> · 版权归 SEGA / Colorful Palette 所有</div>
+<script>
+'use strict';
+/* ===== 角色 ===== */
+var CDN='https://storage.exmeaning.com/sekai-jp-assets/character_sd_l/';
+var CHARAS=[
+{id:'chr_sp_17',name:'宵崎 奏',x:18,y:62,lines:['不写出更多曲子的话……','我现在唯一能做的，就是不断作曲。','嗯？要一起听吗。']},
+{id:'chr_sp_31',name:'初音ミク',x:38,y:38,lines:['この歌、届けたいな。','25時の世界へようこそ。','みんなの歌が、聞きたい。']},
+{id:'chr_sp_18',name:'朝比奈 真冬',x:58,y:58,lines:['我……必须要找到。','我已经……什么都不明白了。','夜还很长呢。']},
+{id:'chr_sp_19',name:'東雲 絵名',x:76,y:36,lines:['哼哼。又收到了好多赞。——可是……','我只是希望，自己能画得更好而已。','诶，你要看我的画？']},
+{id:'chr_sp_20',name:'暁山 瑞希',x:88,y:66,lines:['可爱的东西，我可是会照单全收的哦♪','我开始觉得，自己不用去改变什么，现在这样也挺好的。','这个秘密，只告诉你哦。']}
+];
+/* ===== 摆放角色 ===== */
+var stage=document.getElementById('stage');
+CHARAS.forEach(function(c){
+var el=document.createElement('div');
+el.className='chara';
+el.style.left=c.x+'%';el.style.top=c.y+'%';
+el.querySelector('.bob').style.animationDelay=(Math.random()*-4).toFixed(2)+'s';
+el.innerHTML='<div class="bob"><img src="'+CDN+c.id+'.webp" alt="'+c.name+'" crossorigin="anonymous"></div><span class="name">'+c.name+'</span>';
+el.addEventListener('click',function(ev){poke(c,el,ev);});
+stage.appendChild(el);
+c.el=el;c.lineIdx=0;
+});
+function shuffleArr(arr){for(var i=arr.length-1;i>0;i--){var j=(Math.random()*(i+1))|0;var t=arr[i];arr[i]=arr[j];arr[j]=t;}return arr;}
+function poke(c,el,ev){
+el.classList.remove('bounce');void el.offsetWidth;el.classList.add('bounce');
+spawnStars(ev.clientX,ev.clientY-60);
+showBubble(c,ev);
+chime(c.id);
+}
+var activeBubble=null,bubbleTimer=null;
+function showBubble(c,ev){
+if(activeBubble){activeBubble.remove();activeBubble=null;}
+clearTimeout(bubbleTimer);
+var b=document.createElement('div');
+b.className='bubble';
+b.textContent=c.lines[c.lineIdx%c.lines.length];
+c.lineIdx++;
+document.body.appendChild(b);
+var bw=b.offsetWidth,bh=b.offsetHeight;
+var bx=Math.min(Math.max(ev.clientX-bw/2,12),innerWidth-bw-12);
+var by=ev.clientY-bh-110;if(by<12)by=ev.clientY+80;
+b.style.left=bx+'px';b.style.top=by+'px';
+requestAnimationFrame(function(){requestAnimationFrame(function(){b.classList.add('show');});});
+activeBubble=b;bubbleTimer=setTimeout(function(){b.classList.remove('show');setTimeout(function(){b.remove();},300);},2600);
+}
+/* ===== 星屑粒子 ===== */
+var cv=document.getElementById('fx'),ctx=cv.getContext('2d');
+var W,H,DPR;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);}
+addEventListener('resize',resize);resize();
+var bgStars=[];for(var i=0;i<120;i++){bgStars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.1+0.25,p:Math.random()*Math.PI*2,s:0.4+Math.random()*1.2});}
+var particles=[];
+var PALETTE=['#b9b3f0','#e1b7ff','#8888cc','#dcd6ff','#a8c8ff'];
+function pick(a){return a[(Math.random()*a.length)|0];}
+function spawnStars(x,y,count){
+count=count||26;
+for(var i=0;i<count;i++){
+var a=Math.random()*Math.PI*2,sp=0.8+Math.random()*4.5;
+particles.push({type:'spark',x:x,y:y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-0.8,size:Math.random()*1.8+0.5,life:1,decay:0.010+Math.random()*0.013,color:pick(PALETTE),tw:Math.random()*Math.PI*2});
+}
+particles.push({type:'ring',x:x,y:y,r:6,max:80,life:1});
+}
+var tick=0;
+function frame(){
+tick++;
+ctx.clearRect(0,0,W,H);
+for(var i=0;i<bgStars.length;i++){
+var s=bgStars[i];
+var a=0.22+0.55*(0.5+0.5*Math.sin(s.p+tick*0.012*s.s));
+ctx.globalAlpha=a;ctx.fillStyle='#cfd4ff';
+ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);ctx.fill();
+}
+ctx.globalAlpha=1;
+particles=particles.filter(function(p){return p.life>0.03&&!(p.type==='ring'&&p.r>p.max);});
+for(var j=0;j<particles.length;j++){
+var p=particles[j];
+if(p.type==='ring'){
+p.r+=(p.max-p.r)*0.07;p.life-=0.03;
+var ra=Math.max(0,0.5*p.life);
+ctx.strokeStyle='rgba(225,183,255,'+ra+')';ctx.lineWidth=1.5;
+ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.stroke();
+continue;}
+p.x+=p.vx;p.y+=p.vy;p.vx*=0.974;p.vy=p.vy*0.974+0.04;
+p.life-=p.decay;p.tw+=0.25;
+var sa=Math.max(0,p.life*(0.65+0.35*Math.sin(p.tw)));
+if(p.size>1.2){
+ctx.strokeStyle=p.color;ctx.globalAlpha=sa;ctx.lineWidth=0.9;
+var L=p.size*2.6*p.life;
+ctx.beginPath();ctx.moveTo(p.x-L,p.y);ctx.lineTo(p.x+L,p.y);ctx.moveTo(p.x,p.y-L);ctx.lineTo(p.x,p.y+L);ctx.stroke();}
+ctx.fillStyle=p.color;ctx.globalAlpha=sa;
+ctx.beginPath();ctx.arc(p.x,p.y,p.size*Math.max(p.life,.3),0,Math.PI*2);ctx.fill();
+ctx.globalAlpha=1;
+}
+requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+/* ===== 音效：每个角色一个音高的音符 ===== */
+var actx=null;
+var NOTES={'chr_sp_17':392.00,'chr_sp_31':523.25,'chr_sp_18':440.00,'chr_sp_19':493.88,'chr_sp_20':587.33};
+function chime(id){
+try{
+actx=actx||new(window.AudioContext||window.webkitAudioContext)();
+if(actx.state==='suspended')actx.resume();
+var t=actx.currentTime;
+var f=NOTES[id]||440;
+var o1=actx.createOscillator(),o2=actx.createOscillator(),g=actx.createGain();
+o1.type='triangle';o1.frequency.value=f;
+o2.type='sine';o2.frequency.value=f*2;o2.detune.value=7;
+g.gain.setValueAtTime(0,t);
+g.gain.linearRampToValueAtTime(0.05,t+0.012);
+g.gain.exponentialRampToValueAtTime(0.0001,t+0.8);
+o1.connect(g);o2.connect(g);g.connect(actx.destination);
+o1.start(t);o2.start(t);o1.stop(t+0.85);o2.stop(t+0.85);
+}catch(_){}
+}
+</script>
+</body>
+</html>
+
+
+

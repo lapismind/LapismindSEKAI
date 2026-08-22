@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang=""zh-CN"">
+<head>
+<meta charset=""UTF-8"">
+<meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+<title>25时素材预览</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0a0e1a; color: #cbd5e1; padding: 2rem; min-height: 100vh; }
+  h1 { color: #86bcfc; font-size: 1.6rem; margin-bottom: .4rem; }
+  p.sub { color: #64748b; margin-bottom: 2rem; font-size: .9rem; }
+  h2 { color: #a78bfa; font-size: 1.15rem; margin: 2rem 0 1rem; border-left: 3px solid #7c3aed; padding-left: .75rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.25rem; }
+  .card { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 12px; overflow: hidden; text-align: center; transition: transform .2s; }
+  .card:hover { transform: translateY(-4px); border-color: rgba(167,139,250,.4); }
+  .card img { width: 100%; height: auto; display: block; object-fit: contain; max-height: 220px; }
+  .card .label { padding: .55rem .75rem; font-size: .82rem; color: #94a3b8; background: rgba(0,0,0,.25); }
+  .stamp-row { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: flex-end; justify-content: center; padding: 1.5rem; background: rgba(255,255,255,.03); border-radius: 12px; }
+  .stamp-row img { height: 110px; width: auto; image-rendering: auto; }
+</style>
+</head>
+<body>
+<h1>25时，Night Code见。素材预览</h1>
+<p class=""sub"">来自 storage.exmeaning.com（pjsk.moe 同源 CDN）· 仅预览 · 未集成到正式页面</p>
+<h2>角色选择立绘 (SD / character_select)</h2>
+<div class=""grid"">
+  <div class=""card""><img src=""sd-kanade.webp""><div class=""label"">17 · 宵崎奏</div></div>
+  <div class=""card""><img src=""sd-mafuyu.webp""><div class=""label"">18 · 朝比奈真冬</div></div>
+  <div class=""card""><img src=""sd-ena.webp""><div class=""label"">19 · 东云绘名</div></div>
+  <div class=""card""><img src=""sd-mizuki.webp""><div class=""label"">20 · 晓山瑞希</div></div>
+</div>
+<h2>官方贴纸 (stamp) — 可作为点击反馈</h2>
+<div class=""stamp-row"">
+  <div><img src=""kanade-1.png""><div class=""label"">奏「じゃ...」</div></div>
+  <div><img src=""kanade-work.png""><div class=""label"">奏「わたしが作らなくちゃ…」</div></div>
+  <div><img src=""mafuyu-1.png""><div class=""label"">真冬「いい子、ね…」</div></div>
+  <div><img src=""ena-1.png""><div class=""label"">絵名「いいねついてる♪」</div></div>
+  <div><img src=""mizuki-1.png""><div class=""label"">瑞希「ボクはずっとボクだよ」</div></div>
+</div>
+<h2>Live2D 模型可用性说明</h2>
+<p style=""color:#94a3b8;font-size:.88rem;line-height:1.7"">每个角色都有完整的 Live2D 模型（moc3 + 贴图 + 物理），以及 200–370 个动作/表情文件。<br>
+但动作 JSON 只有元数据（FadeInTime/FadeOutTime），实际动画曲线内嵌在 Unity clip 里，网页端无法直接播放。<br>
+如果要用 Live2D，需要引入 pixi-live2d-display 库并自己写 idle 呼吸动画（不加载外部 motion 文件）。<br>
+模型体积：moc3 约 1MB + 贴图约 2MB = 每个角色约 3MB。</p>
+<h2>资源类型总览</h2>
+<table style=""width:100%;border-collapse:collapse;font-size:.88rem;color:#94a3b8"">
+<tr style=""border-bottom:1px solid rgba(255,255,255,.1);text-align:left""><th style=""padding:.5rem .75rem"">类型</th><th style=""padding:.5rem .75rem"">数量</th><th style=""padding:.5rem .75rem"">可用性</th><th style=""padding:.5rem .75rem"">备注</th></tr>
+<tr><td style=""padding:.5rem .75rem"">官方贴纸 stamp</td><td style=""padding:.5rem .75rem"">148 张 (25时四人)</td><td style=""padding:.5rem .75rem;color:#4ade80"">✓ 直链即用</td><td style=""padding:.5rem .75rem"">点击反馈首选</td></tr>
+<tr><td style=""padding:.5rem .75rem"">SD 立绘 character_select</td><td style=""padding:.5rem .75rem"">26 套 × webp/png</td><td style=""padding:.5rem .75rem;color:#4ade80"">✓ 直链即用</td><td style=""padding:.5rem .75rem"">当前页面正在用的就是这类</td></tr>
+<tr><td style=""padding:.5rem .75rem"">全身卡面立绘 member_cutout</td><td style=""padding:.5rem .75rem"">1000+ 张</td><td style=""padding:.5rem .75rem;color:#fbbf24"">△ 大图 300–500KB/张</td><td style=""padding:.5rem .75rem"">更精致但加载慢</td></tr>
+<tr><td style=""padding:.5rem .75rem"">Live2D 模型 moc3 + 动作</td><td style=""padding:.5rem .75rem"">668 个模型 bundle / 300+ 动作/人</td><td style=""padding:.5rem .75rem;color:#fbbf24"">△ 需 pixi-live2d-display</td><td style=""padding:.5rem .75rem"">动作 JSON 只有元数据，动画在 Unity clip 内嵌</td></tr>
+<tr><td style=""padding:.5rem .75rem"">打击音效 se_live_tap</td><td style=""padding:.5rem .75rem"">11 个 mp3</td><td style=""padding:.5rem .75rem;color:#4ade80"">✓ 本地已有</td><td style=""padding:.5rem .75rem"">仓库自带，可直接用</td></tr>
+<tr><td style=""padding:.5rem .75rem"">剧情语音 voice</td><td style=""padding:.5rem .75rem"">数千条</td><td style=""padding:.5rem .75rem;color:#4ade80"">✓ 直链即用</td><td style=""padding:.5rem .75rem"">按剧情 ID 组织，需要索引</td></tr>
+</table>
+</body>
+</html>
