@@ -16,7 +16,10 @@ function isAvailable(n){ return (props.availableNodeIds||[]).includes(n.id) }
 function isVisited(n){ return (props.visitedNodeIds||[]).includes(n.id) }
 
 // 展开所有连线为 {x1,y1,x2,y2}
-const FLOORS=15; const NODE_W=600; const NODE_H=1200
+const FLOORS=15
+
+function nodeX(n){ return n.x*90+5 }
+function nodeY(n){ return ((FLOORS-1-n.floor)/FLOORS)*100 + 3 }
 const lines = computed(()=>{
   if(!props.map?.nodes)return[]
   const nodes=[...props.map.nodes.values()]
@@ -26,8 +29,8 @@ const lines = computed(()=>{
       const c=props.map.nodes.get(cid)
       if(!c)continue
       out.push({
-        x1:n.x*90+5, y1:(FLOORS-1-n.floor)*5.5+3.5,
-        x2:c.x*90+5, y2:(FLOORS-1-c.floor)*5.5+3.5,
+        x1:nodeX(n), y1:nodeY(n),
+        x2:nodeX(c), y2:nodeY(c),
         active:isAvailable(n)&&isAvailable(c),
       })
     }
@@ -50,7 +53,7 @@ const lines = computed(()=>{
              :key="n.id"
              class="mnode"
              :class="{avail:isAvailable(n),visited:isVisited(n),cur:n.id===currentNodeId}"
-             :style="{left:(n.x*90+5)+'%', top:(14-n.floor)*5.2+'%'}"
+             :style="{left:'calc('+nodeX(n)+'% - 23px)', top:'calc('+nodeY(n)+'% - 23px)'}"
              @click="isAvailable(n) && emit('node-click', n.id)">
            {{ iconFor(n.type) }}
         </div>

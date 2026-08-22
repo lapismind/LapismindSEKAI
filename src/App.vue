@@ -118,18 +118,18 @@ function onCombatWon(){
 function generateRewards(){
   const rewards=[]
   rewards.push({type:'gold',amount:run.value.rng.int(15,35)})
-  const cards=generateCardReward(run.value,currentNodeType||'monster')
+  const cards=generateCardReward(run.value,currentNodeType.value||'monster')
   rewards.push({type:'card',candidates:cards})
   // Boss/Elite 遗物奖励
-  const relicId=generateRelicReward(run.value,currentNodeType||'monster')
-  if(relicId&&currentNodeType!=='monster') rewards.push({type:'relic',id:relicId})
+  const relicId=generateRelicReward(run.value,currentNodeType.value||'monster')
+  if(relicId&&currentNodeType.value!=='monster') rewards.push({type:'relic',id:relicId})
   // 小概率药水
   if(run.value.rng.next()<0.4){
     const p=POTIONS[Math.floor(run.value.rng.next()*POTIONS.length)]
     rewards.push({type:'potion',id:p.id,name:p.name})
   }
   // Boss 战：进入下一幕或胜利
-  if(currentNodeType==='boss'){
+  if(currentNodeType.value==='boss'){
     run.value.act++
     if(run.value.act>3){
       currentRewards.value=rewards
