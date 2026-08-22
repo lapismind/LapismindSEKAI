@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, watch } from 'vue'
 import TitleView from './views/TitleView.vue'
 import MapView from './views/MapView.vue'
 import CombatView from './views/CombatView.vue'
@@ -106,6 +106,13 @@ function onEndTurn(){
       setTimeout(()=>{screen.value='title'},1500)
     }
   },600)
+}
+
+function onCombatWon(){
+  // CombatView emits this when over becomes 'win'; delay for overlay display
+  setTimeout(()=>{
+    if(combatState.value?.over==='win') generateRewards()
+  },1200)
 }
 
 function generateRewards(){
@@ -256,10 +263,11 @@ onMounted(()=>{
     :combat-state="combatState"
     :player="{...run, block:combatState.playerBlock, energy:combatState.energy, energyMax:combatState.energyMax}"
     @card-played="onCardPlayed"
-    @end-turn="onEndTurn" />
+    @end-turn="onEndTurn"
+    @combat-won="onCombatWon" />
   <EventView v-else-if="screen==='event'" :event="currentEvent" @choose="onEventChoose" />
   <ShopView v-else-if="screen==='shop'" :stock="currentShopStock" :deck="run.deck" @buy="onBuy" @remove_card="onRemoveCard" @leave="goMap" />
   <CampfireView v-else-if="screen==='rest'" :player-hp="run.hp" :max-hp="run.maxHp" :deck-size="run.deck.length" :deck="run.deck.filter(c=>!c.upgraded)" @rest="()=>{restAtCampfire(run,'rest');saveRun(run.value||run);goMap()}" @smith="(uid)=>{upgradeCardInDeck(run,uid);saveRun(run);goMap()}" @leave="goMap" />
-  <RewardView v-else-if="screen==='reward'" :rewards="currentRewards" @claim="claimReward" @done="rewardDone" />
+  <RewardView v-if="screen==='reward'" :rewards="currentRewards" @claim="claimReward" @done="rewardDone" />
   <CardSelectModal v-if="showDeckModal" title="选择要升级的牌" :cards="run.deck.filter(c=>!c.upgraded)" @confirm="(ids)=>{upgradeCardInDeck(run,ids[0]);showDeckModal=false;saveRun(run);screen='map'}" @cancel="showDeckModal=false" />
 </template>
