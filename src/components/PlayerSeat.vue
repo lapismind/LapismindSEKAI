@@ -1,4 +1,5 @@
 <script setup>
+import ChipIcon from './ChipIcon.vue'
 import { computed } from 'vue'
 import Card from './Card.vue'
 import { avatarUrl } from '../game/avatars'
@@ -64,7 +65,7 @@ const betLabel = computed(() => {
           {{ player.nickname }}
           <span v-if="isMe" class="text-xs text-brand-600">(我)</span>
         </div>
-        <div class="text-xs text-amber-400">🪙 {{ player.chips }}</div>
+        <div class="flex items-center gap-1 text-xs text-slate-500"><ChipIcon :size="14" color="#e05a4e" /> {{ player.chips }}</div>
       </div>
     </div>
 
@@ -84,3 +85,7 @@ const betLabel = computed(() => {
     </div>
   </div>
 </template>
+
+
+
+

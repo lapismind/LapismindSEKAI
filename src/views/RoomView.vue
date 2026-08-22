@@ -7,6 +7,8 @@ import PlayerSeat from '../components/PlayerSeat.vue'
 import BetPanel from '../components/BetPanel.vue'
 import GameHelp from '../components/GameHelp.vue'
 import Card from '../components/Card.vue'
+import PokerTable from '../components/PokerTable.vue'
+import ChipIcon from '../components/ChipIcon.vue'
 import { avatarUrl } from '../game/avatars'
 import { avatarChoices } from '../game/avatars'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
@@ -286,16 +288,17 @@ function seatHand(playerId) {
      >
        <div
          ref="stageRef"
-        class="relative rounded-[50%] border border-white/15 bg-[#5d7a6c]/30 shadow-inner"
+        class="relative"
          :style="{ width: STAGE_W * stageScale + 'px', height: STAGE_H * stageScale + 'px' }"
        >
+        <PokerTable :width="STAGE_W" :height="STAGE_H" />
         <!-- 底池 -->
         <div
           class="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 rounded-full border border-amber-700/40 bg-amber-900/20 px-5 py-2"
           :style="{ left: (STAGE_W / 2) * stageScale + 'px', top: (STAGE_H / 2) * stageScale + 'px' }"
         >
-          <span class="text-sm text-amber-300">底池</span>
-          <span class="text-lg font-bold text-amber-200">🪙 {{ pot }}</span>
+          <span class="text-sm text-white/70">底池</span>
+          <span class="flex items-center gap-1 text-lg font-bold text-amber-200"><ChipIcon :size="18" color="#f0a030" /> {{ pot }}</span>
         </div>
         <div
           v-for="(p, i) in ringSeats"
@@ -418,3 +421,7 @@ function seatHand(playerId) {
     </div>
   </div>
 </template>
+
+
+
+
