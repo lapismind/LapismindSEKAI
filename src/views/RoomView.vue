@@ -47,6 +47,7 @@ const pot = computed(() => game.roomState?.pot ?? 0)
 const STAGE_W = 620
 const STAGE_H = 400
 const stageRef = ref(null)
+const stageWrapRef = ref(null)
 const stageScale = ref(1)
 
 // 座位角度：i=0 固定底部中央（我自己），逆时针分布一圈
@@ -59,13 +60,16 @@ function seatXY(i, total) {
 }
 function seatStyle(i, total) {
   const pos = seatXY(i, total)
-  return { left: pos.x + 'px', top: pos.y + 'px' }
+  return {
+    left: pos.x * stageScale.value + 'px',
+    top: pos.y * stageScale.value + 'px',
+  }
 }
 
 function updateStageScale() {
-  const availW = stageRef.value?.clientWidth ?? STAGE_W
-  const availH = Math.max(window.innerHeight - 330, 260)
-  stageScale.value = Math.max(0.55, Math.min(1, availW / (STAGE_W + 30), availH / (STAGE_H + 40)))
+  const availW = stageWrapRef.value?.clientWidth ?? STAGE_W
+  const availH = Math.max(window.innerHeight - 300, 280)
+  stageScale.value = Math.max(0.55, Math.min(1, availW / (STAGE_W + 20), availH / (STAGE_H + 20)))
 }
 
 // 我的手牌视图：观众看上帝视角，玩家看自己的
@@ -274,16 +278,20 @@ function seatHand(playerId) {
     </div>
 
     <!-- 牌桌 -->
-    <main class="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-6">
+    <main class="relative flex-1 px-2 py-3">
      <!-- 环形牌桌：底池居中，座位环形分布，自己在底部 -->
      <div
-       ref="stageRef"
-       class="relative w-full"
-       :style="{ height: STAGE_H * stageScale + 'px' }"
+       ref="stageWrapRef"
+       class="absolute inset-0 flex items-center justify-center"
      >
+       <div
+         ref="stageRef"
+         class="relative rounded-[50%] border border-slate-700/60 bg-emerald-900/20 shadow-inner"
+         :style="{ width: STAGE_W * stageScale + 'px', height: STAGE_H * stageScale + 'px' }"
+       >
         <!-- 底池 -->
         <div
-          class="absolute flex items-center gap-2 rounded-full border border-amber-700/40 bg-amber-900/20 px-5 py-2"
+          class="absolute -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 rounded-full border border-amber-700/40 bg-amber-900/20 px-5 py-2"
           :style="{ left: (STAGE_W / 2) * stageScale + 'px', top: (STAGE_H / 2) * stageScale + 'px' }"
         >
           <span class="text-sm text-amber-300">底池</span>
@@ -302,12 +310,14 @@ function seatHand(playerId) {
             :is-active="p.id === game.roomState?.currentPlayerId"
             :spectate="game.myRole === 'spectator'"
            :card-size="p.id === game.myPlayerId ? 'lg' : 'sm'"
-         />
+        />
        </div>
-      </div>
+       </div>
+     </div>
 
-     <!-- 操作区 -->
-      <div class="w-full max-w-md">
+
+    <!-- 操作区：右下角悬浮，不挤占牌桌 -->
+      <div class="absolute bottom-3 right-3 w-80 max-w-[calc(100vw-24px)] z-20">
         <!-- 房主等待区 -->
         <div v-if="isHost && game.phase === 'waiting'" class="rounded-2xl border border-slate-700 bg-slate-800/80 p-4 text-center">
           <p class="text-sm text-slate-300">等待玩家加入…（至少 2 人开局）</p>
