@@ -46,8 +46,8 @@ const ringSeats = computed(() => {
 const pot = computed(() => game.roomState?.pot ?? 0)
 
 // 虚拟牌桌坐标系：所有座位按 620×400 布局，再整体缩放适配屏幕
-const STAGE_W = 760
-const STAGE_H = 500
+const STAGE_W = 1050
+const STAGE_H = 700
 const stageRef = ref(null)
 const stageWrapRef = ref(null)
 const stageScale = ref(1)
@@ -56,8 +56,8 @@ const stageScale = ref(1)
 function seatXY(i, total) {
   const angle = Math.PI / 2 + (2 * Math.PI * i) / Math.max(total, 1)
   return {
-    x: STAGE_W / 2 + 290 * Math.cos(angle),
-    y: STAGE_H / 2 + 185 * Math.sin(angle),
+    x: STAGE_W / 2 + 415 * Math.cos(angle),
+    y: STAGE_H / 2 + 265 * Math.sin(angle),
   }
 }
 function seatStyle(i, total) {
@@ -71,7 +71,7 @@ function seatStyle(i, total) {
 function updateStageScale() {
   const availW = stageWrapRef.value?.clientWidth ?? STAGE_W
   const availH = Math.max(window.innerHeight - 300, 280)
-  stageScale.value = Math.max(0.55, Math.min(1, availW / (STAGE_W + 20), availH / (STAGE_H + 20)))
+  stageScale.value = Math.max(0.55, Math.min(1.3, availW / (STAGE_W + 20), availH / (STAGE_H + 20)))
 }
 
 // 我的手牌视图：观众看上帝视角，玩家看自己的
@@ -421,6 +421,8 @@ function seatHand(playerId) {
     </div>
   </div>
 </template>
+
+
 
 
 
