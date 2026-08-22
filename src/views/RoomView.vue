@@ -33,7 +33,40 @@ const isHost = computed(() => game.roomState?.hostId === game.myPlayerId)
 const myTurn = computed(() => game.roomState?.currentPlayerId === game.myPlayerId)
 const players = computed(() => game.roomState?.players ?? [])
 const seats = computed(() => players.value.filter((p) => p.role === 'player'))
+// 环形座位：把'我'旋转到 index 0，其余按原顺序排开
+const ringSeats = computed(() => {
+  const list = seats.value
+  if (!list.length) return []
+  const myIdx = list.findIndex((p) => p.id === game.myPlayerId)
+  const start = myIdx >= 0 ? myIdx : 0
+  return list.map((_, i) => list[(start + i) % list.length])
+})
 const pot = computed(() => game.roomState?.pot ?? 0)
+
+// 虚拟牌桌坐标系：所有座位按 620×400 布局，再整体缩放适配屏幕
+const STAGE_W = 620
+const STAGE_H = 400
+const stageRef = ref(null)
+const stageScale = ref(1)
+
+// 座位角度：i=0 固定底部中央（我自己），逆时针分布一圈
+function seatXY(i, total) {
+  const angle = Math.PI / 2 + (2 * Math.PI * i) / Math.max(total, 1)
+  return {
+    x: STAGE_W / 2 + 235 * Math.cos(angle),
+    y: STAGE_H / 2 + 138 * Math.sin(angle),
+  }
+}
+function seatStyle(i, total) {
+  const pos = seatXY(i, total)
+  return { left: pos.x + 'px', top: pos.y + 'px' }
+}
+
+function updateStageScale() {
+  const availW = stageRef.value?.clientWidth ?? STAGE_W
+  const availH = Math.max(window.innerHeight - 330, 260)
+  stageScale.value = Math.max(0.55, Math.min(1, availW / (STAGE_W + 30), availH / (STAGE_H + 40)))
+}
 
 // 我的手牌视图：观众看上帝视角，玩家看自己的
 const myDisplayHand = computed(() => {
@@ -47,10 +80,13 @@ onMounted(() => {
   profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
   game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
   unsub = game.hydrate({})
+  updateStageScale()
+  window.addEventListener('resize', updateStageScale)
 })
 let unsub = null
 onUnmounted(() => {
   unsub?.()
+  window.removeEventListener('resize', updateStageScale)
   game.disconnect()
 })
 
@@ -181,7 +217,22 @@ function seatHand(playerId) {
           🏆 整场结束
         </span>
       </div>
-    </header>
+   </header>
+
+    <!-- 个人资料编辑弹层 -->
+    <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6">
+        <h2 class="mb-4 text-lg font-bold">⚙️ 我的资料</h2>
+        <ProfileEditor
+          v-model="profileDraft"
+          :avatar-choices="avatarChoices"
+        />
+        <div class="mt-6 flex gap-2">
+          <button class="flex-1 rounded-lg bg-slate-700 py-2.5 text-sm font-bold" @click="showProfile = false">取消</button>
+          <button class="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold hover:bg-brand-500" @click="saveProfile">保存</button>
+        </div>
+      </div>
+    </div>
 
   <!-- 房间设置弹层 -->
   <div v-if="showConfig" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -189,20 +240,7 @@ function seatHand(playerId) {
       <h2 class="mb-4 text-lg font-bold">房间设置</h2>
       <div v-if="false" /> <!-- spacer for indentation match -->
 
-<!-- 个人资料编辑弹层 -->
-<div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-  <div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6">
-    <h2 class="mb-4 text-lg font-bold">⚙️ 我的资料</h2>
-    <ProfileEditor
-      v-model="profileDraft"
-      :avatar-choices="avatarChoices"
-    />
-    <div class="mt-6 flex gap-2">
-      <button class="flex-1 rounded-lg bg-slate-700 py-2.5 text-sm font-bold" @click="showProfile = false">取消</button>
-      <button class="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold hover:bg-brand-500" @click="saveProfile">保存</button>
-    </div>
-  </div>
-</div>
+ <!-- 个人资料编辑弹层 -->
         <div class="mb-4">
           <label class="mb-1 block text-xs text-slate-500">玩法</label>
           <div class="flex gap-2">
@@ -237,26 +275,38 @@ function seatHand(playerId) {
 
     <!-- 牌桌 -->
     <main class="flex flex-1 flex-col items-center justify-center gap-4 px-4 py-6">
-      <!-- 底池 -->
-      <div class="flex items-center gap-2 rounded-full border border-amber-700/40 bg-amber-900/20 px-5 py-2">
-        <span class="text-sm text-amber-300">底池</span>
-        <span class="text-lg font-bold text-amber-200">🪙 {{ pot }}</span>
-      </div>
-
-      <!-- 座位（环形/网格布局） -->
-      <div class="grid w-full max-w-3xl grid-cols-2 gap-3 sm:grid-cols-3">
-        <PlayerSeat
-          v-for="p in seats"
+     <!-- 环形牌桌：底池居中，座位环形分布，自己在底部 -->
+     <div
+       ref="stageRef"
+       class="relative w-full"
+       :style="{ height: STAGE_H * stageScale + 'px' }"
+     >
+        <!-- 底池 -->
+        <div
+          class="absolute flex items-center gap-2 rounded-full border border-amber-700/40 bg-amber-900/20 px-5 py-2"
+          :style="{ left: (STAGE_W / 2) * stageScale + 'px', top: (STAGE_H / 2) * stageScale + 'px' }"
+        >
+          <span class="text-sm text-amber-300">底池</span>
+          <span class="text-lg font-bold text-amber-200">🪙 {{ pot }}</span>
+        </div>
+        <div
+          v-for="(p, i) in ringSeats"
           :key="p.id"
-          :player="p"
-          :hand="seatHand(p.id)"
-          :is-me="p.id === game.myPlayerId"
-          :is-active="p.id === game.roomState?.currentPlayerId"
-          :spectate="game.myRole === 'spectator'"
-        />
+          class="absolute w-max"
+          :style="[{ transform: 'translate(-50%, -50%) scale(' + stageScale + ')', left: seatStyle(i, ringSeats.length).left, top: seatStyle(i, ringSeats.length).top }]"
+        >
+          <PlayerSeat
+            :player="p"
+            :hand="seatHand(p.id)"
+            :is-me="p.id === game.myPlayerId"
+            :is-active="p.id === game.roomState?.currentPlayerId"
+            :spectate="game.myRole === 'spectator'"
+           :card-size="p.id === game.myPlayerId ? 'lg' : 'sm'"
+         />
+       </div>
       </div>
 
-      <!-- 操作区 -->
+     <!-- 操作区 -->
       <div class="w-full max-w-md">
         <!-- 房主等待区 -->
         <div v-if="isHost && game.phase === 'waiting'" class="rounded-2xl border border-slate-700 bg-slate-800/80 p-4 text-center">

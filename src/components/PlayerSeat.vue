@@ -9,6 +9,7 @@ const props = defineProps({
   isMe: { type: Boolean, default: false },
   isActive: { type: Boolean, default: false }, // 当前行动者
   spectate: { type: Boolean, default: false }, // 观众上帝视角（显示完整手牌）
+  cardSize: { type: String, default: 'sm' }, // 手牌尺寸 sm | md | lg
 })
 
 const avatar = computed(() => avatarUrl(props.player.avatarId) ?? null)
@@ -73,7 +74,7 @@ const betLabel = computed(() => {
         v-for="(c, i) in displayCards"
         :key="i"
         :card="c"
-        size="sm"
+        :size="cardSize"
       />
     </div>
 
