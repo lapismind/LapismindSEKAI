@@ -56,6 +56,7 @@ export function gainPlayerBlock(s,base){
 }
 export function startPlayerTurn(s){
   if(s.over)return
+  if(!hasBuff(playerView(s),'barricade'))s.playerBlock=0
   s.turn++;s.energy=s.energyMax;s.cardsPlayedThisTurn=0;s.attacksPlayedThisTurn=0
   const pv=playerView(s);slog(s,'—— 第 '+s.turn+' 回合 ——')
   const psn=getBuff(pv,'poison')
@@ -112,7 +113,6 @@ export function endPlayerTurn(s){
   const p=getBuff(pv,'plated_armor');if(p>0)s.playerBlock+=p
   const rg=getBuff(pv,'regen');if(rg>0){pv.hp=Math.min(pv.maxHp,pv.hp+rg);removeBuff(pv,'regen',1)}
   const rt=getBuff(pv,'ritual');if(rt>0)applyBuff(pv,'strength',rt)
-  if(!hasBuff(pv,'barricade'))s.playerBlock=0
   while(s.handPile.length)s.discardPile.push(s.handPile.pop())
   syncPlayer(s,pv);s.isPlayerTurn=false
 }
