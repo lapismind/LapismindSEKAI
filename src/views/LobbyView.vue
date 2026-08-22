@@ -2,7 +2,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
-import { generateRoomCode } from '@lapismind/lobby-kit'
+import { generateRoomCode, readRoomCodeFromUrl } from '@lapismind/lobby-kit'
+import { ProfileEditor } from '@lapismind/lobby-kit/vue'
 import { avatarChoices } from '../game/avatars'
 
 const lobby = useLobbyStore()
@@ -10,12 +11,12 @@ const router = useRouter()
 
 const roomCode = ref('')
 const invited = ref('') // 受邀进入的房间号（来自链接）
+const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
 
 // 检查 URL 是否带房间号（分享链接）：填入房间码 + 显示邀请提示
-const params = new URLSearchParams(window.location.search)
-const roomFromUrl = params.get('room')
+const roomFromUrl = readRoomCodeFromUrl()
 if (roomFromUrl) {
-  invited.value = roomFromUrl.toUpperCase()
+  invited.value = roomFromUrl
   roomCode.value = invited.value
 }
 
@@ -31,6 +32,8 @@ function joinRoom() {
 }
 
 function enterRoom(code) {
+  lobby.setNickname(profileDraft.value.nickname)
+  lobby.setAvatar(profileDraft.value.avatarId)
   router.push({ path: `/room/${code}` })
 }
 </script>
@@ -53,36 +56,8 @@ function enterRoom(code) {
       </p>
     </div>
 
-    <!-- 昵称 -->
-    <div>
-      <label class="mb-1 block text-xs text-slate-500">昵称</label>
-      <input
-        v-model="lobby.myNickname"
-        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500"
-        maxlength="12"
-        placeholder="给自己取个名字"
-        @change="lobby.setNickname(lobby.myNickname)"
-      />
-    </div>
-
-    <!-- 默认头像选择 -->
-    <div>
-      <label class="mb-1.5 block text-xs text-slate-500">选择头像</label>
-      <div class="grid grid-cols-7 gap-2">
-        <button
-          v-for="a in avatarChoices"
-          :key="a.id"
-          type="button"
-          class="relative aspect-square overflow-hidden rounded-full border-2 transition"
-          :class="lobby.myAvatarId === a.id
-            ? 'border-brand-400 ring-2 ring-brand-400/40'
-            : 'border-slate-700 hover:border-slate-500'"
-          @click="lobby.setAvatar(a.id)"
-        >
-          <img :src="a.url" :alt="`头像${a.id}`" class="h-full w-full object-cover" />
-        </button>
-      </div>
-    </div>
+    <!-- 昵称 + 头像（共享组件） -->
+    <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
 
     <!-- 创建房间 -->
     <button

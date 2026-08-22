@@ -9,6 +9,8 @@ import GameHelp from '../components/GameHelp.vue'
 import Card from '../components/Card.vue'
 import { avatarUrl } from '../game/avatars'
 import { avatarChoices } from '../game/avatars'
+import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
+import { ProfileEditor } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const game = useGameStore()
@@ -19,6 +21,7 @@ const showConfig = ref(false)
 const showProfile = ref(false)
 const copied = ref(false)
 const showHelp = ref(false)
+const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
 const configMode = ref('five')
 const configRounds = ref(10)
 const configChips = ref(1000)
@@ -41,6 +44,7 @@ const myBet = computed(() => me.value?.bet ?? 0)
 const myChips = computed(() => me.value?.chips ?? 0)
 
 onMounted(() => {
+  profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
   game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
   unsub = game.hydrate({})
 })
@@ -71,20 +75,25 @@ function closeShowdown() {
   game.clearShowdown()
 }
 
+function openProfile() {
+  profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
+  showProfile.value = true
+}
+
 async function copyRoomLink() {
-   const url = new URL(window.location.origin + '/?room=' + roomCode.value)
+   const url = buildInviteUrl(window.location.origin, roomCode.value)
    try {
-     await navigator.clipboard.writeText(url.toString())
+     await copyToClipboard(url)
      copied.value = true
      setTimeout(() => (copied.value = false), 2000)
    } catch {
-     alert('复制链接：' + url.toString())
+     alert('复制链接：' + url)
    }
 }
 
 function saveProfile() {
-   lobby.setNickname(lobby.myNickname)
-   lobby.setAvatar(lobby.myAvatarId)
+   lobby.setNickname(profileDraft.value.nickname)
+   lobby.setAvatar(profileDraft.value.avatarId)
    showProfile.value = false
    // 重连以更新服务端昵称/头像
    game.disconnect()
@@ -137,7 +146,7 @@ function seatHand(playerId) {
         </button>
         <button
           class="rounded-lg bg-slate-700 px-3 py-1.5 text-xs font-bold transition hover:bg-slate-600"
-          @click="showProfile = true"
+          @click="openProfile"
         >
           ⚙️ 我
         </button>
@@ -184,18 +193,10 @@ function seatHand(playerId) {
 <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
   <div class="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-6">
     <h2 class="mb-4 text-lg font-bold">⚙️ 我的资料</h2>
-    <label class="mb-1 block text-xs text-slate-500">昵称</label>
-    <input v-model="lobby.myNickname" maxlength="12"
-      class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500" />
-    <label class="mt-3 mb-1.5 block text-xs text-slate-500">头像</label>
-    <div class="grid grid-cols-7 gap-2">
-      <button v-for="a in avatarChoices" :key="a.id" type="button"
-        class="relative aspect-square overflow-hidden rounded-full border-2 transition"
-        :class="lobby.myAvatarId === a.id ? 'border-brand-400 ring-2 ring-brand-400/40' : 'border-slate-700 hover:border-slate-500'"
-        @click="lobby.setAvatar(a.id)">
-        <img :src="a.url" :alt="'头像' + a.id" class="h-full w-full object-cover" />
-      </button>
-    </div>
+    <ProfileEditor
+      v-model="profileDraft"
+      :avatar-choices="avatarChoices"
+    />
     <div class="mt-6 flex gap-2">
       <button class="flex-1 rounded-lg bg-slate-700 py-2.5 text-sm font-bold" @click="showProfile = false">取消</button>
       <button class="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold hover:bg-brand-500" @click="saveProfile">保存</button>
