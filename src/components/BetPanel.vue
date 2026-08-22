@@ -112,7 +112,7 @@ function doAllIn() {
           class="rounded-lg bg-amber-600 py-2.5 font-bold text-white transition hover:bg-amber-500"
           @click="doAllIn"
         >
-          全下 {{ myChips }}
+          ALL IN {{ myChips }}
         </button>
         <div class="flex gap-2">
           <input

@@ -320,13 +320,18 @@ export class ShowhandRoom {
 
   /** 开始一轮下注 */
   async beginBettingRound(state) {
-    const seatPlayers = state.players.filter((p) => p.role === 'player' && !p.folded && !p.allIn)
-    const alive = seatPlayers.filter((p) => !p.folded && !p.allIn)
-    if (alive.length <= 1) {
+    const notFolded = state.players.filter((p) => p.role === "player" && !p.folded)
+    if (notFolded.length <= 1) {
       await this.settleHand(state)
       return
     }
-    const firstId = alive[0].id
+    const canAct = notFolded.filter((p) => !p.allIn)
+    if (canAct.length === 0) {
+      // 所有人都 all-in，跳到下一阶段发牌
+      await this.armNextStage(state)
+      return
+    }
+    const firstId = canAct[0].id
     // 当前注额 = 本局参与者已有投入的最大值（排除往局残留的观众数据）
     const currentBet = Math.max(...this.handParticipants(state).map((p) => p.bet), 0)
     state.currentBet = currentBet
@@ -394,8 +399,8 @@ export class ShowhandRoom {
 
   /** 一轮下注结束 → 发下一阶段牌并开新一轮下注；最后阶段结束则摊牌 */
   async armNextStage(state) {
-    const alive = state.players.filter((p) => p.role === 'player' && !p.folded && !p.allIn)
-    if (alive.length <= 1) {
+    const notFolded = state.players.filter((p) => p.role === "player" && !p.folded)
+    if (notFolded.length <= 1) {
       await this.settleHand(state)
       return
     }

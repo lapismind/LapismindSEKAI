@@ -21,7 +21,7 @@ export function createBettingRound(players, firstPlayerId, currentBet = 0) {
 }
 
 function activePlayers(players) {
-  return players.filter((p) => !p.folded && !p.allIn)
+  return players.filter((p) => !p.folded)
 }
 
 /** 找下一个未行动完的玩家（从 id 之后，跳过弃牌/all-in） */
@@ -109,13 +109,16 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
 }
 
 /** 一轮是否结束：只剩 1 人未弃牌，或所有活跃玩家都跟到 currentBet 且轮到最后加注人的下家 */
-export function bettingRoundDone(round, players) {
-  const active = activePlayers(players)
-  if (active.length <= 1) return true
-  const actedIds = Array.isArray(round.actedIds) ? round.actedIds : []
-  // 所有活跃玩家都行动过，并且都跟到 currentBet。
-  const allCaughtUp = active.every((p) => p.bet === round.currentBet)
-  if (!allCaughtUp) return false
 
-  return active.every((p) => actedIds.includes(p.id))
+export function bettingRoundDone(round, players) {
+  // 未弃牌的玩家（包括已 all-in 的）
+  const alive = players.filter((p) => !p.folded)
+  // 只剩一人未弃牌 → 直接结束
+  if (alive.length <= 1) return true
+  // 所有未弃牌玩家都已行动，且非 all-in 的都跟到 currentBet → 本轮结束
+  const notAllIn = alive.filter((p) => !p.allIn)
+  const actedIds = Array.isArray(round.actedIds) ? round.actedIds : []
+  const caughtUp = notAllIn.every((p) => p.bet === round.currentBet)
+  if (!caughtUp) return false
+  return notAllIn.every((p) => actedIds.includes(p.id))
 }
