@@ -26,6 +26,7 @@ export function newRun({ character='ironclad', seed=null, ascension=0 }={}){
     gold: 99,
     floor: 0,
     act: 1,
+    rngState: rng.state,
     relics:[isIC?'burning_blood':'ring_of_the_snake'],
     potions:[],
     deck,
@@ -137,17 +138,39 @@ export function upgradeCardInDeck(run,uid){
 
 export function saveRun(run){
   try{
-    localStorage.setItem(SAVE_KEY, JSON.stringify({...run,rng:null,map:{...run.map,nodes:Array.from(run.map.nodes.entries())},visitedNodes:Array.from(run.visitedNodes)}))
+    const data={
+      character:run.character,ascension:run.ascension,
+      hp:run.hp,maxHp:run.maxHp,gold:run.gold,floor:run.floor,act:run.act,
+      rngState:run.rng.state,
+      relics:[...run.relics],potions:[...run.potions],
+      deck:run.deck.map(c=>({id:c.id,name:c.name,type:c.type,rarity:c.rarity,cost:c.cost,target:c.target,desc:c.desc,effects:c.effects?JSON.parse(JSON.stringify(c.effects)):{},upgrade:c.upgrade?JSON.parse(JSON.stringify(c.upgrade)):null,upgraded:!!c.upgraded,exhaust:!!c.exhaust,uid:c.uid})),
+      mapNodes:Array.from(run.map.nodes.entries()).map(([k,v])=>[k,{...v}]),
+      mapRoots:run.map.roots?[...run.map.roots]:[],
+      mapAct:run.map.act||1,
+      currentNodeId:run.currentNodeId,
+      visitedNodes:Array.isArray(run.visitedNodes)?run.visitedNodes:Array.from(run.visitedNodes),
+    }
+    localStorage.setItem(SAVE_KEY,JSON.stringify(data))
   }catch(e){}
 }
 export function loadRun(){
   try{
     const raw=localStorage.getItem(SAVE_KEY)
     if(!raw) return null
-    const obj=JSON.parse(raw)
-    obj.map.nodes=new Map(obj.map.nodes)
-    obj.visitedNodes=new Set(obj.visitedNodes)
-    obj.rng=createRng(Date.now()&0xffffffff)
+    const d=JSON.parse(raw)
+    if(!d.deck||!d.mapNodes)return null
+    const run={
+      character:d.character||'ironclad',
+      ascension:d.ascension||0,
+      hp:d.hp||80,maxHp:d.maxHp||80,gold:d.gold||99,
+      floor:d.floor||0,act:d.act||1,
+      rng:createRng(d.rngState||(Date.now()&0xffffffff)),
+      relics:d.relics||[],potions:d.potions||[],
+      deck:d.deck,
+      map:{nodes:new Map(d.mapNodes),roots:d.mapRoots||[],act:d.mapAct||1},
+      currentNodeId:d.currentNodeId,
+      visitedNodes:d.visitedNodes||[],
+    }
     return obj
   }catch(e){return null}
 }

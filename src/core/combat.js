@@ -1,266 +1,166 @@
-// 战斗引擎
-import { applyBuff, getBuff, tickBuffStart, tickBuffEnd, damageMultiplier, blockMultiplier, removeBuff, hasBuff, BUFFS } from './buffs.js'
+// 战斗引擎 v2 — 夜间迭代重写
+import { applyBuff, getBuff, hasBuff, removeBuff, damageMultiplier } from './buffs.js'
 
-export function createCombat({ player, enemies, relics=[], rng }){
-  // 敌人实例化
-  const enemyInstances = enemies.map((e,i)=>({
-    ...e,
-    instanceId: `${e.id}_${i}`,
-    hp: e.hp,
-    maxHp: e.hp,
-    block: 0,
-    buffs: {},
-    intent: null,
-    alive: true,
-  }))
-  const state = {
-    turn: 0,
-    energy: 3,
-    energyMax: 3,
-    playerBlock: 0,
-    handPile: [],
-    drawPile: rng ? rng.shuffle(player.deck.map(c=>({...c}))) : player.deck.map(c=>({...c})),
-    discardPile: [],
-    exhaustPile: [],
-    enemies: enemyInstances,
-    relics,
-    cardsPlayedThisTurn: 0,
-    attacksPlayedThisTurn: 0,
-    log: [],
-    over: null,
-    isPlayerTurn: true,
-  }
-  return state
+function playerView(s){return{name:'你',isPlayer:true,hp:s.playerHp,maxHp:s.playerMaxHp,buffs:s.playerBuffs||{}}}
+function syncPlayer(s,pv){s.playerHp=Math.max(0,pv.hp);s.playerBuffs=pv.buffs}
+function slog(s,m){if(s.log.length>80)s.log.shift();s.log.push(m)}
+
+export function createCombat({player,enemies,relics=[],rng}){
+  const ei=enemies.map((e,i)=>({...structuredClone(e),instanceId:e.id+'_'+i,hp:e.hp,maxHp:e.hp,block:0,buffs:{},intent:null,alive:true}))
+  return{turn:0,energy:3,energyMax:3,playerBlock:0,handPile:[],drawPile:[],discardPile:[],exhaustPile:[],enemies:ei,relics,cardsPlayedThisTurn:0,attacksPlayedThisTurn:0,log:[],over:null,isPlayerTurn:true,_rng:rng||null,_deckSource:(player.deck||[]).map(c=>({...c}))}
 }
-
-// 抽 N 张牌
-export function drawCards(state, n){
+export function initDeck(s){
+  const d=s._deckSource.map(c=>({...c}));const r=s._rng?()=>s._rng.next():Math.random
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[d[i],d[j]]=[d[j],d[i]]}
+  s.drawPile=d;s.discardPile=[];s.exhaustPile=[]
+}
+export function drawCards(s,n){
+  const r=s._rng?()=>s._rng.next():Math.random
   for(let i=0;i<n;i++){
-    if(state.handPile.length>=10) break
-    if(state.drawPile.length===0){
-      if(state.discardPile.length===0) break
-      state.drawPile = state.discardPile
-      state.discardPile = []
-      state.log.push('洗牌')
+    if(s.handPile.length>=10)break
+    if(s.drawPile.length===0){
+      if(s.discardPile.length===0)break
+      s.drawPile=s.discardPile;s.discardPile=[]
+      for(let j=s.drawPile.length-1;j>0;j--){const k=Math.floor(r()*(j+1));[s.drawPile[j],s.drawPile[k]]=[s.drawPile[k],s.drawPile[j]]}
+      slog(s,'洗牌')
     }
-    const card = state.drawPile.pop()
-    state.handPile.push(card)
+    const c=s.drawPile.pop();if(c)s.handPile.push(c)
   }
 }
-
-// 完整伤害管线
-export function dealDamage(state, source, target, amount, isAttack=true){
-  if(!target || target.hp<=0) return { dealt: 0, blocked: 0 }
-  let dmg = amount
-  if(isAttack){
-    const strBonus = getBuff(source,'strength')
-    if(strBonus>0 && source.isPlayer!==false) dmg += strBonus
-    else if(strBonus>0) dmg += strBonus
-    dmg *= damageMultiplier(source, target)
-  }
-  dmg = Math.max(0, Math.floor(dmg))
-  let blocked = 0
-  const tBlock = target.isPlayer ? state.playerBlock : (target.block||0)
-  if(tBlock>0){
-    blocked = Math.min(tBlock, dmg)
-    dmg -= blocked
-    if(target.isPlayer){ state.playerBlock -= blocked }
-    else { target.block -= blocked; if(target.block<0) target.block=0 }
-  }
-  // 无形：伤害降为1
-  if(hasBuff(target,'intangible') && dmg>1) dmg=1
-  if(dmg>0){
-    target.hp -= dmg
-    if(!target.isPlayer && target.hp<=0){
-      target.alive=false
-      state.log.push(`${target.name} 被击败！`)
-    }
-  }
-  return { dealt: dmg, blocked }
+export function dealDamageToEnemy(s,e,amt){
+  if(!e||!e.alive)return{dealt:0,blocked:0}
+  const pv=playerView(s);let d=Math.max(0,Math.floor(amt*damageMultiplier(pv,e)))
+  let b=0;if(e.block>0){b=Math.min(e.block,d);d-=b;e.block-=b}
+  if(hasBuff(e,'intangible')&&d>1)d=1
+  if(d>0){e.hp-=d;if(e.hp<=0){e.alive=false;slog(s,e.name+' 被击败！')}}
+  checkCombatEnd(s);return{dealt:d,blocked:b}
 }
-
-// 玩家获得格挡（考虑敏捷/脆弱）
-export function gainBlock(state, entity, base){
-  let b = base
-  if(entity?.isPlayer){
-    const dex = getBuff({buffs:{}},'dexterity') // placeholder
+export function dealDamageToPlayer(s,src,amt,isAtk=true){
+  const pv=playerView(s);if(pv.hp<=0)return{dealt:0,blocked:0}
+  let d=amt;if(isAtk)d*=damageMultiplier(src,pv);d=Math.max(0,Math.floor(d))
+  let b=0;if(s.playerBlock>0){b=Math.min(s.playerBlock,d);d-=b;s.playerBlock-=b}
+  if(hasBuff(pv,'intangible')&&d>1)d=1
+  if(d>0)pv.hp-=d
+  if(isAtk&&b<amt&&getBuff(pv,'thorns')>0){
+    const td=getBuff(pv,'thorns')
+    const inst=src.instanceId?s.enemies.find(e=>e.instanceId===src.instanceId):null
+    if(inst&&inst.alive){inst.hp-=td;if(inst.hp<=0){inst.alive=false;slog(s,inst.name+' 被荆棘击败！')}}
   }
-  const mult = blockMultiplier(entity||{})
-  b = Math.floor(b*mult)
-  if(entity?.isPlayer || !entity){ state.playerBlock += b }
-  else { entity.block=(entity.block||0)+b }
-  return b
+  syncPlayer(s,pv);checkCombatEnd(s);return{dealt:d,blocked:b}
 }
-
-// 回合开始
-export function startPlayerTurn(state){
-  state.turn++
-  state.energy = state.energyMax
-  state.cardsPlayedThisTurn = 0
-  state.attacksPlayedThisTurn = 0
-  state.log.push(`—— 第 ${state.turn} 回合 ——`)
-  // 玩家回合开始 buff 结算
-  const playerEntity = { name:'你', isPlayer:true, hp:state.playerHp, maxHp:state.playerMaxHp, buffs:state.playerBuffs||{} }
-  tickBuffStart(playerEntity)
-  state.playerBuffs = playerEntity.buffs
-  drawCards(state, 5)
+export function gainPlayerBlock(s,base){
+  const pv=playerView(s)
+  const dex=getBuff(pv,'dexterity');const fm=getBuff(pv,'frail')>0?0.75:1
+  const t=Math.max(0,Math.floor((base+Math.max(0,dex))*fm))
+  s.playerBlock+=t;return t
 }
-
-// 出牌
-export function playCard(state, handIndex, targetIdx=null){
-  if(!state.isPlayerTurn || state.over) return { ok:false, reason:'not_your_turn' }
-  const card = state.handPile[handIndex]
-  if(!card) return { ok:false, reason:'no_card' }
-  const cost = typeof card.cost==='number' ? card.cost : 0
-  if(cost > state.energy) return { ok:false, reason:'no_energy' }
-  if(card.effects?.unplayable) return { ok:false, reason:'unplayable' }
-  state.energy -= cost
-  state.handPile.splice(handIndex,1)
-  state.cardsPlayedThisTurn++
-  const fx = card.effects||{}
-  const target = targetIdx!=null ? state.enemies[targetIdx] : null
-  // 伤害
-  // AOE 处理：all_enemies 目标或 aoe 效果
-  const isAoe = card.target==='all_enemies' || fx.aoe
-  const targets = isAoe ? state.enemies.filter(e=>e.alive) : (target && target.alive ? [target] : [])
-  if(fx.damage != null && !fx.multi_damage){
-    const playerSrc = { name:'你', buffs:state.playerBuffs||{}, isPlayer:true }
-    const hits = fx.multi_hit||1
-    for(let i=0;i<hits;i++){
-      for(const t of targets) dealDamage(state, playerSrc, t, fx.damage)
-    }
+export function startPlayerTurn(s){
+  if(s.over)return
+  s.turn++;s.energy=s.energyMax;s.cardsPlayedThisTurn=0;s.attacksPlayedThisTurn=0
+  const pv=playerView(s);slog(s,'—— 第 '+s.turn+' 回合 ——')
+  const psn=getBuff(pv,'poison')
+  if(psn>0){pv.hp-=psn;removeBuff(pv,'poison',1);slog(s,'中毒：失去 '+psn+' HP')}
+  const brk=getBuff(pv,'berserk')
+  if(brk>0){s.energy+=brk;removeBuff(pv,'berserk',1);applyBuff(pv,'vulnerable',1)}
+  syncPlayer(s,pv);drawCards(s,5)
+}
+export function playCard(s,hi,ti=null){
+  if(!s.isPlayerTurn||s.over)return{ok:false,reason:'not_your_turn'}
+  const card=s.handPile[hi];if(!card)return{ok:false,reason:'no_card'}
+  const cost=typeof card.cost==='number'?card.cost:0
+  if(cost>s.energy)return{ok:false,reason:'no_energy'}
+  if(card.effects?.unplayable)return{ok:false,reason:'unplayable'}
+  s.energy-=cost;s.handPile.splice(hi,1);s.cardsPlayedThisTurn++
+  if(card.type==='attack')s.attacksPlayedThisTurn++
+  const fx=card.effects||{}
+  const isAoe=card.target==='all_enemies'||fx.aoe
+  const ts=isAoe?s.enemies.filter(e=>e.alive):(ti!=null&&s.enemies[ti]?.alive?[s.enemies[ti]]:[])
+  if(fx.damage!=null||fx.multi_damage!=null){
+    const ph=fx.multi_damage??fx.damage??0;const nh=fx.multi_hit||1
+    for(let h=0;h<nh;h++){for(const t of ts)dealDamageToEnemy(s,t,ph)}
   }
-  if(fx.multi_damage != null){
-    const playerSrc = { name:'你', buffs:state.playerBuffs||{}, isPlayer:true }
-    for(const d of Array(fx.multi_hit).fill(fx.multi_damage)){
-      for(const t of targets) dealDamage(state,playerSrc,t,d)
-    }
-  }
-  // 格挡
-  if(fx.block){
-    const dex = getBuff({buffs:state.playerBuffs||{}},'dexterity')
-    const total = fx.block + Math.max(0,dex)
-    state.playerBlock += total
-  }
-  // Buffs to self
-  if(fx.strength) applyBuff(getSelf(state),'strength',fx.strength)
-  if(fx.dexterity) applyBuff(getSelf(state),'dexterity',fx.dexterity)
-  if(fx.temp_strength) applyBuff(getSelf(state),'strength',fx.temp_strength)
-  // Debuffs to enemy
-  const applyToTargets=(k,n)=>{ for(const t of targets) applyBuff(t,k,n) }
-  if(fx.vulnerable) applyToTargets('vulnerable',fx.vulnerable)
-  if(fx.weak) applyToTargets('weak',fx.weak)
-  if(fx.frail) applyToTargets('frail',fx.frail)
-  if(fx.poison) applyToTargets('poison',fx.poison)
-  // All enemies debuff
-  if(fx.vulnerable_all) for(const e of state.enemies.filter(e=>e.alive)) applyBuff(e,'vulnerable',fx.vulnerable_all)
-  if(fx.weak_all) for(const e of state.enemies.filter(e=>e.alive)) applyBuff(e,'weak',fx.weak_all)
-  if(fx.frail_all) for(const e of state.enemies.filter(e=>e.alive)) applyBuff(e,'frail',fx.frail_all)
-  // Draw
-  if(fx.draw) drawCards(state,fx.draw)
-  // Exhaust / discard routing
-  if(fx.exhaust || card.exhaust){ state.exhaustPile.push(card) }
-  else { state.discardPile.push(card) }
-  checkCombatEnd(state)
-  return { ok:true }
+  if(fx.block)gainPlayerBlock(s,fx.block)
+  const pv=playerView(s)
+  if(fx.strength)applyBuff(pv,'strength',fx.strength)
+  if(fx.dexterity)applyBuff(pv,'dexterity',fx.dexterity)
+  if(fx.temp_strength)applyBuff(pv,'strength',fx.temp_strength)
+  if(fx.metallicize)applyBuff(pv,'metallicize',fx.metallicize)
+  if(fx.thorns)applyBuff(pv,'thorns',fx.thorns)
+  if(fx.regen)applyBuff(pv,'regen',fx.regen)
+  if(fx.plated_armor)applyBuff(pv,'plated_armor',fx.plated_armor)
+  if(fx.barricade)applyBuff(pv,'barricade',1)
+  if(fx.intangible)applyBuff(pv,'intangible',fx.intangible)
+  if(fx.heal){pv.hp=Math.min(pv.maxHp,pv.hp+fx.heal);slog(s,'回复 '+fx.heal+' 点生命')}
+  if(fx.gain_energy)s.energy+=fx.gain_energy
+  const at=(k,n)=>{for(const t of ts)applyBuff(t,k,n)}
+  if(fx.vulnerable)at('vulnerable',fx.vulnerable)
+  if(fx.weak)at('weak',fx.weak)
+  if(fx.frail)at('frail',fx.frail)
+  if(fx.poison)at('poison',fx.poison)
+  if(fx.vulnerable_all)for(const e of s.enemies.filter(e=>e.alive))applyBuff(e,'vulnerable',fx.vulnerable_all)
+  if(fx.weak_all)for(const e of s.enemies.filter(e=>e.alive))applyBuff(e,'weak',fx.weak_all)
+  if(fx.frail_all)for(const e of s.enemies.filter(e=>e.alive))applyBuff(e,'frail',fx.frail_all)
+  syncPlayer(s,pv)
+  if(fx.draw)drawCards(s,fx.draw)
+  if(fx.exhaust||card.exhaust)s.exhaustPile.push(card);else s.discardPile.push(card)
+  checkCombatEnd(s);return{ok:true}
 }
-
-function getSelf(state){
-  if(!state._self) state._self = { name:'你', isPlayer:true, buffs:{}, hp:99, maxHp:99 }
-  state._self.buffs = state.playerBuffs||{}
-  return state._self
+export function endPlayerTurn(s){
+  if(s.over)return
+  const pv=playerView(s)
+  const m=getBuff(pv,'metallicize');if(m>0)s.playerBlock+=m
+  const p=getBuff(pv,'plated_armor');if(p>0)s.playerBlock+=p
+  const rg=getBuff(pv,'regen');if(rg>0){pv.hp=Math.min(pv.maxHp,pv.hp+rg);removeBuff(pv,'regen',1)}
+  const rt=getBuff(pv,'ritual');if(rt>0)applyBuff(pv,'strength',rt)
+  if(!hasBuff(pv,'barricade'))s.playerBlock=0
+  while(s.handPile.length)s.discardPile.push(s.handPile.pop())
+  syncPlayer(s,pv);s.isPlayerTurn=false
 }
-
-// 弃手牌
-export function discardHand(state){
-  while(state.handPile.length){
-    state.discardPile.push(state.handPile.pop())
-  }
-}
-
-// 结束玩家回合
-export function endPlayerTurn(state){
-  if(state.over) return
-  discardHand(state)
-  const pe={name:'你',isPlayer:true,hp:state.playerHp,maxHp:state.playerMaxHp,buffs:state.playerBuffs||{}}
-  tickBuffEnd(pe)
-  state.playerBuffs=pe.buffs
-  // 敌人回合结束 buff 也结算
-  for(const e of state.enemies.filter(e=>e.alive)){ tickBuffEnd(e); tickDebuffDurationsE(e) }
-  tickDebuffDurations(pe)
-  state.playerBuffs=pe.buffs
-  state.isPlayerTurn=false
-}
-
-function tickDebuffDurationsE(t){
-  for(const k of ['weak','frail','vulnerable']){
-    if(hasBuff(t,k)) removeBuff(t,k,1)
-  }
-}
-function tickDebuffDurations(t){
-  for(const k of ['weak','frail','vulnerable']){
-    if(hasBuff(t,k)) removeBuff(t,k,1)
-  }
-}
-
-// 敌人执行行动
-export function enemyTakeTurn(state){
+export function enemyTakeTurn(s){
+  if(s.over)return[]
   const logs=[]
-  for(const e of state.enemies.filter(e=>e.alive)){
-    if(!e.intent) continue
-    const mv=e.intent
-    e.block=0
-    const src = { name:e.name, buffs:e.buffs||{}, isPlayer:false }
-    const tgt = { name:'你', isPlayer:true, buffs:state.playerBuffs||{}, hp:state.playerHp, maxHp:state.playerMaxHp }
-    if(mv.intentType==='attack'||mv.type==='attack'){
-      const times = mv.times||1
-      for(let i=0;i<times;i++){
-        const r=dealDamage(state,src,tgt,mv.dmg||mv.damage||5,true)
-        logs.push(`${e.name} 攻击造成 ${r.dealt} 伤害(格挡${r.blocked})`)
+  for(const e of s.enemies.filter(e=>e.alive)){
+    if(!e.intent)continue
+    const mv=e.intent;e.block=0
+    const src={name:e.name,buffs:e.buffs||{},isPlayer:false,instanceId:e.instanceId,hp:e.hp,maxHp:e.maxHp}
+    if(mv.intentType==='attack'||mv.type==='attack'||mv.type==='multi_attack'){
+      const nt=mv.times||1
+      for(let i=0;i<nt;i++){
+        const r=dealDamageToPlayer(s,src,mv.dmg||mv.damage||5,true)
+        logs.push(e.name+' 攻击造成 '+r.dealt+' 伤害(格挡'+r.blocked+')')
       }
-      state.playerHp=tgt.hp
-      state.playerBuffs=tgt.buffs
+      const inst=s.enemies.find(x=>x.instanceId===e.instanceId)
+      if(inst&&src.hp!==undefined)inst.hp=src.hp
     }
-    if(mv.block){ e.block=(e.block||0)+mv.block; logs.push(`${e.name} 获得 ${mv.block} 格挡`) }
-    if(mv.strength) applyBuff(e,'strength',mv.strength)
-    if(mv.ritual) applyBuff(e,'ritual',mv.ritual)
-    if(mv.weak) { applyBuff(tgt,'weak',mv.weak); state.playerBuffs=tgt.buffs }
-    if(mv.vulnerable){ applyBuff(tgt,'vulnerable',mv.vulnerable); state.playerBuffs=tgt.buffs }
-    if(mv.frail){ applyBuff(tgt,'frail',mv.frail); state.playerBuffs=tgt.buffs }
-    if(mv.poison) { applyBuff(tgt,'poison',mv.poison); state.playerBuffs=tgt.buffs }
-    tickDebuffDurationsE(e)
+    if(mv.block){e.block=(e.block||0)+mv.block;logs.push(e.name+' 获得 '+mv.block+' 格挡')}
+    if(mv.strength)applyBuff(e,'strength',mv.strength)
+    if(mv.ritual)applyBuff(e,'ritual',mv.ritual)
+    const pv=playerView(s)
+    if(mv.weak){applyBuff(pv,'weak',mv.weak);syncPlayer(s,pv)}
+    if(mv.vulnerable){applyBuff(pv,'vulnerable',mv.vulnerable);syncPlayer(s,pv)}
+    if(mv.frail){applyBuff(pv,'frail',mv.frail);syncPlayer(s,pv)}
+    if(mv.poison){applyBuff(pv,'poison',mv.poison);syncPlayer(s,pv)}
+    for(const k of['weak','frail','vulnerable']){if(hasBuff(e,k))removeBuff(e,k,1)}
   }
-  // 检查玩家死亡
-  if(state.playerHp<=0){ state.over='lose'; return logs }
-  // 新回合开始
-  state.isPlayerTurn=true
-  startPlayerTurn(state)
-  // 为存活敌人选择新意图
-  for(const e of state.enemies.filter(e=>e.alive)){
-    e.intent = pickEnemyIntent(e)
-  }
-  checkCombatEnd(state)
-  return logs
+  if(s.playerHp<=0){s.over='lose';slog(s,'你被击败了……');return logs}
+  s.isPlayerTurn=true;startPlayerTurn(s)
+  for(const e of s.enemies.filter(e=>e.alive)){e.intent=pickIntent(e)}
+  checkCombatEnd(s);return logs
 }
-
-// 简单的敌人意图选择（循环 moves 的 keys）
-function pickEnemyIntent(enemy){
-  const moveIds=Object.keys(enemy.moves||{})
-  if(moveIds.length===0) return null
-  const pickId=moveIds[Math.floor(Math.random()*moveIds.length)]
-  const m=enemy.moves[pickId]
-  return { moveId:pickId, ...m, type:m.intent }
+function pickIntent(en){
+  const ids=Object.keys(en.moves||{});if(ids.length===0)return null
+  const pid=ids[Math.floor(Math.random()*ids.length)];const m=en.moves[pid]
+  return{moveId:pid,name:m.name||'',intentType:m.intent,type:m.intent,
+    dmg:m.dmg,times:m.times,block:m.block,strength:m.strength,ritual:m.ritual,
+    weak:m.weak,vulnerable:m.vulnerable,frail:m.frail,poison:m.poison}
 }
-
-export function initIntents(state){
-  for(const e of state.enemies.filter(e=>e.alive)){
-    e.intent = pickEnemyIntent(e)
-  }
+export function initIntents(s){
+  initDeck(s)
+  for(const e of s.enemies.filter(e=>e.alive)){e.intent=pickIntent(e)}
 }
-
-export function checkCombatEnd(state){
-  if(state.over) return state.over
-  if(state.enemies.every(e=>!e.alive)){ state.over='win'; return 'win' }
-  if(state.playerHp<=0){ state.over='lose'; return 'lose' }
+export function checkCombatEnd(s){
+  if(s.over)return s.over
+  if(s.enemies.every(e=>!e.alive)){s.over='win';slog(s,'战斗胜利！');return'win'}
+  if(s.playerHp<=0){s.over='lose';slog(s,'你被击败了……');return'lose'}
   return null
 }

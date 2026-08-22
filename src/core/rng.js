@@ -27,6 +27,12 @@ export function createRng(seed) {
     chance(p) {
       return rng.next() < p;
     },
+    get state() {
+      return s;
+    },
+    set state(v) {
+      s = v >>> 0;
+    },
   };
   return rng;
 }
