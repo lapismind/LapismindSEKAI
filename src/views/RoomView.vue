@@ -6,6 +6,7 @@ import { useLobbyStore } from '../stores/lobbyStore'
 import PlayerSeat from '../components/PlayerSeat.vue'
 import BetPanel from '../components/BetPanel.vue'
 import GameHelp from '../components/GameHelp.vue'
+import Card from '../components/Card.vue'
 import { avatarUrl } from '../game/avatars'
 
 const route = useRoute()
@@ -255,10 +256,7 @@ function seatHand(playerId) {
               </div>
             </div>
             <div v-if="!h.folded" class="flex gap-0.5">
-              <span v-for="(c, i) in h.cards.filter(c => !c.hidden)" :key="i"
-                class="flex h-7 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-slate-900">
-                {{ c.rank === 14 ? 'A' : c.rank === 13 ? 'K' : c.rank === 12 ? 'Q' : c.rank === 11 ? 'J' : c.rank }}
-              </span>
+              <Card v-for="(c, i) in h.cards" :key="i" :card="{ ...c, hidden: false }" size="sm" />
             </div>
           </div>
         </div>

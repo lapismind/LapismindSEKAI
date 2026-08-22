@@ -543,6 +543,7 @@ export class ShowhandRoom {
         bet: p.bet,
         // 明牌：只发公开的牌
         publicCards: (p.cards || []).filter((c) => !c.hidden),
+        cardCount: (p.cards || []).length,
       })),
     }
   }

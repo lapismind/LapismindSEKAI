@@ -13,10 +13,20 @@ const props = defineProps({
 
 const avatar = computed(() => avatarUrl(props.player.avatarId) ?? null)
 
-// 展示的牌：观众或自己看完整牌，否则只显示明牌
+// 展示的牌：
+//   自己 / 观众上帝视角：全部翻开（包括暗牌）
+//   看别人：明牌翻开 + 暗牌显示牌背占位
 const displayCards = computed(() => {
-  if (props.spectate || props.isMe) return props.hand
-  return (props.player.publicCards || []).map((c) => ({ ...c, hidden: false }))
+  if (props.spectate || props.isMe) {
+    return (props.hand || []).map((c) => ({ ...c, hidden: false }))
+  }
+  const pub = props.player.publicCards || []
+  const total = props.player.cardCount ?? pub.length
+  const cards = pub.map((c) => ({ ...c, hidden: false }))
+  for (let i = 0; i < total - pub.length; i++) {
+    cards.push({ suit: '', rank: 0, hidden: true })
+  }
+  return cards
 })
 
 const betLabel = computed(() => {
