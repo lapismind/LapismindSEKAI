@@ -7,7 +7,7 @@
  * - 一轮结束：所有未弃牌且未 all-in 的玩家都跟到 currentBet，或只剩 1 人未弃牌
  * - 已 all-in 的玩家跳过轮转
  *
- * round 对象：{ currentPlayer, currentBet, lastRaiser, turnCount }
+ * round 对象：{ currentPlayer, currentBet, lastRaiser, turnCount, actedIds }
  */
 
 export function createBettingRound(players, firstPlayerId, currentBet = 0) {
@@ -16,6 +16,7 @@ export function createBettingRound(players, firstPlayerId, currentBet = 0) {
     currentBet,
     lastRaiser: null,
     turnCount: 0,
+    actedIds: [],
   }
 }
 
@@ -46,12 +47,14 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
   if (round.currentPlayer !== playerId) return { valid: false, error: '不是你的回合' }
   if (player.folded) return { valid: false, error: '已弃牌' }
   if (player.allIn) return { valid: false, error: '已全下' }
+  if (!Array.isArray(round.actedIds)) round.actedIds = []
 
   const need = round.currentBet - player.bet // 本轮还需跟的差额
 
   if (action === 'fold') {
     player.folded = true
     round.turnCount++
+    round.actedIds.push(playerId)
     round.currentPlayer = nextPlayer(players, playerId)
     return { valid: true, round }
   }
@@ -62,6 +65,7 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
     player.bet += toPay
     if (player.chips === 0) player.allIn = true
     round.turnCount++
+    round.actedIds.push(playerId)
     round.currentPlayer = nextPlayer(players, playerId)
     return { valid: true, round }
   }
@@ -74,11 +78,12 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
     if (toPay > player.chips) return { valid: false, error: '筹码不足' }
     player.chips -= toPay
     player.bet = amount
-    if (player.chips === 0) player.allIn = true
     round.currentBet = amount
+    if (player.chips === 0) player.allIn = true
     round.lastRaiser = playerId
     // 加注后：从下家开始，所有未跟到新注额的人都要再行动
     round.turnCount++
+    round.actedIds = [playerId]
     round.currentPlayer = nextPlayer(players, playerId)
     return { valid: true, round }
   }
@@ -91,6 +96,9 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
     if (player.bet > round.currentBet) {
       round.currentBet = player.bet
       round.lastRaiser = playerId
+      round.actedIds = [playerId]
+    } else {
+      round.actedIds.push(playerId)
     }
     round.turnCount++
     round.currentPlayer = nextPlayer(players, playerId)
@@ -104,13 +112,10 @@ export function advanceBet(round, players, playerId, action, { amount } = {}) {
 export function bettingRoundDone(round, players) {
   const active = activePlayers(players)
   if (active.length <= 1) return true
-  // 所有活跃玩家都跟到 currentBet
+  const actedIds = Array.isArray(round.actedIds) ? round.actedIds : []
+  // 所有活跃玩家都行动过，并且都跟到 currentBet。
   const allCaughtUp = active.every((p) => p.bet === round.currentBet)
   if (!allCaughtUp) return false
-  // 且轮回到最后加注人之后（表示一圈都跟完了）
-  if (round.lastRaiser === null) {
-    // 无人加注：从 firstPlayer 轮完一圈即可，用 turnCount >= 活跃人数
-    return round.turnCount >= active.length
-  }
-  return round.currentPlayer === round.lastRaiser
+
+  return active.every((p) => actedIds.includes(p.id))
 }

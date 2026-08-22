@@ -71,3 +71,66 @@ result = advanceBet(round, players, 'a', 'raise', { amount: 5 }) // 加注必须
 assert.equal(result.valid, false, '加注额必须大于当前注额')
 
 console.log('betting tests passed')
+
+// --- 弃牌不能缩短“无人加注”的行动圈 ---
+{
+  const fourPlayers = () => [
+    { id: 'p1', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p2', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p3', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p4', chips: 100, bet: 10, folded: false, allIn: false },
+  ]
+
+  players = fourPlayers()
+  round = createBettingRound(players, 'p1', 10)
+  assert.equal(advanceBet(round, players, 'p1', 'fold').valid, true)
+  assert.equal(advanceBet(round, players, 'p2', 'call').valid, true)
+  assert.equal(advanceBet(round, players, 'p3', 'call').valid, true)
+
+  // p1 弃牌后活跃人数变成 3，但 p4 还没有行动。
+  assert.equal(bettingRoundDone(round, players), false, 'p4 未行动，轮未结束')
+  assert.equal(round.currentPlayer, 'p4', '仍轮到 p4')
+
+  assert.equal(advanceBet(round, players, 'p4', 'call').valid, true)
+  assert.equal(bettingRoundDone(round, players), true, '所有活跃玩家行动后结束')
+}
+
+// --- 加注重置已行动名单 ---
+{
+  const raisePlayers = () => [
+    { id: 'p1', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p2', chips: 100, bet: 10, folded: false, allIn: false },
+  ]
+
+  players = raisePlayers()
+  round = createBettingRound(players, 'p1', 10)
+  assert.equal(advanceBet(round, players, 'p1', 'call').valid, true)
+  assert.deepEqual(round.actedIds, ['p1'], 'p1 行动后记录 p1')
+
+  assert.equal(advanceBet(round, players, 'p2', 'raise', { amount: 30 }).valid, true)
+  assert.deepEqual(round.actedIds, ['p2'], '加注后只保留加注者')
+  assert.equal(bettingRoundDone(round, players), false, 'p1 需要再跟新注额')
+
+  assert.equal(advanceBet(round, players, 'p1', 'call').valid, true)
+  assert.deepEqual(round.actedIds, ['p2', 'p1'], '继续追加已行动玩家')
+  assert.equal(bettingRoundDone(round, players), true, '两人都跟到 30 后结束')
+}
+
+// --- 全员无加注跟注后正常结束 ---
+{
+  const fourPlayers = () => [
+    { id: 'p1', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p2', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p3', chips: 100, bet: 10, folded: false, allIn: false },
+    { id: 'p4', chips: 100, bet: 10, folded: false, allIn: false },
+  ]
+
+  players = fourPlayers()
+  round = createBettingRound(players, 'p1', 10)
+  for (const playerId of ['p1', 'p2', 'p3', 'p4']) {
+    assert.equal(advanceBet(round, players, playerId, 'call').valid, true)
+  }
+
+  assert.deepEqual(round.actedIds, ['p1', 'p2', 'p3', 'p4'])
+  assert.equal(bettingRoundDone(round, players), true, '全员跟到相同 bet')
+}
