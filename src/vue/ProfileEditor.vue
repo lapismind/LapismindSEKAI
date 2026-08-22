@@ -13,27 +13,25 @@ defineProps({
 <template>
   <div class="flex flex-col gap-3">
     <div>
-      <label class="mb-1 block text-xs text-slate-500">昵称</label>
+      <label class="lk-field">昵称</label>
       <input
         :value="model.nickname"
         maxlength="12"
         placeholder="给自己取个名字"
-        class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-brand-500"
+        class="lk-input"
         @input="model = { ...model, nickname: $event.target.value }"
       />
     </div>
 
     <div>
-      <label class="mb-1.5 block text-xs text-slate-500">选择头像</label>
-      <div class="grid grid-cols-7 gap-2">
+      <label class="lk-field">选择头像</label>
+      <div class="lk-grid">
         <button
           v-for="a in avatarChoices"
           :key="a.id"
           type="button"
-          class="relative aspect-square overflow-hidden rounded-full border-2 transition"
-          :class="String(model.avatarId) === String(a.id)
-            ? 'border-brand-400 ring-2 ring-brand-400/40'
-            : 'border-slate-700 hover:border-slate-500'"
+          class="lk-avatar"
+          :class="{ 'is-active': String(model.avatarId) === String(a.id) }"
           @click="model = { ...model, avatarId: a.id }"
         >
           <img :src="a.url" :alt="'头像' + a.id" class="h-full w-full object-cover" />
@@ -42,3 +40,60 @@ defineProps({
     </div>
   </div>
 </template>
+
+<style scoped>
+.lk-field {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.lk-input {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: #fff;
+  outline: none;
+}
+
+.lk-input:focus {
+  border-color: #8888cc;
+}
+
+.lk-grid {
+  margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.lk-avatar {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 9999px;
+  border: 2px solid #334155;
+  transition: border-color 0.15s ease;
+  padding: 0;
+  cursor: pointer;
+}
+
+.lk-avatar:hover {
+  border-color: #64748b;
+}
+
+.lk-avatar.is-active {
+  border-color: #9999cf;
+  box-shadow: 0 0 0 2px rgba(136, 136, 204, 0.4);
+}
+
+.lk-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+</style>
