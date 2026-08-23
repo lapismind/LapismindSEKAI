@@ -1,0 +1,76 @@
+:root{
+  --bg0:#0a0a0d; --bg1:#14121a; --bg2:#1d1a26;
+  --gold:#d9b46a; --gold2:#f3dda6; --ink:#e8e0cf;
+  --hp-red:#c0392b; --hp-red2:#e05a49;
+  --block-blue:#8fb6d9; --poison-green:#4caf50;
+  --attack-red:#c0392b; --skill-green:#3f9b5a; --power-purple:#7d4fbb;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg0)}
+body{color:var(--ink);font-family:"Noto Serif SC","Songti SC",serif;font-size:15px;user-select:none}
+#app{height:100%}
+
+.screen{position:absolute;inset:0;display:flex;flex-direction:column}
+
+.card{
+  width:150px;height:210px;border-radius:8px;padding:10px;
+  background:linear-gradient(165deg,#2a2333,#1a1622);
+  border:2px solid #4a4050;color:var(--ink);
+  display:flex;flex-direction:column;position:relative;
+  transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease;
+  cursor:pointer;
+}
+.card:hover{transform:translateY(-10px) scale(1.06);box-shadow:0 12px 28px rgba(0,0,0,.6)}
+.card.type-attack{border-color:var(--attack-red)}
+.card.type-skill{border-color:var(--skill-green)}
+.card.type-power{border-color:var(--power-purple)}
+.card.selected{outline:3px solid var(--gold);box-shadow:0 0 16px var(--gold)}
+.card.disabled{opacity:.45;cursor:not-allowed}
+.card .cost{
+  position:absolute;top:-10px;left:-10px;width:32px;height:32px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#ffe9a8,#c99a2e);
+  color:#000;display:grid;place-items:center;font-weight:700;font-size:16px;
+  border:2px solid #fff3cf;box-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+.card .name{font-weight:700;font-size:14px;text-align:center;margin-top:14px;color:var(--gold2);letter-spacing:1px}
+.card .type-bar{width:100%;height:3px;margin:6px auto;border-radius:2px}
+.card.type-attack .type-bar{background:var(--attack-red)}
+.card.type-skill .type-bar{background:var(--skill-green)}
+.card.type-power .type-bar{background:var(--power-purple)}
+.card .desc{flex:1;font-size:11px;line-height:1.55;color:#cfc7b5;overflow:hidden}
+.card .upgraded-badge{position:absolute;top:-6px;right:-6px;background:#4caf50;color:white;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-size:11px}
+
+.btn{
+  background:linear-gradient(180deg,#3a2c1c,#241b12);
+  border:1px solid var(--gold);color:var(--gold2);
+  padding:10px 24px;border-radius:5px;font-size:15px;letter-spacing:2px;
+  cursor:pointer;transition:.15s;font-family:inherit;
+}
+.btn:hover{background:linear-gradient(180deg,#54401f,#33261a);box-shadow:0 0 14px rgba(217,180,106,.35)}
+.btn.ghost{border-color:#4a4034;color:#a2977f}
+.btn.ghost:hover{border-color:var(--gold);color:var(--gold2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+.hp-bar{position:relative;height:20px;background:#241a17;border:1px solid #4d3a2c;border-radius:3px;overflow:hidden}
+.hp-fill{height:100%;background:linear-gradient(90deg,var(--hp-red),var(--hp-red2));transition:width .35s ease}
+.hp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
+
+.orb-energy{
+  width:44px;height:44px;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%,#ffe9a8,#c99a2e);
+  display:grid;place-items:center;font-weight:800;color:#000;font-size:18px;
+  border:2px solid #fff3cf;box-shadow:0 0 14px rgba(255,220,140,.5);
+}
+
+.block-shield{
+  width:34px;height:38px;background:linear-gradient(160deg,#a8cbe8,#6b93b8);
+  clip-path:polygon(50% 0%,100% 15%,100% 65%,50% 100%,0% 65%,0% 15%);
+  display:grid;place-items:center;font-weight:700;color:#12253a;font-size:13px;
+}
+
+.tooltip{
+  position:absolute;background:#14121a;border:1px solid var(--gold);color:var(--ink);
+  padding:8px 12px;border-radius:5px;font-size:12px;z-index:999;max-width:260px;
+  box-shadow:0 6px 20px rgba(0,0,0,.6);
+}
