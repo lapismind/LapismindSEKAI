@@ -1,0 +1,22 @@
+name = "card-game"
+main = "src/worker/index.js"
+compatibility_date = "2024-09-23"
+
+# 前端静态资源（Vite 构建产物 dist/）
+[assets]
+directory = "./dist"
+
+# 牌局房间：每桌一个 DO 实例，按房间码命名
+[[durable_objects.bindings]]
+name = "GAME_ROOM"
+class_name = "GameRoom"
+
+# 大厅：全局单例 DO
+[[durable_objects.bindings]]
+name = "LOBBY"
+class_name = "Lobby"
+
+# 首次部署必须注册 DO 类（免费计划使用 SQLite 存储后端）
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom", "Lobby"]
