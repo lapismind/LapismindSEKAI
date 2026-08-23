@@ -90,7 +90,7 @@
 ## 7. 部署
 
 ```sh
-cd D:\cloudflareGame\blog
+cd D:\LapismindSEKAI\blog
 npm run build        # 产物在 dist/（含 public 下所有资源）
 npx wrangler deploy  # 或 wrangler pages deploy dist
 ```

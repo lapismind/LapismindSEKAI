@@ -1,6 +1,6 @@
 # card-game 错误记忆
 
-> 供本项目及 D:\cloudflareGame 下其他项目复用。跨项目通用教训已提炼到 D:\tianxunruida\docs\通用错误记忆库.md。
+> 供本项目及 D:\LapismindSEKAI 下其他项目复用。跨项目通用教训已提炼到 D:\tianxunruida\docs\通用错误记忆库.md。
 
 ## 2026-08-14
 

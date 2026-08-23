@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from PIL import Image, ImageDraw
 import os, math
-d = r'D:/cloudflareGame/blog/public/cursors'
+d = r'D:/LapismindSEKAI/blog/public/cursors'
 files = sorted([f for f in os.listdir(d) if f.startswith('preview-') and f.endswith('.png')])
 cols = 4
 cell_w, cell_h = 72, 92

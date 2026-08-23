@@ -33,7 +33,7 @@ window.addEventListener('astro:after-swap', cleanupStaleIntro);
 
 说起来，这个站最早真的只是玩玩。
 
-qmzhj.top 这个域名注册了很久，本地对应 D:\cloudflareGame 这个文件夹，里面扔着几个写着玩的小游戏，一股脑部署在 Cloudflare 上。页面能用，仅此而已，我从没觉得它需要多好看。
+qmzhj.top 这个域名注册了很久，本地对应 D:\LapismindSEKAI 这个文件夹，里面扔着几个写着玩的小游戏，一股脑部署在 Cloudflare 上。页面能用，仅此而已，我从没觉得它需要多好看。
 
 转折是有一天刷到了 [rainzt.cn](https://rainzt.cn/)。同样是个人站，人家的排版、动效、整体质感完全不是一个量级。我把自己的页面打开并排放着看，越看越觉得简陋。当时心里就一个念头：本来只是随便搞搞，但现在有野心了。
 

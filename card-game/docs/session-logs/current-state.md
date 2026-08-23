@@ -23,7 +23,7 @@
 
 ## 如何继续
 ```
-cd D:\cloudflareGame\card-game
+cd D:\LapismindSEKAI\card-game
 npx wrangler dev   # 本地联调
 npx wrangler deploy  # 部署上线
 ```

@@ -5,7 +5,7 @@
 
 ## 日常发布流程
 
-写完/改完文章后，在 `D:\cloudflareGame\blog` 目录执行：
+写完/改完文章后，在 `D:\LapismindSEKAI\blog` 目录执行：
 
 ```powershell
 npm run build        # Astro 构建到 dist/
@@ -62,8 +62,8 @@ A: 检查文件是否放在 `src/pages/` 下，路由基于文件路径自动生
 
 ## 相关项目
 
-- 博客仓库：`D:\cloudflareGame\blog`
+- 博客仓库：`D:\LapismindSEKAI\blog`
 - 海龟汤：https://soup.qmzhj.top（见 `turtle-soup-launch.md`）
 - 梭哈：https://showhand.qmzhj.top（见 `showhand-launch.md`）
-- 共享文档目录：`D:\cloudflareGame\docs`
+- 共享文档目录：`D:\LapismindSEKAI\docs`
 

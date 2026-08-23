@@ -1,6 +1,6 @@
 # 游戏项目部署指南（通用）
 
-> 适用范围：`D:\cloudflareGame` 下所有联机游戏（turtle-soup、showhand、abracadawhat、未来的新游戏）
+> 适用范围：`D:\LapismindSEKAI` 下所有联机游戏（turtle-soup、showhand、abracadawhat、未来的新游戏）
 > 架构：Vue3 + Vite 前端，Cloudflare Worker + Durable Objects 后端，绑定 `*.qmzhj.top` 子域名
 > 域名规范见 [DOMAIN.md](./DOMAIN.md)，大厅层复用见 [LOBBY_KIT_GUIDE.md](./LOBBY_KIT_GUIDE.md)
 
@@ -114,7 +114,7 @@ npm run deploy
 
 ### 6. 接入博客作品集
 
-游戏本体上线后，在博客里露出需要三处（仓库 `D:\cloudflareGame\blog`）：
+游戏本体上线后，在博客里露出需要三处（仓库 `D:\LapismindSEKAI\blog`）：
 
 1. `src/data/projects.ts`：games 数组加条目，status 用 `online` 或 `developing`
 2. `src/pages/projects/<slug>.astro`：详情页，参照 turtle-soup 或 showhand 页面结构
