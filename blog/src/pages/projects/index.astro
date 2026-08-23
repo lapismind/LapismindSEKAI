@@ -1,0 +1,175 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import SoupLobby from '../../assets/soup-lobby.png';
+import { SITE_TITLE } from '../../consts';
+import { games } from '../../data/projects';
+
+const projectImages: Record<string, typeof SoupLobby> = {
+	'turtle-soup': SoupLobby,
+};
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`游戏作品 - ${SITE_TITLE}`} description="Lapismind 的个人游戏作品" />
+		<style>
+			.page-head {
+				margin-bottom: 3rem;
+			}
+			.page-head p.lead {
+				color: var(--muted);
+				font-size: 1.08rem;
+				max-width: 42em;
+				margin: 0;
+			}
+			.card-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+				gap: 1.6rem;
+			}
+			.project-card {
+				display: flex;
+				flex-direction: column;
+				background: var(--glass-bg);
+				backdrop-filter: blur(12px) saturate(1.1);
+				-webkit-backdrop-filter: blur(12px) saturate(1.1);
+				border: 1px solid var(--line);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-sm);
+				text-decoration: none;
+				overflow: hidden;
+				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+					box-shadow 0.3s ease, border-color 0.3s ease;
+			}
+			.project-card:hover {
+				transform: translateY(-6px);
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-lg), 0 0 0 1px var(--primary-soft);
+			}
+			.card-media {
+				position: relative;
+				aspect-ratio: 16 / 8;
+				overflow: hidden;
+				background: var(--primary-ghost);
+			}
+			.card-media :global(img) {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+			}
+			.project-card:hover .card-media :global(img) {
+				transform: scale(1.06);
+			}
+			.card-media-fallback {
+				display: grid;
+				place-items: center;
+				height: 100%;
+				background: var(--gradient);
+				color: #fff;
+				font-size: 3rem;
+				font-weight: 700;
+			}
+			.card-body {
+				padding: 1.3rem 1.5rem 1.5rem;
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+			}
+			.card-head {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+				flex-wrap: wrap;
+				margin-bottom: 0.35rem;
+			}
+			.card-head h2 {
+				margin: 0;
+				font-size: 1.25rem;
+			}
+			.card-subtitle {
+				margin: 0 0 0.55rem;
+				font-size: 0.85rem;
+				color: var(--primary);
+				font-family: var(--font-mono);
+			}
+			.card-desc {
+				margin: 0 0 1.1rem;
+				font-size: 0.92rem;
+				color: var(--ink-soft);
+				line-height: 1.7;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+			.tech {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.45rem;
+				margin-top: auto;
+			}
+			.more-note {
+				margin-top: 2.5rem;
+				padding: 1.1rem 1.4rem;
+				border-radius: var(--radius);
+				border: 1px dashed var(--line-strong);
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+			.more-note a {
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container page-main">
+			<header class="page-head reveal">
+				<p class="eyebrow">stage select · games</p>
+				<h1>游戏作品</h1>
+				<p class="lead">
+					这是我作为独立开发者的个人作品——每个游戏都是一次"把点子做成能玩的东西"的冒险。
+				</p>
+			</header>
+			<div class="card-grid">
+				{
+					games.map((p, i) => (
+						<a class="project-card reveal" style={`--reveal-delay:${i * 90}ms`} href={`/projects/${p.slug}/`}>
+							<div class="card-media">
+								{projectImages[p.slug] ? (
+									<Image src={projectImages[p.slug]} alt={`${p.name} 截图`} />
+								) : (
+									<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
+								)}
+							</div>
+							<div class="card-body">
+								<div class="card-head">
+									<h2>{p.name}</h2>
+									<span class={`status-badge status-${p.status}`}>
+										{p.status === 'online' ? 'online' : '开发中'}
+									</span>
+								</div>
+								<p class="card-subtitle">{p.subtitle}</p>
+								<p class="card-desc">{p.description}</p>
+								<div class="tech">
+									{p.tech.map((t) => <span class="tag">{t}</span>)}
+								</div>
+							</div>
+						</a>
+					))
+				}
+			</div>
+			<p class="more-note reveal">
+				更多游戏正在开发中，敬请期待。工作中的 AI 学习平台项目在
+				<a href="/ai/">AI 平台</a> 栏目。
+			</p>
+		</main>
+		<Footer />
+	</body>
+</html>

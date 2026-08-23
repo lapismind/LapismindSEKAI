@@ -1,0 +1,115 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE } from '../../consts';
+import { games } from '../../data/projects';
+
+const project = games.find((p) => p.slug === 'card-game')!;
+const { name, subtitle, description, tech, status } = project;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+			.page-head {
+				margin-bottom: 2.6rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
+			}
+			.badge {
+				display: inline-block;
+				font-size: 0.78rem;
+				font-family: var(--font-mono);
+				padding: 0.3em 1em;
+				border-radius: 999px;
+				background: oklch(0.92 0.08 85);
+				color: oklch(0.5 0.12 70);
+				font-weight: 600;
+				letter-spacing: 0.08em;
+			}
+			h2 {
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+			.notice {
+				padding: 1.2em 1.4em;
+				border-radius: var(--radius);
+				background: var(--primary-ghost);
+				border: 1px solid var(--primary-soft);
+				color: var(--ink-soft);
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<a class="back-link" href="/projects/">← 返回作品集</a>
+			<header class="page-head reveal">
+				<p class="eyebrow">game · wip</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class="badge">开发中</span>
+			</header>
+
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<p>{description}</p>
+			</section>
+
+			<section class="reveal">
+				<div class="notice">
+					该项目正在开发中，技术架构与海龟汤一致（WebSocket + Durable Objects），功能与截图后续补充。
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>技术栈</h2>
+				<div class="tech-list">
+					{tech.map((t) => (
+						<span class="tag">{t}</span>
+					))}
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

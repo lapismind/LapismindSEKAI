@@ -1,0 +1,71 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`404 - ${SITE_TITLE}`} description="页面不存在" />
+		<style>
+			.notfound {
+				text-align: center;
+				padding: 6rem 0 4rem;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+			}
+			.code {
+				font-family: var(--font-mono);
+				font-size: clamp(4rem, 2rem + 10vw, 8rem);
+				font-weight: 700;
+				line-height: 1;
+				letter-spacing: 0.02em;
+				background: var(--gradient);
+				-webkit-background-clip: text;
+				background-clip: text;
+				color: transparent;
+				text-shadow: 0 20px 60px oklch(0.654 0.1 var(--hue-accent) / 0.25);
+			}
+			.tip {
+				margin: 2rem 0 0.3rem;
+				font-size: 1.25rem;
+				font-weight: 700;
+				color: var(--ink);
+			}
+			.sub {
+				margin: 0 0 2.2rem;
+				color: var(--muted);
+				max-width: 30em;
+			}
+			.actions {
+				display: flex;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				justify-content: center;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container page-main">
+			<section class="notfound reveal">
+				<p class="eyebrow">error · 404</p>
+				<p class="code" aria-hidden="true">404</p>
+				<p class="tip">这条路还没铺好</p>
+				<p class="sub">
+					你访问的页面不存在，或者它被我挪走了。
+					<br />
+					回首页看看作品和博客吧。
+				</p>
+				<div class="actions">
+					<a class="btn btn-primary" href="/">回到首页 <span aria-hidden="true">→</span></a>
+					<a class="btn btn-ghost" href="/blog/">看看博客</a>
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

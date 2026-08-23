@@ -1,0 +1,324 @@
+---
+import { Image } from 'astro:assets';
+import type { CollectionEntry } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import Header from '../components/Header.astro';
+
+type Props = CollectionEntry<'blog'>['data'] & {
+	readingTime?: number;
+};
+
+const { title, description, pubDate, updatedDate, heroImage, readingTime } = Astro.props;
+---
+
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={title} description={description} />
+		<style>
+			.article-head {
+				text-align: center;
+				max-width: 46em;
+				margin: 0 auto 2.5rem;
+				padding-top: 2rem;
+			}
+			.article-head .eyebrow {
+				justify-content: center;
+			}
+			.article-head .meta {
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+				margin: 0 0 1rem;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				gap: 0.6rem;
+				flex-wrap: wrap;
+			}
+			.article-head .meta .dot {
+				width: 3px;
+				height: 3px;
+				border-radius: 50%;
+				background: var(--line-strong);
+			}
+			.article-head .meta time {
+				white-space: nowrap;
+			}
+			.article-head h1 {
+				margin: 0 0 1rem;
+				line-height: 1.25;
+			}
+			.article-head .desc {
+				color: var(--ink-soft);
+				font-size: 1.05rem;
+				margin: 0 auto;
+				max-width: 32em;
+			}
+			.last-updated-on {
+				display: block;
+				width: 100%;
+				margin-top: 0.4em;
+				font-style: italic;
+				color: var(--muted);
+				font-size: 0.85rem;
+			}
+			.hero-image {
+				margin: 0 0 3rem;
+			}
+			.hero-image :global(img) {
+				display: block;
+				width: 100%;
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-md);
+				object-fit: cover;
+			}
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.4rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+
+			/* 正文 + 目录双栏 */
+			.article-layout {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) 230px;
+				gap: 3rem;
+				align-items: start;
+			}
+			.article-main {
+				min-width: 0;
+			}
+			.toc {
+				position: sticky;
+				top: calc(64px + 2rem);
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				background: var(--glass-bg);
+				backdrop-filter: blur(14px) saturate(1.15);
+				-webkit-backdrop-filter: blur(14px) saturate(1.15);
+				box-shadow: var(--shadow-sm);
+				padding: 1.1rem 1.15rem;
+				max-height: calc(100vh - 120px);
+				overflow-y: auto;
+			}
+			.toc-label {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				font-family: var(--font-mono);
+				font-size: 0.72rem;
+				font-weight: 600;
+				letter-spacing: 0.2em;
+				text-transform: uppercase;
+				color: var(--muted);
+				margin: 0 0 0.7rem;
+			}
+			.toc-nav {
+				display: flex;
+				flex-direction: column;
+				gap: 0.35rem;
+			}
+			.toc-nav a {
+				display: block;
+				padding: 0.28em 0.7em;
+				border-radius: 8px;
+				font-size: 0.86rem;
+				line-height: 1.5;
+				color: var(--ink-soft);
+				text-decoration: none;
+				border-left: 2px solid transparent;
+				transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+			}
+			.toc-nav a:hover {
+				color: var(--primary);
+				background: var(--primary-ghost);
+			}
+			.toc-nav a.lvl-3 {
+				padding-left: 1.35em;
+				font-size: 0.82rem;
+			}
+			.toc-nav a.active {
+				color: var(--primary);
+				border-left-color: var(--primary);
+				background: var(--primary-ghost);
+			}
+			.toc-empty {
+				font-size: 0.85rem;
+				color: var(--muted);
+			}
+			.toc-mobile-toggle {
+				display: none;
+				align-items: center;
+				gap: 0.3em;
+				border: none;
+				background: none;
+				color: var(--muted);
+				font-size: 0.75rem;
+				font-family: var(--font-mono);
+				letter-spacing: 0.1em;
+				cursor: var(--cursor-pointer);
+				transition: color 0.2s ease;
+			}
+			.toc-mobile-toggle:hover {
+				color: var(--primary);
+			}
+
+			@media (max-width: 1080px) {
+				.article-layout {
+					grid-template-columns: minmax(0, 1fr);
+					gap: 1.2rem;
+				}
+				.toc {
+					position: static;
+					max-height: none;
+					padding: 0.9rem 1.1rem;
+				}
+				.toc-nav {
+					display: none;
+				}
+				.toc-nav.open {
+					display: flex;
+					padding-top: 0.4rem;
+				}
+				.toc-mobile-toggle {
+					display: inline-flex;
+				}
+				.toc-label {
+					margin: 0;
+				}
+			}
+		</style>
+	</head>
+
+	<body>
+		<div class="reading-progress" aria-hidden="true"></div>
+		<Header />
+		<main class="container page-main">
+			<a class="back-link" href="/blog/">← 返回博客</a>
+			<article>
+				<header class="article-head">
+					<p class="eyebrow">journal · article</p>
+					<div class="meta">
+						<time><FormattedDate date={pubDate} /></time>
+						{readingTime && (
+							<>
+								<span class="dot" aria-hidden="true"></span>
+								<span>约 {readingTime} 分钟</span>
+							</>
+						)}
+						{
+							updatedDate && (
+								<span class="last-updated-on">
+									最后更新于 <FormattedDate date={updatedDate} />
+								</span>
+							)
+						}
+					</div>
+					<h1>{title}</h1>
+					<p class="desc">{description}</p>
+				</header>
+
+				{heroImage && (
+					<div class="hero-image">
+						<Image width={1020} height={510} src={heroImage} alt="" />
+					</div>
+				)}
+
+				<div class="article-layout">
+					<div class="article-main">
+						<div class="prose">
+							<slot />
+						</div>
+					</div>
+					<aside class="toc" aria-label="文章目录">
+						<p class="toc-label">
+							<span>Contents</span>
+							<button class="toc-mobile-toggle" type="button" aria-expanded="false">
+								目录 <span aria-hidden="true">▾</span>
+							</button>
+						</p>
+						<nav class="toc-nav" id="toc-nav"></nav>
+					</aside>
+				</div>
+			</article>
+		</main>
+		<Footer />
+
+		<script>
+			function initToc() {
+				const prose = document.querySelector('.prose');
+				const nav = document.getElementById('toc-nav');
+				const wrap = nav && nav.closest('.toc');
+				if (!prose || !nav || !wrap) return;
+
+				const headings = [...prose.querySelectorAll('h2, h3')];
+				if (headings.length < 2) {
+					wrap.style.display = 'none';
+					return;
+				}
+
+				// 目录项
+				headings.forEach((h) => {
+					const a = document.createElement('a');
+					a.href = '#';
+					a.textContent = h.textContent || '';
+					a.classList.add(h.tagName === 'H3' ? 'lvl-3' : 'lvl-2');
+					a.addEventListener('click', (e) => {
+						e.preventDefault();
+						scrollToHeading(h);
+						if (nav.classList.contains('open')) nav.classList.remove('open');
+					});
+					nav.appendChild(a);
+				});
+
+				// 移动端展开/收起
+				const toggle = wrap.querySelector('.toc-mobile-toggle');
+				if (toggle) {
+					toggle.addEventListener('click', () => {
+						const open = nav.classList.toggle('open');
+						toggle.setAttribute('aria-expanded', String(open));
+					});
+				}
+
+				function scrollToHeading(h) {
+					const y = h.getBoundingClientRect().top + window.scrollY - 84;
+					window.scrollTo({ top: y, behavior: 'smooth' });
+				}
+
+				// 滚动高亮
+				const links = [...nav.querySelectorAll('a')];
+				let ticking = false;
+				const highlight = () => {
+					if (ticking) return;
+					ticking = true;
+					requestAnimationFrame(() => {
+						const mark = 96;
+						let current = null;
+						for (let i = 0; i < headings.length; i++) {
+							if (headings[i].getBoundingClientRect().top - mark <= 0) current = i;
+						}
+						links.forEach((l, i) => l.classList.toggle('active', i === current));
+						ticking = false;
+					});
+				};
+				window.addEventListener('scroll', highlight, { passive: true });
+				highlight();
+			}
+
+			document.addEventListener('astro:page-load', initToc);
+		</script>
+	</body>
+</html>

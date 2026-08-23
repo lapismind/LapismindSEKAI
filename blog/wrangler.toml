@@ -1,0 +1,12 @@
+name = "blog"
+compatibility_date = "2025-06-01"
+
+# 自定义域名（Custom Domain：自动创建 DNS + 证书）
+[[routes]]
+pattern = "blog.qmzhj.top"
+custom_domain = true
+
+# 前端静态资源（Astro 构建产物 dist/，纯静态站点）
+[assets]
+directory = "./dist"
+not_found_handling = "404-page"

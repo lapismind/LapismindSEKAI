@@ -1,0 +1,36 @@
+<script is:inline>
+	(() => {
+		const render = () => {
+			const pad = [
+				'      ,---.          ,---.      ',
+				'     /_____\\        /_____\\     ',
+				'    (  \\ /  )      (  \\ /  )    ',
+				'    |  (o)  |      |  (o)  |    ',
+				'    |       |------|       |    ',
+				'    |  \\_/  |      |  \\_/  |    ',
+				'     \\_____/        \\_____/     ',
+				'   ~~~~~^~~~~~^~~~~~~~~^~~~~~   ',
+			];
+			console.log(
+				'%c' + pad.join('\n'),
+				'color:#8fa7ff;font-family:monospace;font-size:12px;line-height:1.12;font-weight:700;',
+			);
+			console.log(
+				'%cLAPISMIND  /  HIDDEN SIGNAL 01',
+				'color:#4d84d8;font-family:monospace;font-size:12px;font-weight:700;letter-spacing:2px;',
+			);
+			console.log(
+				'%c手柄已接上，存档点已激活。你找到了控制台里的小房间。',
+				'color:#e6a2be;font-size:12px;',
+			);
+			console.log(
+				'%c输入 lapismindSignal() 可以再次呼出。下一关：更多游戏。',
+				'color:#8b9bb4;font-size:11px;',
+			);
+		};
+		window.lapismindSignal = render;
+		if (window.__lapismindConsoleShown) return;
+		window.__lapismindConsoleShown = true;
+		render();
+	})();
+</script>

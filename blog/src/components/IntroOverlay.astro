@@ -1,0 +1,211 @@
+---
+import Snow from '../assets/intro-snow.webp';
+import Magic from '../assets/intro-magic.webp';
+import Heart from '../assets/intro-heart.webp';
+---
+
+<div class="intro" id="intro" aria-hidden="true">
+	<div class="intro-panel intro-p1" style={`background-image:url('${Snow.src}')`}></div>
+	<div class="intro-panel intro-p2" style={`background-image:url('${Magic.src}')`}></div>
+	<div class="intro-panel intro-p3" style={`background-image:url('${Heart.src}')`}></div>
+	<div class="intro-center">
+		<p class="intro-eyebrow">25時、ナイトコードで。</p>
+		<h1>欢迎来到 <span>Lapismind</span> 的 SEKAI</h1>
+		<div class="intro-bar"><i></i></div>
+	</div>
+</div>
+
+<style is:global>
+	.intro {
+		position: fixed;
+		inset: 0;
+		z-index: 300;
+		background: oklch(0.13 0.03 270);
+		overflow: hidden;
+	}
+	.intro-panel {
+		position: absolute;
+		inset: 3vh 2.2vw;
+		background-size: cover;
+		background-position: 0% 50%;
+		animation: intro-ken 12s ease-out both;
+	}
+	.intro::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		background: linear-gradient(
+			130deg,
+			oklch(0.13 0.03 270 / 0.32) 0%,
+			oklch(0.13 0.03 270 / 0.08) 42%,
+			oklch(0.94 0.05 283 / 0.08) 100%
+		);
+		pointer-events: none;
+	}
+	.intro-p1 {
+		clip-path: polygon(0 0, 25% 0, 42% 100%, 0 100%);
+	}
+	.intro-p2 {
+		clip-path: polygon(25% 0, 60% 0, 73% 100%, 42% 100%);
+		animation-delay: 0.15s;
+	}
+	.intro-p3 {
+		clip-path: polygon(60% 0, 100% 0, 100% 100%, 73% 100%);
+		animation-delay: 0.3s;
+	}
+	@keyframes intro-ken {
+		from {
+			transform: scale(1.06);
+			filter: brightness(0.8);
+		}
+		to {
+			transform: scale(1.02);
+			filter: brightness(1);
+		}
+	}
+	.intro-center {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		z-index: 2;
+		padding: 2rem 3rem;
+		transform: translateY(25vh);
+		background: radial-gradient(
+			58% 62% at 50% 52%,
+			oklch(0.11 0.03 270 / 0.72),
+			transparent 72%
+		);
+		pointer-events: none;
+		transition: opacity 0.5s ease, transform 0.5s ease;
+	}
+	.intro-center h1 {
+		margin: 0 0 1.2rem;
+		color: #fff;
+		font-size: clamp(1.6rem, 1.1rem + 2.8vw, 2.6rem);
+		text-shadow: 0 3px 24px oklch(0 0 0 / 0.55);
+	}
+	.intro-center h1 span {
+		background: linear-gradient(120deg, #b9b3f0, #e1b7ff);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.intro-eyebrow {
+		margin: 0 0 0.8rem;
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		letter-spacing: 0.24em;
+		color: oklch(0.9 0.06 283 / 0.95);
+		text-shadow: 0 1px 10px oklch(0 0 0 / 0.5);
+	}
+	.intro-bar {
+		width: min(280px, 60vw);
+		height: 2px;
+		border-radius: 2px;
+		background: oklch(1 0 0 / 0.16);
+		overflow: hidden;
+	}
+	.intro-bar i {
+		display: block;
+		height: 100%;
+		width: 40%;
+		border-radius: 2px;
+		background: linear-gradient(90deg, #8888cc, #c8a6f0);
+		animation: intro-progress 1.5s ease-in-out infinite;
+	}
+	@keyframes intro-progress {
+		0% {
+			transform: translateX(-110%);
+		}
+		100% {
+			transform: translateX(280%);
+		}
+	}
+
+	/* 收场：文字淡出，三块斜板依次上掀 */
+	.intro.exit .intro-center {
+		opacity: 0;
+	}
+	.intro-panel {
+		transition: transform 1.2s cubic-bezier(0.7, 0, 0.2, 1), opacity 0.8s ease;
+	}
+	.intro.exit .intro-panel {
+		transform: translateY(-115%);
+	}
+	.intro.exit .intro-p2 {
+		transition-delay: 0.2s;
+	}
+	.intro.exit .intro-p3 {
+		transition-delay: 0.4s;
+	}
+	.intro.gone {
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
+		transition: opacity 0.5s ease, visibility 0.5s ease;
+	}
+</style>
+
+<script>
+	function runIntro() {
+		const el = document.getElementById('intro');
+		if (!el) return;
+		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
+		let playedBefore = false;
+		try {
+			playedBefore = sessionStorage.getItem('lapismind-intro') === '1';
+		} catch {}
+		// 所有“不该播”的情况都统一走这里：跳过播放，并把元素清掉
+		if (
+			!isHome ||
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+			playedBefore ||
+			window.__introDone
+		) {
+			el.remove();
+			return;
+		}
+		window.__introDone = true;
+		// 等第一帧渲染后开始
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				el.classList.add('exit');
+				setTimeout(() => el.classList.add('gone'), 1500);
+				setTimeout(() => el.remove(), 2800);
+				try {
+					sessionStorage.setItem('lapismind-intro', '1');
+				} catch {}
+			}, 2000);
+		});
+		// 兜底：6.5s 后无论如何清掉
+		setTimeout(() => {
+			if (document.getElementById('intro')) {
+				el.classList.add('gone');
+				setTimeout(() => el.remove(), 500);
+			}
+		}, 6500);
+	}
+
+	document.addEventListener('astro:page-load', runIntro);
+
+	function cleanupStaleIntro() {
+		const el = document.getElementById('intro');
+		if (!el) return;
+		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
+		if (!isHome || window.__introDone) {
+			el.remove();
+		}
+	}
+	// 视图过渡换页时，Astro 可能携带旧页 DOM；离开主页或已播过时立刻清掉残留的动画层
+	document.addEventListener('astro:before-swap', () => {
+		cleanupStaleIntro();
+	});
+	window.addEventListener('astro:after-swap', cleanupStaleIntro);
+	runIntro();
+</script>
+

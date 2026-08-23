@@ -1,0 +1,56 @@
+{
+  "Version": 3,
+  "FileReferences": {
+    "Moc": "model.moc3",
+    "Textures": [
+      "texture_00.png"
+    ],
+    "Physics": "model.physics3.json",
+    "Motions": {
+      "idle": [
+        {
+          "File": "motions/w-normal-default01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-pose02.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-fidget01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-nod01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-shakehead01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-glad01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-sad01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-tilthead01.motion3.json"
+        },
+        {
+          "File": "motions/w-normal-shy01.motion3.json"
+        }
+      ]
+    }
+  },
+  "Groups": [
+    {
+      "Target": "Parameter",
+      "Name": "LipSync",
+      "Ids": []
+    },
+    {
+      "Target": "Parameter",
+      "Name": "EyeBlink",
+      "Ids": []
+    }
+  ]
+}

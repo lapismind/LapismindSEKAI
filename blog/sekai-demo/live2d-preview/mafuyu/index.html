@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live2D Preview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#cbd5e1;font-family:system-ui;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
+h1{color:#a78bfa;font-size:1.25rem;margin-bottom:.4rem}
+.sub{color:#64748b;font-size:.8rem;text-align:center;margin-bottom:1rem}
+#stage-wrap{position:relative;width:min(85vw,550px);aspect-ratio:3/4;max-height:calc(100vh - 150px);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(124,58,237,.12)}
+canvas{display:block!important;width:100%!important;height:100%!important}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,14,26,.9);color:#64748b;z-index:2;transition:opacity .6s}
+#loading.hidden{opacity:0;pointer-events:none}
+.hint{margin-top:.8rem;color:#334155;font-size:.75rem;text-align:center}
+#armPanel{margin-top:.7rem;display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#armPanel button{background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:8px;padding:4px 10px;font-size:.72rem;cursor:pointer}
+#armPanel button:hover{border-color:#a78bfa;color:#e2e8f0}
+#armPanel button.active{background:#7c3aed;border-color:#a78bfa;color:#fff}
+</style>
+</head>
+<body>
+<h1>朝比奈真冬 — Live2D</h1>
+<p class="sub">18mafuyu_normal_3.0_f_t05<br>官方动作已接入 · 243 个可选</p>
+<div id="stage-wrap"><div id="loading">正在加载模型…</div></div>
+<p class="hint">鼠标移动 → 视线跟随 · 点按钮切换动作（默认循环待机）</p>
+<div id="motionPanel"></div>
+<script src="https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js"></script>
+<script>
+console.log('script loaded, PIXI =', typeof PIXI);
+const { live2d: { Live2DModel } } = PIXI;
+const wrap = document.getElementById('stage-wrap');
+const loadingEl = document.getElementById('loading');
+const canvas = document.createElement('canvas');
+wrap.appendChild(canvas);
+const app = new PIXI.Application({view:canvas,autoStart:true,resizeTo:wrap,backgroundAlpha:0,antialias:true,resolution:window.devicePixelRatio||1});
+async function loadModel(){
+  try{
+    const model = await Live2DModel.from('./model.model3.json',{autoInteract:false,autoUpdate:true});
+    console.log('model loaded successfully');
+    const sw = app.renderer.width / app.renderer.resolution;
+    const sh = app.renderer.height / app.renderer.resolution;
+    const mw = model.internalModel.originalWidth || model.width;
+    const mh = model.internalModel.originalHeight || model.height;
+    const scale = Math.min(sw/mw, sh/mh) * 1.15;
+    model.scale.set(scale);
+    model.x = (sw - mw*scale)/2;
+    model.y = (sh - mh*scale)/2;
+    app.stage.addChild(model);
+    // Direct read via CubismModel API on coreModel
+    const core0 = model.internalModel.coreModel;
+    const im = model.internalModel;
+    try {
+      const cnt = core0.getParameterCount();
+      console.log('=== Live2D Parameters (' + cnt + ') ===');
+      for (let i = 0; i < cnt; i++) {
+        console.log(
+          core0.getParameterId(i).padEnd(22),
+          'min:'+core0.getParameterMinimumValue(i),
+          'max:'+core0.getParameterMaximumValue(i),
+          'def:'+core0.getParameterDefaultValue(i)
+        );
+      }
+    } catch(pe){ console.error('param dump failed:', pe); }
+
+    // Motion playback: official converted motions from SEKAI_Desktop_pet repo
+    const MOTION_LIST = ['w-normal-default01','w-normal-pose01','w-normal-pose02','w-normal-fidget01','w-normal-nod01','w-normal-shakehead01','w-normal-glad01','w-normal-sad01','w-normal-tilthead01','w-normal-shy01'];
+    const panel = document.getElementById('motionPanel');
+    let activeBtn = null;
+    MOTION_LIST.forEach(name => {
+      const b = document.createElement('button');
+      b.textContent = name.replace(/^w-normal-/,'');
+      const idx = MOTION_LIST.indexOf(name);
+      b.onclick = () => {
+        try {
+          console.log('playing motion:', name);
+          model.motion('idle', idx, 3);
+          if (activeBtn) activeBtn.classList.remove('active');
+          activeBtn = b;
+          b.classList.add('active');
+        } catch(me) {
+          console.error('motion failed:', name, me);
+        }
+      };
+      panel.appendChild(b);
+    });
+
+    // Auto-play default idle on load
+    setTimeout(() => { panel.children[0]?.click(); }, 400);
+    let t=0;
+    app.ticker.add(delta=>{
+      t += delta*0.016;
+      const core = model.internalModel.coreModel;
+      if(!core) return;
+      // Official motion now drives all parameters; no manual override needed.
+    });
+    loadingEl.classList.add('hidden');
+  }catch(err){
+    console.error(err);
+    loadingEl.textContent='加载失败:'+err.message;
+  }
+}
+loadModel();
+</script>
+</body>
+</html>

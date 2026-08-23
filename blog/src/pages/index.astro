@@ -1,0 +1,646 @@
+---
+import { Image } from 'astro:assets';
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import FormattedDate from '../components/FormattedDate.astro';
+import Header from '../components/Header.astro';
+import Live2dMascot from '../components/Live2dMascot.astro';
+import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+import Mascot from '../assets/mascot.png';
+import HeroBg from '../assets/mafuyu-hero.webp';
+import SoupLobby from '../assets/soup-lobby.png';
+import { games } from '../data/projects';
+
+const allPosts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const posts = allPosts.slice(0, 3);
+
+const featured = games.filter((p) => p.featured);
+const onlineCount = games.filter((p) => p.status === 'online').length;
+
+const projectImages: Record<string, typeof SoupLobby> = {
+	'turtle-soup': SoupLobby,
+};
+
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<style>
+			.hero {
+				position: relative;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-height: 76vh;
+				width: 100vw;
+				margin-left: calc(50% - 50vw);
+				margin-right: calc(50% - 50vw);
+				margin-top: -64px;
+				text-align: center;
+				overflow: hidden;
+				padding: calc(64px + 5rem) 1.5rem 7rem;
+			}
+			.hero-photo {
+				position: absolute;
+				inset: 0;
+				background-size: cover;
+				background-position: center 22%;
+				z-index: 0;
+				background-color: color-mix(in oklab, var(--primary-soft) 55%, var(--page-bg));
+				animation: hero-fade 0.9s ease 0.15s both;
+			}
+			@keyframes hero-fade {
+				from {
+					opacity: 0;
+				}
+				to {
+					opacity: 1;
+				}
+			}
+			.hero-photo::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				background: linear-gradient(
+					180deg,
+					oklch(0.14 0.03 260 / 0.28) 0%,
+					oklch(0.14 0.03 260 / 0.22) 42%,
+					oklch(0.14 0.03 260 / 0.48) 72%,
+					oklch(0.14 0.03 260 / 0.7) 94%,
+					var(--page-bg) 100%
+				);
+			}
+			.hero-inner {
+				position: relative;
+				z-index: 1;
+				max-width: 52em;
+			}
+			.hero .eyebrow {
+				justify-content: center;
+				color: oklch(0.92 0.02 260 / 0.9);
+				text-shadow: 0 1px 8px oklch(0 0 0 / 0.35);
+			}
+			.hero h1 {
+				margin: 0 0 0.35em;
+				font-size: clamp(2.8rem, 1.6rem + 5.2vw, 5rem);
+				color: #fff;
+				text-shadow:
+					0 2px 8px oklch(0 0 0 / 0.75),
+					0 6px 34px oklch(0 0 0 / 0.4);
+			}
+			.hero .lead {
+				font-size: clamp(1.1rem, 0.95rem + 0.8vw, 1.45rem);
+				color: oklch(0.94 0.015 260 / 0.92);
+				max-width: 36em;
+				margin: 0 auto 1.4em;
+				font-family: var(--font-mono);
+				letter-spacing: 0.06em;
+				text-shadow: 0 1px 12px oklch(0 0 0 / 0.45);
+			}
+			.hero-inner > * {
+				animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+			}
+			.hero-inner > *:nth-child(2) {
+				animation-delay: 0.12s;
+			}
+			.hero-inner > *:nth-child(3) {
+				animation-delay: 0.24s;
+			}
+			.hero-inner > *:nth-child(4) {
+				animation-delay: 0.36s;
+			}
+			.hero-inner > *:nth-child(5) {
+				animation-delay: 0.48s;
+			}
+			.hero-actions {
+				display: flex;
+				gap: 0.8rem;
+				justify-content: center;
+				flex-wrap: wrap;
+			}
+			.hero .btn-ghost {
+				border-color: oklch(0.95 0.01 260 / 0.6);
+				color: #fff;
+			}
+			.hero .btn-ghost:hover {
+				border-color: #fff;
+				background: oklch(1 0 0 / 0.12);
+				color: #fff;
+			}
+			.player-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.8rem;
+				margin-top: 1.6rem;
+				padding: 0.55rem 1.1rem 0.55rem 0.6rem;
+				border-radius: 999px;
+				background: var(--glass-bg);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+				animation: float-chip 5s ease-in-out infinite;
+			}
+			.hero .player-chip {
+				background: oklch(1 0 0 / 0.92);
+				box-shadow: 0 4px 20px oklch(0 0 0 / 0.25);
+			}
+			.player-chip :global(img) {
+				width: 44px;
+				height: 44px;
+				border-radius: 50%;
+				object-fit: cover;
+				border: 2px solid var(--card-solid);
+				box-shadow: 0 0 0 1px var(--line-strong);
+				margin: 0;
+			}
+			.player-chip .pc-name {
+				margin: 0;
+				font-size: 0.92rem;
+				font-weight: 700;
+				color: var(--ink);
+				display: flex;
+				align-items: center;
+				gap: 0.45em;
+			}
+			.player-chip .pc-role {
+				margin: 0;
+				font-size: 0.76rem;
+				color: var(--muted);
+				font-family: var(--font-mono);
+				letter-spacing: 0.04em;
+			}
+			.pc-dot {
+				width: 8px;
+				height: 8px;
+				border-radius: 50%;
+				background: oklch(0.72 0.16 150);
+				box-shadow: 0 0 0 3px oklch(0.72 0.16 150 / 0.2);
+			}
+			.music-chip {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.5em;
+				margin-top: 1rem;
+				padding: 0.5em 1.3em;
+				border-radius: 999px;
+				border: 1px solid oklch(0.95 0.01 260 / 0.4);
+				background: oklch(0.14 0.03 260 / 0.35);
+				backdrop-filter: blur(8px);
+				-webkit-backdrop-filter: blur(8px);
+				color: oklch(0.96 0.015 260 / 0.95);
+				font-size: 0.85rem;
+				font-family: var(--font-mono);
+				letter-spacing: 0.05em;
+				cursor: var(--cursor-pointer);
+				box-shadow: 0 4px 18px oklch(0 0 0 / 0.25);
+				transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+			}
+			.music-chip:hover {
+				transform: translateY(-2px);
+				border-color: oklch(0.9 0.06 283 / 0.7);
+				background: oklch(0.17 0.04 270 / 0.5);
+			}
+			.music-chip .note {
+				animation: note-pulse 1.8s ease-in-out infinite;
+			}
+			@keyframes note-pulse {
+				0%,
+				100% {
+					transform: scale(1);
+					opacity: 1;
+				}
+				50% {
+					transform: scale(1.18);
+					opacity: 0.72;
+				}
+			}
+			@keyframes float-chip {
+				0%,
+				100% {
+					transform: translateY(0);
+				}
+				50% {
+					transform: translateY(-5px);
+				}
+			}
+			.scroll-hint {
+				position: absolute;
+				left: 50%;
+				bottom: 1.3rem;
+				transform: translateX(-50%);
+				z-index: 2;
+				display: inline-flex;
+				flex-direction: column;
+				align-items: center;
+				gap: 0.2rem;
+				color: oklch(0.94 0.015 260 / 0.85);
+				font-family: var(--font-mono);
+				font-size: 0.7rem;
+				letter-spacing: 0.28em;
+				text-transform: uppercase;
+				text-decoration: none;
+			}
+			.scroll-hint svg {
+				animation: bounce-down 1.8s ease-in-out infinite;
+			}
+
+			.site-section {
+				margin-top: 3.25rem;
+			}
+			/* “现在在做” + 站点统计 */
+			.now-card {
+				margin-top: -4.5rem;
+				position: relative;
+				z-index: 2;
+				display: grid;
+				grid-template-columns: 1fr auto;
+				gap: 3rem;
+				align-items: center;
+				padding: 1.7rem 2rem;
+				position: relative;
+				overflow: hidden;
+			}
+			.now-card::after {
+				content: '';
+				position: absolute;
+				inset: 0;
+				pointer-events: none;
+				background: radial-gradient(
+					420px 160px at 12% 0%,
+					oklch(0.72 0.14 var(--hue-accent) / 0.12),
+					transparent 70%
+				);
+			}
+			.now-list {
+				position: relative;
+			}
+			.now-row {
+				display: grid;
+				grid-template-columns: 5.5em 1fr;
+				gap: 0.9rem;
+				align-items: baseline;
+				padding: 0.42em 0;
+				border-bottom: 1px dashed var(--line);
+			}
+			.now-row:last-child {
+				border-bottom: none;
+			}
+			.now-row .label {
+				font-family: var(--font-mono);
+				font-size: 0.78rem;
+				letter-spacing: 0.14em;
+				color: var(--primary);
+				white-space: nowrap;
+			}
+			.now-row .value {
+				font-size: 1.02rem;
+				color: var(--ink-soft);
+			}
+			.now-row .value strong {
+				color: var(--ink);
+			}
+			.now-stats {
+				position: relative;
+				display: flex;
+				flex-direction: column;
+				gap: 0.9rem;
+				padding-left: 2.5rem;
+				border-left: 1px solid var(--line);
+				text-align: right;
+			}
+			.stat b {
+				display: block;
+				font-family: var(--font-mono);
+				font-size: 1.45rem;
+				font-weight: 700;
+				line-height: 1.1;
+				color: var(--ink);
+			}
+			.stat span {
+				font-size: 0.78rem;
+				letter-spacing: 0.12em;
+				color: var(--muted);
+				font-family: var(--font-mono);
+			}
+			.card-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+				gap: 1.6rem;
+			}
+			.project-card {
+				display: flex;
+				flex-direction: column;
+				background: var(--glass-bg);
+				backdrop-filter: blur(12px) saturate(1.1);
+				-webkit-backdrop-filter: blur(12px) saturate(1.1);
+				border: 1px solid var(--line);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-sm);
+				text-decoration: none;
+				overflow: hidden;
+				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+					box-shadow 0.3s ease, border-color 0.3s ease;
+			}
+			.project-card:hover {
+				transform: translateY(-6px);
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-lg), 0 0 0 1px var(--primary-soft);
+			}
+			.card-media {
+				position: relative;
+				aspect-ratio: 16 / 8;
+				overflow: hidden;
+				background: var(--primary-ghost);
+			}
+			.card-media :global(img) {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+			}
+			.project-card:hover .card-media :global(img) {
+				transform: scale(1.06);
+			}
+			.card-media-fallback {
+				display: grid;
+				place-items: center;
+				height: 100%;
+				background: var(--gradient);
+				color: #fff;
+				font-size: 3rem;
+				font-weight: 700;
+			}
+			.card-body {
+				padding: 1.3rem 1.5rem 1.5rem;
+				display: flex;
+				flex-direction: column;
+				flex: 1;
+			}
+			.card-head {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+				flex-wrap: wrap;
+				margin-bottom: 0.35rem;
+			}
+			.card-head h3 {
+				margin: 0;
+				font-size: 1.25rem;
+			}
+			.card-subtitle {
+				margin: 0 0 0.55rem;
+				font-size: 0.85rem;
+				color: var(--primary);
+				font-family: var(--font-mono);
+			}
+			.card-desc {
+				margin: 0 0 1.1rem;
+				font-size: 0.92rem;
+				color: var(--ink-soft);
+				line-height: 1.7;
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
+				overflow: hidden;
+			}
+			.tech {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.45rem;
+				margin-top: auto;
+			}
+			.card-arrow {
+				margin-left: auto;
+				transition: transform 0.25s ease;
+			}
+			.project-card:hover .card-arrow {
+				transform: translateX(4px);
+			}
+
+			.post-card {
+				display: flex;
+				align-items: center;
+				gap: 1.1rem;
+				padding: 1.15rem 1.4rem;
+				text-decoration: none;
+				border-radius: var(--radius);
+				background: var(--glass-bg);
+				border: 1px solid var(--line);
+				transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+			}
+			.post-card:hover {
+				transform: translateX(6px);
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-md);
+			}
+			.post-card .idx {
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				color: var(--primary);
+				flex-shrink: 0;
+				width: 2ch;
+			}
+			.post-card .body {
+				flex: 1;
+				min-width: 0;
+			}
+			.post-card h3 {
+				margin: 0 0 0.2em;
+				font-size: 1.06rem;
+				transition: color 0.2s ease;
+			}
+			.post-card:hover h3 {
+				color: var(--primary);
+			}
+			.post-card .date {
+				margin: 0;
+				font-size: 0.8rem;
+				color: var(--muted);
+				font-family: var(--font-mono);
+			}
+
+			.posts-list {
+				display: flex;
+				flex-direction: column;
+				gap: 0.9rem;
+			}
+
+			@media (max-width: 720px) {
+				.hero {
+					margin-top: -56px;
+					padding: calc(56px + 4rem) 1.25rem 5.5rem;
+					min-height: 70vh;
+				}
+				.now-card {
+					margin-top: -2rem;
+					grid-template-columns: 1fr;
+					gap: 1.4rem;
+					padding: 1.4rem 1.4rem;
+				}
+				.now-stats {
+					flex-direction: row;
+					flex-wrap: wrap;
+					justify-content: space-between;
+					padding-left: 0;
+					padding-top: 1.2rem;
+					border-left: none;
+					border-top: 1px solid var(--line);
+					text-align: left;
+				}
+				.site-section {
+					margin-top: 2.4rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<Header overHero />
+		<main class="container">
+			<section class="hero">
+				<div
+					class="hero-photo"
+					role="img"
+					aria-label="《世界计划》朝比奈真冬卡面「交相辉映的笑容」插画背景"
+					style={`background-image:url('${HeroBg.src}')`}
+				></div>
+				<div class="hero-inner">
+					<p class="eyebrow">lapismind · game world</p>
+					<h1>谢谢你，找到了我。</h1>
+					<p class="lead">見つけてくれて、ありがとう —— 朝比奈真冬</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary" href="/projects/">看看我的游戏 <span class="card-arrow">→</span></a>
+						<a class="btn btn-ghost" href={GITHUB_URL} target="_blank" rel="noopener">GitHub ↗</a>
+					</div>
+					<div class="player-chip" role="img" aria-label="Lapismind 玩家档案：在线">
+						<img src={Mascot.src} alt="Lapismind 玩家形象" width="44" height="44" />
+						<div>
+							<p class="pc-name">
+								LAPISMIND
+								<span class="pc-dot" title="在线"></span>
+							</p>
+							<p class="pc-role">独立开发者 · LV.1 成长中</p>
+						</div>
+					</div>
+					<button class="music-chip" id="md-open-chip" type="button">
+						<svg class="note" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+							><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"></path
+						></svg>
+						<span>今日箱曲：バグ</span>
+					</button>
+				</div>
+				<a class="scroll-hint" href="#featured">
+					scroll
+					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+						stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+						><path d="M6 9l6 6 6-6"></path
+					></svg>
+				</a>
+			</section>
+
+			<section class="now-card glass reveal">
+				<div class="now-list">
+					<p class="eyebrow">now · 现在在做</p>
+					<div class="now-row">
+						<span class="label">正在开发</span>
+						<p class="value"><strong>Card Game</strong> —— 联机卡牌对战（WebSocket + Durable Objects）</p>
+					</div>
+					<div class="now-row">
+						<span class="label">最近在学</span>
+						<p class="value">Astro 生态与 Cloudflare 组件的更深用法</p>
+					</div>
+					<div class="now-row">
+						<span class="label">下一步</span>
+						<p class="value">把开发过程沉淀成更多的博客文章</p>
+					</div>
+				</div>
+				<div class="now-stats">
+					<div class="stat">
+						<b>{games.length}</b>
+						<span>游戏</span>
+					</div>
+					<div class="stat">
+						<b>{onlineCount}</b>
+						<span>已上线</span>
+					</div>
+					<div class="stat">
+						<b>{allPosts.length}</b>
+						<span>文章</span>
+					</div>
+				</div>
+			</section>
+
+			<section class="site-section reveal" id="featured">
+				<div class="section-title">
+					<div>
+						<p class="eyebrow">featured games</p>
+						<h2>精选游戏</h2>
+					</div>
+					<a class="more-link" href="/projects/">全部游戏 →</a>
+				</div>
+				<div class="card-grid">
+					{
+						featured.map((p, i) => (
+							<a class="project-card reveal" style={`--reveal-delay:${i * 90}ms`} href={`/projects/${p.slug}/`}>
+								<div class="card-media">
+									{projectImages[p.slug] ? (
+										<Image src={projectImages[p.slug]} alt={`${p.name} 截图`} />
+									) : (
+										<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
+									)}
+								</div>
+								<div class="card-body">
+									<div class="card-head">
+										<h3>{p.name}</h3>
+										<span class={`status-badge status-${p.status}`}>
+											{p.status === 'online' ? 'online' : '开发中'}
+										</span>
+									</div>
+									<p class="card-subtitle">{p.subtitle}</p>
+									<p class="card-desc">{p.description}</p>
+									<div class="tech">
+										{p.tech.map((t) => <span class="tag">{t}</span>)}
+										<span class="card-arrow" aria-hidden="true">→</span>
+									</div>
+								</div>
+							</a>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="site-section reveal">
+				<div class="section-title">
+					<div>
+						<p class="eyebrow">latest posts</p>
+						<h2>最新博客</h2>
+					</div>
+					<a class="more-link" href="/blog/">全部文章 →</a>
+				</div>
+				<div class="posts-list">
+					{
+						posts.map((post, i) => (
+							<a class="post-card reveal" style={`--reveal-delay:${i * 80}ms`} href={`/blog/${post.id}/`}>
+								<span class="idx">0{i + 1}</span>
+								<div class="body">
+									<h3>{post.data.title}</h3>
+									<p class="date">
+										<FormattedDate date={post.data.pubDate} />
+									</p>
+								</div>
+								<span class="card-arrow" aria-hidden="true">→</span>
+							</a>
+						))
+					}
+				</div>
+			</section>
+		</main>
+		<Footer />
+		<Live2dMascot />
+
+	</body>
+</html>
