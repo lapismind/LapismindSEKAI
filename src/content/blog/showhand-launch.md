@@ -2,7 +2,7 @@
 title: '第二个上线作品：梭哈 Showhand —— 复用大厅层，一周做完一个联机游戏'
 description: '五张/七张梭哈的开发记录：lobby-kit 大厅复用、Durable Objects 牌局状态机、All-in 边界处理和 UI 迭代。'
 pubDate: 'Aug 22 2026'
-heroImage: '../../assets/showhand-table.png'
+heroImage: '../../assets/showhand-cover.jpg'
 ---
 
 ## 为什么是梭哈
