@@ -456,6 +456,25 @@ hr {
 	color: var(--ink);
 	font-size: inherit;
 }
+/* Shiki 双主题：颜色走 CSS 变量，跟随站点亮暗模式，背景用卡片色 */
+.prose pre.astro-code,
+.prose pre.astro-code span {
+	color: var(--shiki-light, var(--ink)) !important;
+	background-color: transparent !important;
+	font-style: var(--shiki-light-font-style, inherit) !important;
+	font-weight: var(--shiki-light-font-weight, inherit) !important;
+	text-decoration: var(--shiki-light-text-decoration, none) !important;
+}
+[data-theme='dark'] .prose pre.astro-code,
+[data-theme='dark'] .prose pre.astro-code span {
+	color: var(--shiki-dark, var(--ink)) !important;
+	font-style: var(--shiki-dark-font-style, inherit) !important;
+	font-weight: var(--shiki-dark-font-weight, inherit) !important;
+	text-decoration: var(--shiki-dark-text-decoration, none) !important;
+}
+.prose pre.astro-code {
+	background-color: var(--card-solid) !important;
+}
 .prose table {
 	width: 100%;
 	margin: 0 0 1.8em;

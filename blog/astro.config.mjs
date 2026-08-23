@@ -9,6 +9,15 @@ import { defineConfig, fontProviders } from 'astro/config';
 export default defineConfig({
 	site: 'https://blog.qmzhj.top',
 	integrations: [mdx(), sitemap()],
+	markdown: {
+		shikiConfig: {
+			themes: {
+				light: 'github-light',
+				dark: 'github-dark',
+			},
+			defaultColor: false,
+		},
+	},
 	vite: {
 		plugins: [tailwindcss()],
 	},
