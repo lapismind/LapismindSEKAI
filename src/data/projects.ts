@@ -39,6 +39,20 @@ export const games: Project[] = [
 		links: {},
 		featured: true,
 	},
+	{
+		slug: 'showhand',
+		name: '梭哈 Showhand',
+		subtitle: '五张/七张牌联机梭哈，复用 lobby-kit 大厅层',
+		description:
+			'支持五张与七张两种玩法的联机梭哈：发牌节奏、下注轮转、All-in 补牌摊牌、平分底池余数处理，带上帝视角观众席。大厅部分复用 @lapismind/lobby-kit，只写游戏逻辑本身。',
+		status: 'online',
+		tech: ['Vue3', 'Pinia', 'Vite', 'Tailwind', 'lobby-kit', 'Cloudflare Workers', 'Durable Objects'],
+		links: {
+			online: 'https://showhand.qmzhj.top',
+			github: 'https://github.com/lapismind/showhand',
+		},
+		featured: true,
+	},
 ];
 
 /** 企业/工作中项目（AI 学习平台栏目） */

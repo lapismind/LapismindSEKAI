@@ -1,0 +1,161 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import ShowhandTable from '../../assets/showhand-table.png';
+import { SITE_TITLE } from '../../consts';
+import { games } from '../../data/projects';
+
+const project = games.find((p) => p.slug === 'showhand')!;
+const { name, subtitle, description, tech, links, status } = project;
+
+const features = [
+	'五张模式（1 暗 + 4 明）与七张模式（2 暗 + 4 明 + 1 暗）',
+	'下注轮转：跟注、加注、弃牌，超时 Alarm 自动弃牌',
+	'All-in 正确处理：全下后他人仍可行动，跟注后补满摊牌',
+	'平分底池余数从庄位下家起依次多拿 1，直到分完',
+	'上帝视角观众席实时推送，自己的暗牌呼吸光圈标识',
+	'HMAC 签名 token 双层校验身份，杜绝 URL 参数冒充',
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+			.page-head {
+				margin-bottom: 2.2rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
+			}
+			.hero-img {
+				width: 100%;
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-md);
+				margin-bottom: 2.2rem;
+			}
+			.links {
+				display: flex;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				margin-bottom: 1.6rem;
+			}
+			h2 {
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
+			}
+			.feature-list {
+				padding-left: 1.3em;
+			}
+			.feature-list li {
+				margin-bottom: 0.55em;
+			}
+			.feature-list li::marker {
+				color: var(--primary);
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<a class="back-link" href="/projects/">← 返回作品集</a>
+			<header class="page-head reveal">
+				<p class="eyebrow">game · {status}</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class={`status-badge status-${status}`}>{status === 'online' ? 'online' : '开发中'}</span>
+			</header>
+
+			<div class="hero-img reveal">
+				<Image src={ShowhandTable} alt={`${name} 牌桌截图`} />
+			</div>
+
+			<div class="links reveal">
+				{
+					links.online && (
+						<a class="btn btn-primary" href={links.online} target="_blank" rel="noopener">
+							在线体验 <span aria-hidden="true">→</span>
+						</a>
+					)
+				}
+				{links.github && (
+					<a class="btn btn-ghost" href={links.github} target="_blank" rel="noopener">
+						GitHub 源码
+					</a>
+				)}
+			</div>
+
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<p>{description}</p>
+			</section>
+
+			<section class="reveal">
+				<h2>功能特性</h2>
+				<ul class="feature-list">
+					{features.map((f) => (
+						<li>{f}</li>
+					))}
+				</ul>
+			</section>
+
+			<section class="reveal">
+				<h2>技术栈</h2>
+				<div class="tech-list">
+					{tech.map((t) => (
+						<span class="tag">{t}</span>
+					))}
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>架构说明</h2>
+				<p>
+					浏览器通过 WebSocket 连接 Worker，每张牌桌对应一个 Durable Objects 实例（ShowhandRoom，
+					SQLite 持久化 + Hibernation 休眠不计费）。大厅层复用 @lapismind/lobby-kit：房间码、头像、
+					playerId 签名与断线重连全部来自包内，showhand 只写发牌、下注、摊牌、结算。开发过程见博客文章
+					<a href="/blog/showhand-launch/">《第二个上线作品：梭哈 Showhand》</a>。
+				</p>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>
