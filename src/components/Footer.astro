@@ -1,7 +1,8 @@
 ---
 import { GITHUB_URL, SITE_TITLE } from '../consts';
-import IntroOverlay from './IntroOverlay.astro';
 import MusicDock from './MusicDock.astro';
+import IntroOverlay from './IntroOverlay.astro';
+const isHome = Astro.url.pathname.replace(/\/+$/, '') === '';
 const today = new Date();
 ---
 
@@ -60,7 +61,7 @@ const today = new Date();
 
 <MusicDock />
 
-<IntroOverlay />
+{isHome && <IntroOverlay />}
 
 <canvas class="snow-canvas" aria-hidden="true"></canvas>
 

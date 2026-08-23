@@ -155,19 +155,22 @@ import Heart from '../assets/intro-heart.webp';
 	function runIntro() {
 		const el = document.getElementById('intro');
 		if (!el) return;
-		if (window.__introDone) return;
-		window.__introDone = true;
 		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
-		if (!isHome || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		let playedBefore = false;
+		try {
+			playedBefore = sessionStorage.getItem('lapismind-intro') === '1';
+		} catch {}
+		// 所有“不该播”的情况都统一走这里：跳过播放，并把元素清掉
+		if (
+			!isHome ||
+			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+			playedBefore ||
+			window.__introDone
+		) {
 			el.remove();
 			return;
 		}
-		try {
-			if (sessionStorage.getItem('lapismind-intro') === '1') {
-				el.remove();
-				return;
-			}
-		} catch {}
+		window.__introDone = true;
 		// 等第一帧渲染后开始
 		requestAnimationFrame(() => {
 			setTimeout(() => {
@@ -189,6 +192,20 @@ import Heart from '../assets/intro-heart.webp';
 	}
 
 	document.addEventListener('astro:page-load', runIntro);
+
+	function cleanupStaleIntro() {
+		const el = document.getElementById('intro');
+		if (!el) return;
+		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
+		if (!isHome || window.__introDone) {
+			el.remove();
+		}
+	}
+	// 视图过渡换页时，Astro 可能携带旧页 DOM；离开主页或已播过时立刻清掉残留的动画层
+	document.addEventListener('astro:before-swap', () => {
+		cleanupStaleIntro();
+	});
+	window.addEventListener('astro:after-swap', cleanupStaleIntro);
 	runIntro();
 </script>
 
