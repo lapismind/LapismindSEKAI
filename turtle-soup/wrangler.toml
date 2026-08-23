@@ -1,0 +1,36 @@
+name = "turtle-soup"
+main = "src/worker/index.js"
+compatibility_date = "2025-06-01"
+
+# 自定义域名（Custom Domain：自动创建 DNS + 证书，Worker 作为源）
+[[routes]]
+pattern = "soup.qmzhj.top"
+custom_domain = true
+
+# 运行时配置（非敏感）
+[vars]
+AI_BASE_URL = "https://opencode.ai/zen/go/v1"
+AI_MODEL = "deepseek-v4-flash"
+
+# 前端静态资源（Vite 构建产物 dist/）
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# API 与 WebSocket 必须先进 Worker，其余走静态资源
+run_worker_first = ["/api/*", "/ws*"]
+
+# 谜题房间：每局一个 DO 实例
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "SoupRoom"
+
+# 谜题库：全局单例 DO
+[[durable_objects.bindings]]
+name = "PUZZLE_LIB"
+class_name = "PuzzleLib"
+
+# 首次部署必须注册 DO 类（免费计划使用 SQLite 存储后端）
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SoupRoom", "PuzzleLib"]
