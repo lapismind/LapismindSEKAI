@@ -1,0 +1,61 @@
+<script setup>
+import { computed } from 'vue'
+import SpellCard from './SpellCard.vue'
+import { avatarUrl } from '../game/avatars'
+const props = defineProps({
+  player: { type: Object, required: true },
+  isMe: { type: Boolean, default: false },
+  isCurrent: { type: Boolean, default: false },
+})
+
+const avatar = computed(() => avatarUrl(props.player.avatarId))
+
+// 我自己的手牌显示为背面；别人的手牌正面朝上
+const showFaceDown = computed(() => props.isMe)
+</script>
+
+<template>
+  <div
+    class="flex flex-row items-center gap-2 rounded-xl border p-2.5 transition"
+    :class="[
+      isCurrent ? 'border-brand-500 bg-white shadow-lg' : 'border-[#D8D0E4] bg-white',
+      !player.alive ? 'opacity-50 grayscale' : '',
+    ]"
+  >
+    <!-- 头像 + 昵称/分数（紧凑纵排） -->
+    <div class="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#D8D0E4] bg-[#F7EFF8]">
+      <img v-if="avatar" :src="avatar" :alt="player.nickname" class="h-full w-full object-cover" />
+      <span v-else class="flex h-full items-center justify-center text-xs text-[#A29BB5]">{{ player.nickname.slice(0,1) }}</span>
+    </div>
+    <div class="w-16 shrink-0">
+      <div class="truncate text-sm font-semibold leading-tight text-[#333333]">
+        {{ player.nickname }}
+        <span v-if="player.isHost">👑</span>
+        <span v-if="isMe" class="text-brand-600">我</span>
+      </div>
+      <div class="text-xs text-[#8A8299]">{{ player.score }} 分</div>
+    </div>
+
+    <!-- 生命值（同一行） -->
+    <div class="shrink-0 text-sm tracking-tight" :title="'生命 ' + player.health + '/6'">
+      <span
+        v-for="i in 6"
+        :key="i"
+        :class="i <= player.health ? 'text-red-500' : 'text-[#E4DEEC]'"
+      >❤️</span>
+    </div>
+
+    <!-- 秘密牌 -->
+    <div class="shrink-0 text-xs text-purple-500">🔮×{{ player.secretsCount }}</div>
+
+    <!-- 手牌（横排，同一行右侧） -->
+    <div class="ml-auto flex flex-row gap-1.5">
+      <template v-if="showFaceDown">
+        <SpellCard face-down size="sm" v-for="i in (player.handSize || 5)" :key="i" />
+      </template>
+      <template v-else>
+        <SpellCard v-for="(id, i) in player.hand" :key="i" :spell-id="id" size="sm" />
+      </template>
+    </div>
+  </div>
+</template>

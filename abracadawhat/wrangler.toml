@@ -1,0 +1,22 @@
+name = "abracadawhat"
+main = "src/worker/index.js"
+compatibility_date = "2025-06-01"
+
+# 自定义域名（Custom Domain：自动创建 DNS + 证书）
+[[routes]]
+pattern = "abracadawhat.qmzhj.top"
+custom_domain = true
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/ws*", "/api/*"]
+
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "AbracaRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AbracaRoom"]

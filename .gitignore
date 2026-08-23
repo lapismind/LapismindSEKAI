@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+.env
+.env.*
+*.log
+.DS_Store
+Thumbs.db
+临时资源/
+_migrate_*/
+
