@@ -1,0 +1,148 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE } from '../../consts';
+import { games } from '../../data/projects';
+
+const project = games.find((p) => p.slug === 'abracadawhat')!;
+const { name, subtitle, description, tech, links, status } = project;
+
+const features = [
+	'2–5 人联机对战，房间码建房，支持断线重连',
+	'每人 5 张手牌、6 点生命，暗牌区藏着对手要猜的秘密组合',
+	'8 种法术：巨龙、幽灵、火球…… 攻击、回复、侦察各有妙用',
+	'猜中对手暗牌得分，轮末存活时每张秘密牌额外加分',
+	'率先拿到 8 分即获胜',
+	'服务端持全部暗牌做唯一仲裁，客户端无法偷看',
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+			.page-head {
+				margin-bottom: 2.2rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
+			}
+			.links {
+				display: flex;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				margin-bottom: 1.6rem;
+			}
+			h2 {
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
+			}
+			.feature-list {
+				padding-left: 1.3em;
+			}
+			.feature-list li {
+				margin-bottom: 0.55em;
+			}
+			.feature-list li::marker {
+				color: var(--primary);
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<a class="back-link" href="/projects/">← 返回作品集</a>
+			<header class="page-head reveal">
+				<p class="eyebrow">game · {status}</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class={`status-badge status-${status}`}>{status === 'online' ? 'online' : '开发中'}</span>
+			</header>
+
+			<div class="links reveal">
+				{
+					links.online && (
+						<a class="btn btn-primary" href={links.online} target="_blank" rel="noopener">
+							在线体验 <span aria-hidden="true">→</span>
+						</a>
+					)
+				}
+				{links.github && (
+					<a class="btn btn-ghost" href={links.github} target="_blank" rel="noopener">
+						GitHub 源码
+					</a>
+				)}
+			</div>
+
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<p>{description}</p>
+			</section>
+
+			<section class="reveal">
+				<h2>玩法特性</h2>
+				<ul class="feature-list">
+					{features.map((f) => (
+						<li>{f}</li>
+					))}
+				</ul>
+			</section>
+
+			<section class="reveal">
+				<h2>技术栈</h2>
+				<div class="tech-list">
+					{tech.map((t) => (
+						<span class="tag">{t}</span>
+					))}
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>架构说明</h2>
+				<p>
+					浏览器通过 WebSocket 连接 Worker，每个房间对应一个 Durable Objects 实例（AbracaRoom）。
+					大厅层复用 @lapismind/lobby-kit：房间码、头像、playerId 签名与断线重连全部来自包内。
+					规则引擎是可序列化的纯数据模块，服务端持有全部暗牌做唯一仲裁，客户端只做展示和操作。
+				</p>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

@@ -29,14 +29,16 @@ export const games: Project[] = [
 		featured: true,
 	},
 	{
-		slug: 'card-game',
-		name: 'Card Game',
-		subtitle: '联机卡牌对战（开发中）',
+		slug: 'abracadawhat',
+		name: '出包魔法师',
+		subtitle: '2–5 人联机魔法对决，猜牌、施法、抢先到 8 分',
 		description:
-			'基于 Vue3 与 Cloudflare Workers 的联机卡牌对战游戏，复用海龟汤的 WebSocket + Durable Objects 架构。',
-		status: 'developing',
-		tech: ['Vue3', 'Pinia', 'Vite', 'Tailwind', 'Cloudflare Workers'],
-		links: {},
+			'每人手握五张法术牌与三点生命，暗牌里藏着对手的秘密组合。猜中对方的暗牌得分，施法干扰对手、回复自己，率先拿到 8 分即胜出。服务端持全部暗牌做唯一仲裁，杜绝作弊。',
+		status: 'online',
+		tech: ['Vue3', 'Pinia', 'Vite', 'Tailwind', 'lobby-kit', 'Cloudflare Workers', 'Durable Objects'],
+		links: {
+			online: 'https://abracadawhat.qmzhj.top',
+		},
 		featured: true,
 	},
 	{
