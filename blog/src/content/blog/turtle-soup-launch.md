@@ -2,7 +2,7 @@
 title: '从零到一：我的第一个上线作品「真冬的海龟汤」'
 description: '海龟汤游戏的开发与上线记录：从想法到 Cloudflare Workers 免费部署，第一个真正跑在公网上的作品。'
 pubDate: 'Aug 14 2026'
-heroImage: '../../assets/turtle-soup-cover.png'
+heroImage: '../../assets/covers/turtle-soup-cover.png'
 ---
 
 ## 为什么做海龟汤
@@ -10,6 +10,11 @@ heroImage: '../../assets/turtle-soup-cover.png'
 海龟汤是一种逆向推理游戏：主持人给出一个奇怪的"汤面"（一句话谜题），玩家通过提问还原完整"汤底"（真相）。主持人只能回答是 / 否 / 是也不是 / 无关。
 
 这个游戏天然适合联机，也天然适合 AI 来当主持人——判定玩家的问题只需要理解"是否接近真相"，这正是大模型擅长的事。
+
+然后就是我加的群里蛮多人挺喜欢玩海龟汤的，想着好好打磨也许之后也用得上呢？正好也练手。
+
+![图片说明](../../assets/posts/editor-1787589936481.png)
+
 
 ## 技术选型
 
@@ -34,7 +39,7 @@ heroImage: '../../assets/turtle-soup-cover.png'
 
 **1. AI 判定超时会卡死游戏。** 兜底方案是关键词判定：AI 没响应时自动降级，至少保证游戏能继续。这个"降级保底"的思路后来被证明确实管用——AI 端点偶发超时，但玩家体验不到中断。
 
-**2. 国内网络访问 workers.dev 不稳定。** 最终把域名绑定到自己的 `soup.qmzhj.top`，用 Cloudflare Custom Domain（而非 Routes），自动建 DNS 记录和证书，稳定多了。
+**2. 国内网络访问 workers.dev 不稳定。** 最终把域名绑定到自己的 `soup.qmzhj.top`，用 Cloudflare Custom Domain（而非 Routes），自动建 DNS 记录和证书，稳定多了。（也是借此遂了我拥有一个自己的域名的心愿）
 
 ## 上线
 

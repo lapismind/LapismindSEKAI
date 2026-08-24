@@ -1,59 +1,82 @@
 ---
-import { GITHUB_URL, SITE_TITLE } from '../consts';
 import MusicDock from './MusicDock.astro';
 import IntroOverlay from './IntroOverlay.astro';
+import footerBanner from '../assets/site/footer-25h.png';
 const isHome = Astro.url.pathname.replace(/\/+$/, '') === '';
 const today = new Date();
 ---
 
 <footer class="site-footer">
-	<div class="footer-wave" aria-hidden="true">
-		<svg viewBox="0 0 1440 72" preserveAspectRatio="none">
-			<path
-				d="M0,40 C240,80 480,0 720,28 C960,56 1200,12 1440,44 L1440,72 L0,72 Z"
-				fill="currentColor"
-			></path>
+	<div class="footer-banner" aria-hidden="true">
+		<img src={footerBanner.src} alt="" loading="lazy" width={footerBanner.width} height={footerBanner.height} />
+		<div class="footer-banner-fade"></div>
+	</div>
+	<div class="footer-decor" aria-hidden="true">
+		<svg class="footer-waves" viewBox="0 0 1440 260" preserveAspectRatio="none">
+			<defs>
+				<linearGradient id="footer-wave-left" x1="0" y1="0" x2="1" y2="0">
+					<stop offset="0" stop-color="currentColor" stop-opacity="0.55"></stop>
+					<stop offset="1" stop-color="currentColor" stop-opacity="0"></stop>
+				</linearGradient>
+				<linearGradient id="footer-wave-right" x1="1" y1="0" x2="0" y2="0">
+					<stop offset="0" stop-color="currentColor" stop-opacity="0.55"></stop>
+					<stop offset="1" stop-color="currentColor" stop-opacity="0"></stop>
+				</linearGradient>
+			</defs>
+			<g fill="none" stroke="url(#footer-wave-left)" stroke-width="1.4">
+				<path d="M-30 60 C 120 62, 170 190, 320 196 C 450 201, 500 130, 620 142 C 700 150, 740 200, 830 214"></path>
+				<path d="M-24 84 C 110 88, 176 216, 318 222 C 452 227, 508 152, 626 164 C 702 172, 748 218, 834 230"></path>
+				<path d="M-16 112 C 104 118, 184 240, 322 246 C 458 251, 520 174, 636 186 C 710 194, 756 236, 840 246"></path>
+			</g>
+			<g fill="none" stroke="url(#footer-wave-right)" stroke-width="1.4">
+				<path d="M1470 40 C 1320 42, 1264 178, 1120 188 C 1000 196, 956 122, 850 136 C 776 145, 736 196, 650 210"></path>
+				<path d="M1466 66 C 1316 70, 1258 202, 1118 212 C 998 220, 950 148, 846 162 C 774 171, 738 216, 654 228"></path>
+				<path d="M1460 96 C 1310 102, 1250 228, 1112 238 C 994 246, 944 174, 842 188 C 772 197, 740 234, 658 244"></path>
+			</g>
+			<g class="footer-nodes">
+				<circle cx="140" cy="180" r="3.5"></circle>
+				<circle cx="330" cy="208" r="5"></circle>
+				<circle cx="520" cy="176" r="2.5"></circle>
+				<circle cx="920" cy="182" r="4"></circle>
+				<circle cx="1130" cy="204" r="3"></circle>
+				<circle cx="1310" cy="160" r="4.5"></circle>
+			</g>
 		</svg>
+		<span class="star star-one"></span>
+		<span class="star star-two"></span>
+		<span class="star star-three"></span>
 	</div>
 	<div class="container">
-		<div class="footer-inner glass">
-			<div class="footer-top">
-				<div class="footer-brand">
-					<span class="brand-mark" aria-hidden="true">L</span>
-					<div>
-						<p class="footer-title">{SITE_TITLE}</p>
-						<p class="footer-desc">把想法做成能跑起来的东西。</p>
-					</div>
-				</div>
-				<div class="social-links">
-					<a href={GITHUB_URL} target="_blank" rel="noopener" aria-label="GitHub">
-						<svg viewBox="0 0 16 16" aria-hidden="true" width="18" height="18"
-							><path
-								fill="currentColor"
-								d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"
-							></path></svg
-						>
-					</a>
-					<a class="rss" href="/rss.xml" aria-label="RSS">
-						<svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor"
-							><path
-								d="M6.18 17.82a2.18 2.18 0 1 1 0 4.36 2.18 2.18 0 0 1 0-4.36zM4 4.44v3.06c6.93 0 12.56 5.63 12.56 12.56h3.06C19.62 10.32 13.68 4.44 4 4.44zm0 6.1v3.06c4.66 0 8.4 3.74 8.4 8.4h3.06c0-6.33-5.13-11.46-11.46-11.46z"
-							></path></svg
-						>
-					</a>
-				</div>
-			</div>
+		<div class="footer-inner">
+			<nav class="footer-nav" aria-label="页脚快捷导航">
+				<a href="/">博客首页</a>
+				<a href="/blog">文章归档</a>
+				<a href="/projects/">作品集</a>
+				<a href="/about">关于我</a>
+				<a href="/rss.xml">RSS 订阅</a>
+			</nav>
 			<div class="footer-tech">
 				<span class="tag">Astro</span>
 				<span class="tag">Tailwind CSS</span>
 				<span class="tag">Cloudflare Workers</span>
+			</div>
+			<div class="footer-runtime" aria-label="网站运行时间">
+				<div class="runtime-clock" aria-hidden="true">
+					<span class="runtime-orbit"></span>
+					<svg viewBox="0 0 100 100">
+						<circle cx="50" cy="50" r="39"></circle>
+						<path d="M50 27v25l17 10"></path>
+						<circle cx="50" cy="52" r="4.5"></circle>
+					</svg>
+				</div>
+				<p id="site-runtime">本站已运行 -- 天 -- 小时 -- 分 -- 秒</p>
 			</div>
 			<div class="footer-bottom">
 				<p>&copy; {today.getFullYear()} Lapismind. 保留所有权利。</p>
 				<p class="built">Built with Astro & Powered by Cloudflare</p>
 			</div>
 			<p class="footer-credit">
-				首页背景卡面素材来自 pjsk.moe 粉丝资源站，版权归 SEGA / Colorful Palette 所有。
+				首页背景卡面、Live2D 模型与页脚形象（MikuMikuDance 渲染）素材来自 pjsk.moe 等粉丝资源站；页脚姿势数据来自 MMD 社区创作者 MitzimMD、Aisukawaii222、xinshin、Budo Masuta。模型与歌曲版权归 SEGA / Colorful Palette / Crypton Future Media 所有。本站为非官方粉丝网站，素材仅供个人展示，禁止转载与二次分发。
 			</p>
 		</div>
 	</div>
@@ -62,6 +85,27 @@ const today = new Date();
 <MusicDock />
 
 {isHome && <IntroOverlay />}
+
+<script is:inline>
+	(function () {
+		// 站点起点：第一篇博客（海龟汤上线记录）发布日 2026-08-14
+		var startAt = new Date('2026-08-14T00:00:00+08:00').getTime();
+		var el = document.getElementById('site-runtime');
+		if (!el) return;
+		function render() {
+			var s = Math.max(0, Math.floor((Date.now() - startAt) / 1000));
+			var d = Math.floor(s / 86400);
+			var h = Math.floor((s % 86400) / 3600);
+			var m = Math.floor((s % 3600) / 60);
+			var sec = s % 60;
+			el.innerHTML =
+				'本站已运行 <strong>' + d + '</strong> 天 <strong>' + h + '</strong> 小时 <strong>' +
+				m + '</strong> 分 <strong>' + sec + '</strong> 秒';
+		}
+		render();
+		setInterval(render, 1000);
+	})();
+</script>
 
 <canvas class="snow-canvas" aria-hidden="true"></canvas>
 
@@ -77,6 +121,25 @@ const today = new Date();
 		position: relative;
 		padding: 0 0 3rem;
 		margin-top: 4rem;
+	}
+	.footer-banner {
+		position: relative;
+		width: 100%;
+		overflow: hidden;
+		line-height: 0;
+	}
+	.footer-banner img {
+		display: block;
+		width: 100%;
+		height: auto;
+		user-select: none;
+		-webkit-user-drag: none;
+	}
+	.footer-banner-fade {
+		position: absolute;
+		inset: auto 0 0 0;
+		height: 90px;
+		background: linear-gradient(180deg, transparent 0%, var(--page-bg) 100%);
 	}
 	.snow-canvas {
 		position: fixed;
@@ -116,84 +179,147 @@ const today = new Date();
 		color: var(--primary);
 		border-color: var(--primary);
 	}
-	.footer-wave {
-		color: color-mix(in oklab, var(--page-bg-deep) 70%, var(--primary-soft) 30%);
+	.footer-decor {
+		position: relative;
+		height: 150px;
+		overflow: hidden;
+		color: color-mix(in oklab, var(--primary) 45%, var(--page-bg-deep));
+		background: linear-gradient(
+			180deg,
+			var(--page-bg) 0%,
+			color-mix(in oklab, var(--primary-ghost) 55%, var(--page-bg)) 100%
+		);
 		line-height: 0;
 	}
-	.footer-wave svg {
+	.footer-waves {
 		width: 100%;
-		height: 64px;
+		height: 100%;
 		display: block;
+	}
+	.footer-nodes circle {
+		fill: currentColor;
+	}
+	.star {
+		position: absolute;
+		display: block;
+		width: 5px;
+		height: 5px;
+		border-radius: 50%;
+		background: color-mix(in oklab, var(--primary-bright) 80%, #fff);
+		box-shadow: 0 0 8px 2px color-mix(in oklab, var(--primary-bright) 50%, transparent);
+		animation: star-twinkle 3.2s ease-in-out infinite;
+	}
+	.star-one {
+		left: 18%;
+		top: 30%;
+	}
+	.star-two {
+		right: 22%;
+		top: 42%;
+		animation-delay: 1.1s;
+	}
+	.star-three {
+		left: 52%;
+		top: 20%;
+		animation-delay: 2.2s;
+	}
+	@keyframes star-twinkle {
+		0%,
+		100% {
+			opacity: 0.25;
+			transform: scale(0.8);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.25);
+		}
+	}
+	.footer-nav {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.4rem 1.6rem;
+		margin-top: 1.4rem;
+		font-size: 0.9rem;
+	}
+	.footer-nav a {
+		color: var(--muted);
+		text-decoration: none;
+		padding-bottom: 2px;
+		border-bottom: 1px solid transparent;
+		transition: color 0.2s ease, border-color 0.2s ease;
+	}
+	.footer-nav a:hover {
+		color: var(--primary);
+		border-color: var(--primary);
+	}
+	.footer-runtime {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.7rem;
+		margin-top: 1.2rem;
+		color: var(--ink-soft);
+	}
+	.runtime-clock {
+		position: relative;
+		width: 38px;
+		height: 38px;
+		flex-shrink: 0;
+	}
+	.runtime-clock svg {
+		width: 100%;
+		height: 100%;
+		fill: none;
+		stroke: currentColor;
+		stroke-width: 6;
+		stroke-linecap: round;
+	}
+	.runtime-orbit {
+		position: absolute;
+		inset: -4px;
+		border-radius: 50%;
+		border: 1.5px dashed color-mix(in oklab, var(--primary) 45%, transparent);
+		animation: orbit-spin 12s linear infinite;
+	}
+	@keyframes orbit-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+	.footer-runtime p {
+		margin: 0;
+		font-size: 0.92rem;
+		font-family: var(--font-mono);
+		font-variant-numeric: tabular-nums;
+	}
+	.footer-runtime strong {
+		color: var(--primary);
+		font-weight: 700;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.star,
+		.runtime-orbit {
+			animation: none;
+		}
 	}
 	.container {
 		position: relative;
-		margin-top: -14px;
+		margin-top: -40px;
 	}
 	.footer-inner {
-		padding: 2rem 2.2rem 1.6rem;
-	}
-	.footer-top {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-	.footer-brand {
-		display: flex;
-		align-items: center;
-		gap: 0.8rem;
-	}
-	.brand-mark {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		border-radius: 10px;
-		background: var(--gradient);
-		color: #fff;
-		font-family: var(--font-mono);
-		font-weight: 700;
-		font-size: 1rem;
-		box-shadow: var(--shadow-sm);
-	}
-	.footer-title {
-		margin: 0;
-		color: var(--ink);
-		font-weight: 700;
-	}
-	.footer-desc {
-		margin: 0;
-		font-size: 0.88rem;
-		color: var(--muted);
-	}
-	.social-links {
-		display: flex;
-		gap: 0.6rem;
-	}
-	.social-links a {
-		display: grid;
-		place-items: center;
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		border: 1px solid var(--line);
-		background: var(--card-solid);
-		color: var(--muted);
-		text-decoration: none;
-		transition: color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-	}
-	.social-links a:hover {
-		color: var(--primary);
-		border-color: var(--primary);
-		transform: translateY(-2px);
+		padding: 0 2.2rem;
+		background: none;
+		border: none;
+		box-shadow: none;
+		backdrop-filter: none;
 	}
 	.footer-tech {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.5rem;
 		justify-content: center;
-		margin-top: 1.5rem;
+		margin-top: 1.8rem;
 	}
 	.footer-bottom {
 		margin-top: 1.5rem;

@@ -8,6 +8,9 @@ import { defineConfig, fontProviders } from 'astro/config';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://blog.qmzhj.top',
+	server: {
+		port: 3000,
+	},
 	integrations: [mdx(), sitemap()],
 	markdown: {
 		shikiConfig: {
