@@ -54,7 +54,8 @@ onMounted(async () => {
 })
 
 function login() {
-  location.href = `${props.authBaseUrl}/login?redirect_to=${encodeURIComponent(location.pathname)}`
+  // 完整 URL：Worker 端按域名白名单校验后回跳
+  location.href = `${props.authBaseUrl}/login?redirect_to=${encodeURIComponent(location.href)}`
 }
 
 async function submit() {

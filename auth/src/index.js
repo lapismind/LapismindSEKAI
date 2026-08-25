@@ -22,27 +22,49 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url)
     const { pathname } = url
+    const cors = corsHeaders(request)
+
+    // 预检请求直接放行
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: cors })
+    }
 
     try {
       if (pathname === '/login') return handleLogin(url, env)
       if (pathname === '/callback') return await handleCallback(request, url, env)
-      if (pathname === '/api/guest' && request.method === 'POST') return await handleGuest(env)
-      if (pathname === '/api/me') return await handleMe(request, env)
-      if (pathname === '/logout' && request.method === 'POST') return handleLogout()
-      if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env)
-      if (pathname === '/api/comments' && request.method === 'POST') return await postComment(request, env)
+      if (pathname === '/api/guest' && request.method === 'POST') return await handleGuest(env, cors)
+      if (pathname === '/api/me') return await handleMe(request, env, cors)
+      if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
+      if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env, cors)
+      if (pathname === '/api/comments' && request.method === 'POST') return await postComment(request, env, cors)
       const delMatch = pathname.match(/^\/api\/comments\/(\d+)$/)
-      if (delMatch && request.method === 'DELETE') return await deleteComment(request, delMatch[1], env)
+      if (delMatch && request.method === 'DELETE') return await deleteComment(request, delMatch[1], env, cors)
 
-      return json({ error: 'not found' }, 404)
+      return json({ error: 'not found' }, 404, cors)
     } catch (err) {
       console.error('auth worker error:', err)
-      return json({ error: 'internal error' }, 500)
+      return json({ error: 'internal error' }, 500, cors)
     }
   },
 }
 
 // ---------- 工具 ----------
+
+const ALLOWED_ORIGIN_RE = /https:\/\/([a-z0-9-]+\.)?qmzhj\.top$/
+
+function corsHeaders(request) {
+  const origin = request.headers.get('origin') || ''
+  // 只允许 qmzhj.top 及其子域跨域携带 cookie 访问
+  if (ALLOWED_ORIGIN_RE.test(origin)) {
+    return {
+      'access-control-allow-origin': origin,
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-headers': 'content-type',
+      'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
+    }
+  }
+  return {}
+}
 
 function json(data, status = 200, extraHeaders = {}) {
   return new Response(JSON.stringify(data), {
@@ -171,22 +193,22 @@ async function handleCallback(request, url, env) {
   return new Response(null, { status: 302, headers })
 }
 
-async function handleGuest(env) {
+async function handleGuest(env, cors = {}) {
   const playerId = generatePlayerId()
   const token = await createSessionToken({ playerId, provider: 'guest' }, env.SESSION_SECRET)
   return json(
     { ok: true, user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId } },
     200,
-    { 'Set-Cookie': sessionCookie(token) },
+    { 'Set-Cookie': sessionCookie(token), ...cors },
   )
 }
 
-async function handleMe(request, env) {
+async function handleMe(request, env, cors = {}) {
   const session = await getSession(request, env)
-  if (!session) return json({ user: null }, 200)
+  if (!session) return json({ user: null }, 200, cors)
 
   if (session.provider === 'guest') {
-    return json({ user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: session.playerId } })
+    return json({ user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: session.playerId } }, 200, cors)
   }
 
   // GitHub 用户从 D1 补全昵称头像；playerId 由 token 保证稳定
@@ -197,11 +219,11 @@ async function handleMe(request, env) {
     const row = await env.DB.prepare('SELECT github_id, nickname, avatar_url FROM users WHERE id = ?').bind(userId).first()
     if (row) ({ github_id: githubId, nickname, avatar_url: avatarUrl } = row)
   }
-  return json({ user: { provider: 'github', nickname, avatarUrl, playerId: session.playerId, userId, githubId } })
+  return json({ user: { provider: 'github', nickname, avatarUrl, playerId: session.playerId, userId, githubId } }, 200, cors)
 }
 
-function handleLogout() {
-  return json({ ok: true }, 200, { 'Set-Cookie': clearCookie() })
+function handleLogout(cors = {}) {
+  return json({ ok: true }, 200, { 'Set-Cookie': clearCookie(), ...cors })
 }
 
 // ---------- 第二阶段：评论接口 ----------
@@ -210,7 +232,7 @@ const COMMENT_MAX_LEN = 500
 const RATE_LIMIT_WINDOW_MS = 60 * 1000
 const RATE_LIMIT_MAX = 5
 
-async function listComments(url, env) {
+async function listComments(url, env, cors = {}) {
   const pagePath = url.searchParams.get('page_path')
   if (!pagePath) return json({ error: 'missing page_path' }, 400)
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1)
@@ -239,32 +261,32 @@ async function listComments(url, env) {
     total: total.n,
     page,
     pageSize,
-  })
+  }, 200, cors)
 }
 
-async function postComment(request, env) {
+async function postComment(request, env, cors = {}) {
   const session = await getSession(request, env)
   if (!session || session.provider !== 'github') {
-    return json({ error: 'login required', needLogin: true }, 401)
+    return json({ error: 'login required', needLogin: true }, 401, cors)
   }
 
   let body
   try {
     body = await request.json()
   } catch {
-    return json({ error: 'invalid json' }, 400)
+    return json({ error: 'invalid json' }, 400, cors)
   }
   const pagePath = typeof body.page_path === 'string' ? body.page_path.slice(0, 512) : ''
   const content = typeof body.content === 'string' ? body.content.trim().slice(0, COMMENT_MAX_LEN + 1) : ''
   if (!pagePath || !content || content.length > COMMENT_MAX_LEN) {
-    return json({ error: `content required, max ${COMMENT_MAX_LEN} chars` }, 400)
+    return json({ error: `content required, max ${COMMENT_MAX_LEN} chars` }, 400, cors)
   }
 
   const m = session.playerId.match(/^pu([0-9a-z]+)/)
   const userId = m ? parseInt(m[1], 36) : null
-  if (!userId) return json({ error: 'invalid session' }, 401)
+  if (!userId) return json({ error: 'invalid session' }, 401, cors)
   const user = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first()
-  if (!user) return json({ error: 'invalid session' }, 401)
+  if (!user) return json({ error: 'invalid session' }, 401, cors)
 
   // 频率限制：同一用户每分钟最多 5 条（用 D1 计数）
   const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString().replace('T', ' ').slice(0, 19)
@@ -272,7 +294,7 @@ async function postComment(request, env) {
     "SELECT COUNT(*) AS n FROM comments WHERE user_id = ? AND created_at > ?"
   ).bind(userId, since).first()
   if (recent.n >= RATE_LIMIT_MAX) {
-    return json({ error: 'rate limited, try later' }, 429)
+    return json({ error: 'rate limited, try later' }, 429, cors)
   }
 
   const result = await env.DB.prepare(
@@ -287,22 +309,22 @@ async function postComment(request, env) {
       createdAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
       nickname: null, // 前端可从 /api/me 拿到自己的昵称
     },
-  })
+  }, 200, cors)
 }
 
-async function deleteComment(request, commentId, env) {
+async function deleteComment(request, commentId, env, cors = {}) {
   const session = await getSession(request, env)
   if (!session || session.provider !== 'github' || !env.ADMIN_GITHUB_ID) {
-    return json({ error: 'forbidden' }, 403)
+    return json({ error: 'forbidden' }, 403, cors)
   }
   const m = session.playerId.match(/^pu([0-9a-z]+)/)
   const userId = m ? parseInt(m[1], 36) : null
-  if (!userId) return json({ error: 'forbidden' }, 403)
+  if (!userId) return json({ error: 'forbidden' }, 403, cors)
   const user = await env.DB.prepare('SELECT github_id FROM users WHERE id = ?').bind(userId).first()
   if (!user || String(user.github_id) !== String(env.ADMIN_GITHUB_ID)) {
-    return json({ error: 'forbidden' }, 403)
+    return json({ error: 'forbidden' }, 403, cors)
   }
   const result = await env.DB.prepare('DELETE FROM comments WHERE id = ?').bind(commentId).run()
   if (!result.meta.changes) return json({ error: 'not found' }, 404)
-  return json({ ok: true })
+  return json({ ok: true }, 200, cors)
 }
