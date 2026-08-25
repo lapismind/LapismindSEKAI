@@ -8,6 +8,9 @@ import { onBeforeUnmount } from 'vue'
 import { createAuthClient } from '@lapismind/lobby-kit'
 import guestAvatar from '@lapismind/lobby-kit/avatars/0.png'
 
+// Astro 的图片导入返回元数据对象 { src, width, height }，<img :src> 需要 .src 字符串
+const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src
+
 const user = ref(null)
 const open = ref(false)
 const auth = createAuthClient()
@@ -40,7 +43,7 @@ async function logout() {
   <div ref="rootEl" class="user-avatar">
     <button type="button" class="avatar-btn" :aria-label="user?.nickname || '游客'" @click="open = !open">
       <img
-        :src="user?.avatarUrl || guestAvatar"
+        :src="user?.avatarUrl || guestAvatarSrc"
         alt=""
         class="avatar-img"
         :class="{ 'is-guest': !user?.avatarUrl }"
