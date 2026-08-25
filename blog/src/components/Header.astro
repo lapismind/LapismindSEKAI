@@ -1,6 +1,7 @@
 ---
 import { GITHUB_URL } from '../consts';
 import HeaderLink from './HeaderLink.astro';
+import UserAvatar from './UserAvatar.vue';
 
 const { overHero = false } = Astro.props;
 ---
@@ -19,6 +20,8 @@ const { overHero = false } = Astro.props;
 			<HeaderLink href="/about">关于</HeaderLink>
 		</div>
 		<div class="right">
+			<!-- 用户头像：游客 0 号占位，点击登录/退出 -->
+			<UserAvatar client:load />
 			<a class="gh" href={GITHUB_URL} target="_blank" aria-label="GitHub">
 				<svg viewBox="0 0 16 16" aria-hidden="true" width="20" height="20"
 					><path
