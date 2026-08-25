@@ -40,7 +40,9 @@ CREATE TABLE IF NOT EXISTS match_players (
   deaths INTEGER NOT NULL DEFAULT 0,     -- 死亡次数
   spells_cast TEXT,                      -- JSON: { "1": 2, "4": 1 } 各魔法成功次数
   secrets_taken INTEGER NOT NULL DEFAULT 0,
-  rounds_survived INTEGER NOT NULL DEFAULT 0
+  rounds_survived INTEGER NOT NULL DEFAULT 0,
+  dragon_fails INTEGER NOT NULL DEFAULT 0,   -- 古代巨龙施法失败次数
+  suicides INTEGER NOT NULL DEFAULT 0        -- 施法失败自杀次数
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_players_pid ON match_players(player_id);

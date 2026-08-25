@@ -382,15 +382,18 @@ async function postMatch(request, env, cors = {}) {
       roundSpellCasts: Array.isArray(p.roundSpellCasts) ? p.roundSpellCasts : [],
       maxFailsInRound: Number.isInteger(p.maxFailsInRound) ? p.maxFailsInRound : 0,
       hadFullHpThenDied: p.hadFullHpThenDied === true,
+      dragonFails: Number.isInteger(p.dragonFails) ? p.dragonFails : 0,
+      suicides: Number.isInteger(p.suicides) ? p.suicides : 0,
     }
     cleanPlayers.push(row)
     await env.DB.prepare(
       `INSERT INTO match_players
-        (match_id, player_id, nickname, score, is_champion, kills, deaths, spells_cast, secrets_taken, rounds_survived)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        (match_id, player_id, nickname, score, is_champion, kills, deaths, spells_cast, secrets_taken, rounds_survived, dragon_fails, suicides)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(
       matchId, row.playerId, row.nickname, row.score, row.isChampion ? 1 : 0,
-      row.kills, row.deaths, JSON.stringify(row.spellsCast), row.secretsTaken, row.roundsSurvived
+      row.kills, row.deaths, JSON.stringify(row.spellsCast), row.secretsTaken, row.roundsSurvived,
+      row.dragonFails, row.suicides
     ).run()
   }
 
@@ -402,7 +405,9 @@ async function postMatch(request, env, cors = {}) {
       `SELECT
          SUM((SELECT COALESCE(SUM(value), 0) FROM json_each(mp.spells_cast))) AS totalCasts,
          SUM(mp.kills) AS totalKills,
-         SUM(mp.is_champion) AS totalWins
+         SUM(mp.is_champion) AS totalWins,
+         SUM(mp.dragon_fails) AS dragonFails,
+         SUM(mp.suicides) AS suicides
        FROM match_players mp WHERE mp.player_id = ?`
     ).bind(playerId).first()
     // 每种魔法分别累计
@@ -417,6 +422,8 @@ async function postMatch(request, env, cors = {}) {
       totalCasts: agg?.totalCasts || 0,
       totalKills: agg?.totalKills || 0,
       totalWins: agg?.totalWins || 0,
+      dragonFails: agg?.dragonFails || 0,
+      suicides: agg?.suicides || 0,
       spellCounts,
     }
     careerCache[playerId] = career

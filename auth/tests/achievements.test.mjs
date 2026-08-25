@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { evaluateAchievements, ACHIEVEMENT_DEFS } from '../src/achievements.js'
 
-const emptyCareer = () => ({ totalCasts: 0, totalKills: 0, totalWins: 0, spellCounts: {} })
+const emptyCareer = () => ({ totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0, spellCounts: {} })
 
 test('成就定义 key 无重复', () => {
   const keys = ACHIEVEMENT_DEFS.map(d => d.key)
@@ -36,15 +36,94 @@ test('三星龙：分多次累计击杀 3 人触发，但不触发龙来', async
   assert.ok(!keys.includes('dragon_triple_one'), '单次只有 1 杀不应触发龙来')
 })
 
-test('一滴血王朝：夺冠时 finalHp === 1', async () => {
+test('流星火雨：火球连续成功 3 次', async () => {
   const match = {
     players: [{
-      playerId: 'p1', isChampion: true, finalHp: 1, score: 8,
-      spellsCast: {}, deaths: 0, roundsSurvived: 3,
+      playerId: 'p1', spellsCast: { 7: 3 }, castStreaks: { 7: [true, true, true] },
+      deaths: 0, roundsSurvived: 1,
     }],
   }
   const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'one_hp_king'))
+  assert.ok(out.some(u => u.key === 'meteor'))
+})
+
+test('霜天：暴风雪连续 2 次成功 + 1 次失败不触发', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', spellsCast: { 6: 3 }, castStreaks: { 6: [true, true, false] },
+      deaths: 0, roundsSurvived: 1,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(!out.some(u => u.key === 'frost'))
+})
+
+test('绝地反击：1 血击杀死前血量 >=3 的目标', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', kills: 1, killedHighHpTarget: true, spellsCast: { 7: 1 },
+      deaths: 0, roundsSurvived: 1,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(out.some(u => u.key === 'comeback'))
+})
+
+test('卡牌大师：0 击杀夺冠', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', isChampion: true, kills: 0, deaths: 1, score: 8,
+      spellsCast: { 3: 2 }, roundsSurvived: 3,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(out.some(u => u.key === 'pacifist_king'))
+})
+
+test('奶龙大王：龙失败 10 次 + 自杀 10 次（跨场累计）', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', dragonFails: 4, suicides: 4, spellsCast: {},
+      deaths: 4, roundsSurvived: 0,
+    }],
+  }
+  const career = { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 6, suicides: 6, spellCounts: {} }
+  const out = await evaluateAchievements(match, async () => career)
+  assert.ok(out.some(u => u.key === 'dragon_clown'))
+})
+
+test('元素反应：单回合集齐雷雪火', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', spellsCast: { 5: 1, 6: 1, 7: 1 },
+      turnSpellSets: { 0: [5, 6, 7] },
+      deaths: 0, roundsSurvived: 1,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(out.some(u => u.key === 'elemental'))
+})
+
+test('我不同意：对手曾到 7 分自己 <=3 最终夺冠', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', isChampion: true, comebackFromBehind: true, score: 9,
+      spellsCast: {}, deaths: 0, roundsSurvived: 5,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(out.some(u => u.key === 'not_approved'))
+})
+
+test('白板登基：轮胜时 0 秘密牌且从未放过猫头鹰', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', roundWonNoSecrets: true, spellsCast: { 7: 1 },
+      deaths: 0, roundsSurvived: 1,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(out.some(u => u.key === 'egg_no_secret_win'))
 })
 
 test('稳如老狗：0 死亡 + 冠军', async () => {

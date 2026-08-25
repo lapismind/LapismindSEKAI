@@ -215,6 +215,20 @@ export class AbracaRoom {
         roundSpellCasts: [],   // [{round, spellId}]
         maxFailsInRound: 0,
         hadFullHpThenDied: false,
+        // v2 成就专用
+        castStreaks: {},          // { spellId: [true/false,...] } 按施法顺序记录成败
+        turnSpellSets: {},        // { turnIndex: [spellId,...] } 单回合成功施法集合
+        currentTurnIndex: 0,      // 回合计数（每次 turn_to 换人 +1）
+        dragonFails: 0,           // 古代巨龙施法失败次数
+        suicides: 0,              // 施法失败把自己炸死次数
+        killedHighHpTarget: false, // 击杀过 preKillHp >= 3 且自己 hp === 1
+        singleCastMultiKillNonDragon: 0, // 单次非龙施法击杀数（幽灵/暴风雨最多 2）
+        firstTurnDragon3: false,  // 本人首个回合放龙掷出 3
+        comebackFromBehind: false,// 对手曾 >=7 分而自己 <=3，最终夺冠
+        roundWonNoSecrets: false, // 轮胜时秘密牌为 0 且从未放过猫头鹰
+        hadLowThenFullThenDied: false, // hp 曾 <=2 后回到 6 再死亡
+        lowHpSeen: false,         // 内部标记
+        castOwlThisMatch: false,  // 本场是否放过猫头鹰
       }])),
       round: 0,
     }
@@ -246,12 +260,21 @@ export class AbracaRoom {
   }
 
   buildMatchReport(state, champion) {
+    const snapshots = state.matchStats?.scoreSnapshots || []
     return {
       game: 'abracadawhat',
       roomId: this.roomId,
       rounds: state.round,
       players: Object.values(state.matchStats?.players || {}).map(ms => {
         const sp = state.players.find(p => p.id === ms.playerId)
+        // 我不同意：任一时刻有对手分数 >=7 而自己 <=3，最终自己夺冠
+        const wasBehind = ms.playerId === champion.id && snapshots.some(snap => {
+          const oppMax = Math.max(0, ...Object.entries(snap)
+            .filter(([id]) => id !== ms.playerId)
+            .map(([, v]) => v))
+          return oppMax >= 7 && (snap[ms.playerId] || 0) <= 3
+        })
+        if (wasBehind) ms.comebackFromBehind = true
         return {
           ...ms,
           score: sp?.score ?? ms.score,
@@ -327,59 +350,75 @@ export class AbracaRoom {
       if (result.ok) {
         ms.spellsCast[spellId] = (ms.spellsCast[spellId] || 0) + 1
         ms.roundSpellCasts.push({ round: state.round, spellId })
+        // 连续施法序列（流星火雨/霜天：同一魔法连续成功 3 次）
+        ;(ms.castStreaks[spellId] ??= []).push(true)
+        // 回合内成功施法集合（元素反应：同回合集齐 5/6/7）
+        ;(ms.turnSpellSets[ms.currentTurnIndex] ??= []).push(spellId)
+        if (spellId === 4) ms.castOwlThisMatch = true
       } else if (result.reason === 'missing') {
-        // 施法失败：记录最大失败次数（彩蛋"社死三连"用）
-        const failsThisTurn = (state.castFailed?.[playerId] === true) ? 1 : 0
-        ms.maxFailsInRound = Math.max(ms.maxFailsInRound, failsThisTurn)
+        // 失败打断连续序列
+        ;(ms.castStreaks[spellId] ??= []).push(false)
+        if (spellId === 1) ms.dragonFails += 1
       }
-      // 伤害/击杀/治疗明细
+      // 伤害/击杀明细
+      let killsThisCast = 0
       for (const d of result.damaged || []) {
         const victim = state.players.find(p => p.id === d.playerId)
-        const wasAliveBefore = victim && d.amount < victim.health + d.amount
-        if (victim && !victim.alive && wasAliveBefore) {
-          // 本次伤害直接导致死亡 → 击杀
-          ms.kills += 1
-          if (spellId === 1) {
-            ms.dragonKills += 1
-            ms.dragonOneCastKills += 1
-          } else {
-            ms.roundKillsNonDragon += 1
-          }
+        if (victim && !victim.alive) {
+          killsThisCast += 1
+          // 绝地反击：自己 1 血时击杀过死前血量 >= 3 的目标
+          const preKillHp = victim.health + d.amount
+          const me = state.players.find(p => p.id === playerId)
+          if (preKillHp >= 3 && me?.health === 1) ms.killedHighHpTarget = true
         }
       }
-      // 受击方：死亡计数 + 满血后死亡彩蛋
+      if (spellId === 1) {
+        ms.dragonKills += killsThisCast
+        ms.dragonOneCastKills = Math.max(ms.dragonOneCastKills, killsThisCast)
+      } else {
+        ms.kills += killsThisCast
+        if (killsThisCast >= 2) {
+          ms.singleCastMultiKillNonDragon = Math.max(ms.singleCastMultiKillNonDragon, killsThisCast)
+        }
+      }
+      // 受击方死亡计数
       for (const d of result.damaged || []) {
         const vStats = state.matchStats.players[d.playerId]
         const vState = state.players.find(p => p.id === d.playerId)
         if (vStats && vState && !vState.alive) {
           vStats.deaths += 1
         }
-        // 回光返照：本轮曾满血然后死亡（粗略判定：本轮内 health 曾达 6）
+      }
+      // 开幕雷击：第 1 轮本人首个有施法的回合，放龙掷出 3
+      if (spellId === 1 && result.ok && result.dice === 3 && state.round === 1
+          && Object.keys(ms.turnSpellSets).length <= 1) {
+        ms.firstTurnDragon3 = true
       }
       // 自杀（施法失败把自己炸死）
       if (result.reason === 'missing' && result.died) {
+        ms.suicides += 1
         ms.deaths += 1
         if (state.round === 1) ms.firstRoundSuicide = true
       }
     }
-    // 轮结束时的特殊成就字段
+    // 轮结束时的成就字段
     if (state.phase === 'round_end' && state.matchStats && state.summary) {
       const winnerId = state.summary.winnerId
       const wStats = winnerId && state.matchStats.players[winnerId]
       const wState = winnerId && state.players.find(p => p.id === winnerId)
       if (wStats && wState) {
-        // 一线生机：赢时血量恰好 1
         if (wState.health === 1) wStats.roundWonAtHp1 = true
-        // 秘密富翁：轮末存活时秘密牌数
         wStats.roundEndSecrets = Math.max(wStats.roundEndSecrets, wState.secrets.length)
+        if (wState.secrets.length === 0 && !wStats.castOwlThisMatch) wStats.roundWonNoSecrets = true
       }
-      // 存活者 roundsSurvived +1
       for (const p of state.players) {
         const ms = state.matchStats.players[p.id]
         if (ms && p.alive) ms.roundsSurvived += 1
       }
-      // 非龙击杀是"单轮内"计数，轮结束重置
-      for (const ms of Object.values(state.matchStats.players)) ms.roundKillsNonDragon = 0
+      // 记录本轮结束时的分数快照（"我不同意"逆转判定用）
+      ;(state.matchStats.scoreSnapshots ??= []).push(
+        Object.fromEntries(state.players.map(p => [p.id, p.score]))
+      )
     }
     await this.saveState(state)
     this.broadcast(state, { type: 'cast_result', data: result })
@@ -404,6 +443,10 @@ export class AbracaRoom {
       return
     }
     await this.saveState(state)
+    // 回合切换：所有玩家 currentTurnIndex +1（用于元素反应的"单回合"界定）
+    if (state.matchStats) {
+      for (const ms of Object.values(state.matchStats.players)) ms.currentTurnIndex += 1
+    }
     this.broadcast(state, { type: 'turn_to', data: { playerId: state.currentPlayerId } })
     this.broadcastStateAll(state)
     for (const ws of this.ctx.getWebSockets()) {
