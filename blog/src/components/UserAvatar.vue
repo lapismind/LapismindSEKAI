@@ -4,17 +4,26 @@
  * GitHub 用户显示自己的头像（点击可退出）。全站 Header 共用。
  */
 import { onMounted, ref } from 'vue'
+import { onBeforeUnmount } from 'vue'
 import { createAuthClient } from '@lapismind/lobby-kit'
 import guestAvatar from '@lapismind/lobby-kit/avatars/0.png'
 
 const user = ref(null)
 const open = ref(false)
 const auth = createAuthClient()
+const rootEl = ref(null)
+
+function onDocClick(e) {
+  if (rootEl.value && !rootEl.value.contains(e.target)) open.value = false
+}
 
 onMounted(async () => {
+  document.addEventListener('click', onDocClick)
   await auth.init()
   user.value = auth.getUser()
 })
+
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 
 function login() {
   auth.loginWithGithub(location.pathname + location.search)
@@ -28,7 +37,7 @@ async function logout() {
 </script>
 
 <template>
-  <div class="user-avatar" @mouseleave="open = false">
+  <div ref="rootEl" class="user-avatar">
     <button type="button" class="avatar-btn" :aria-label="user?.nickname || '游客'" @click="open = !open">
       <img
         :src="user?.avatarUrl || guestAvatar"
