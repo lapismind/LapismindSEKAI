@@ -150,13 +150,7 @@ async function handleCallback(request, url, env) {
   if (!tokenData.access_token) {
     // 排查用：把 GitHub 的具体错误打进日志（不暴露给前端）
     console.error('token exchange failed:', JSON.stringify(tokenData))
-    // 诊断模式：区分 secret 错误 vs 授权码问题（不泄露 secret 本身）
-    const diag = tokenData.error === 'incorrect_client_credentials'
-      ? 'secret_mismatch'
-      : tokenData.error === 'bad_verification_code'
-        ? 'code_invalid_secret_ok'
-        : tokenData.error || 'unknown'
-    return json({ error: 'token exchange failed', diag }, 401)
+    return json({ error: 'token exchange failed' }, 401)
   }
 
   // 拉 GitHub 用户信息
