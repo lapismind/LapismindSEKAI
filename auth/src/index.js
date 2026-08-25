@@ -57,9 +57,19 @@ function sessionCookie(token) {
   return `session=${token}; Domain=.qmzhj.top; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`
 }
 
-// 开放重定向防护：只允许站内相对路径（拦截 //、/\ 等协议相对写法）
+const DEFAULT_DEST = 'https://blog.qmzhj.top/'
+
+// 开放重定向防护：只允许 qmzhj.top 及其子域的完整 URL（拦截外域与协议相对写法）
 function sanitizeRedirect(dest) {
-  return dest === '/' || /^\/[^/\\]/.test(dest || '') ? dest : '/'
+  if (!dest) return DEFAULT_DEST
+  try {
+    const u = new URL(dest, 'https://blog.qmzhj.top')
+    const host = u.hostname
+    const allowed = host === 'qmzhj.top' || host.endsWith('.qmzhj.top')
+    return allowed ? u.href : DEFAULT_DEST
+  } catch {
+    return DEFAULT_DEST
+  }
 }
 
 function clearCookie() {
@@ -115,7 +125,17 @@ async function handleCallback(request, url, env) {
     }),
   })
   const tokenData = await tokenRes.json()
-  if (!tokenData.access_token) return json({ error: 'token exchange failed' }, 401)
+  if (!tokenData.access_token) {
+    // 排查用：把 GitHub 的具体错误打进日志（不暴露给前端）
+    console.error('token exchange failed:', JSON.stringify(tokenData))
+    // 诊断模式：区分 secret 错误 vs 授权码问题（不泄露 secret 本身）
+    const diag = tokenData.error === 'incorrect_client_credentials'
+      ? 'secret_mismatch'
+      : tokenData.error === 'bad_verification_code'
+        ? 'code_invalid_secret_ok'
+        : tokenData.error || 'unknown'
+    return json({ error: 'token exchange failed', diag }, 401)
+  }
 
   // 拉 GitHub 用户信息
   const userRes = await fetch(GITHUB_USER_API, {
@@ -143,7 +163,7 @@ async function handleCallback(request, url, env) {
   const token = await createSessionToken({ playerId, provider: 'github' }, env.SESSION_SECRET)
 
   const rawDest = request.headers.get('cookie')?.match(/(?:^|;\s*)oauth_redirect=([^;]+)/)?.[1]
-  const safeDest = rawDest ? sanitizeRedirect(decodeURIComponent(rawDest)) : '/'
+  const safeDest = rawDest ? sanitizeRedirect(decodeURIComponent(rawDest)) : DEFAULT_DEST
   const headers = new Headers({ Location: safeDest })
   headers.append('Set-Cookie', sessionCookie(token))
   headers.append('Set-Cookie', 'oauth_state=; Path=/; HttpOnly; Max-Age=0')

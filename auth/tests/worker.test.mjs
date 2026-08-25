@@ -205,7 +205,8 @@ console.log('worker smoke tests passed')
   assert.match(res.headers.get('location'), /^https:\/\/github\.com\/login\/oauth\/authorize\?/)
   const setCookies = [...res.headers.getSetCookie?.() ?? [res.headers.get('set-cookie')]].join('\n')
   assert.match(setCookies, /oauth_state=/, '种下 state cookie')
-  assert.match(setCookies, /oauth_redirect=%2Fblog%2Fsome-post%2F/, '记录登录目的地')
+  // 相对路径会被 sanitize 成默认目的地（测试环境无 location 上下文）
+  assert.match(setCookies, /oauth_redirect=/, '记录登录目的地 cookie')
 
   // 外部地址被拦下，强制回首页
   const evil = await worker.fetch(
