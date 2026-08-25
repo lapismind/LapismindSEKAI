@@ -289,7 +289,9 @@ export class AbracaRoom {
     const secret = this.env?.MATCH_REPORT_SECRET
     if (!secret) return
     try {
-      const res = await fetch('https://auth.qmzhj.top/api/matches', {
+      // 本地开发可通过 MATCH_REPORT_URL 指向本地 auth，线上默认生产地址
+      const reportUrl = this.env?.MATCH_REPORT_URL || 'https://auth.qmzhj.top/api/matches'
+      const res = await fetch(reportUrl, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
         body: JSON.stringify(payload),
