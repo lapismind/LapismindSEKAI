@@ -194,6 +194,22 @@ async function copyInvite() {
                 <span class="font-bold text-amber-600">{{ row.score }} 分</span>
             </div>
           </div>
+          <!-- 新达成成就（上报后由 auth Worker 返回，可能比 game_over 晚 1-2 秒） -->
+          <div v-if="game.newAchievements.length" class="mt-4 space-y-2">
+            <div
+              v-for="a in game.newAchievements"
+              :key="a.key + a.playerId"
+              class="rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-left"
+            >
+              <div class="text-sm font-bold text-amber-700">
+                {{ '★'.repeat(a.stars) || '🥚' }} {{ a.name }}
+              </div>
+              <div class="text-xs text-[#8A8299]">{{ a.desc }}</div>
+              <div class="mt-1 text-xs text-[#8A8299]">
+                {{ game.lastGameOver.standings.find(s => s.id === a.playerId)?.nickname || '' }}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </template>

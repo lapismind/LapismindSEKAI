@@ -56,6 +56,8 @@ export class AbracaRoom {
         castSucceeded: {},
         castFailed: {},
         summary: null,
+        // 战绩累积：从 hostStart 到 game_over 之间的事件流水
+        matchStats: null,
       }
     )
   }
@@ -189,6 +191,33 @@ export class AbracaRoom {
       return
     }
     for (const p of state.players) p.score = 0
+    // 开场：初始化战绩累积器
+    state.matchStats = {
+      startAt: new Date().toISOString(),
+      players: Object.fromEntries(state.players.map(p => [p.id, {
+        playerId: p.id,
+        nickname: p.nickname,
+        score: 0,
+        isChampion: false,
+        kills: 0,
+        deaths: 0,
+        spellsCast: {},        // { spellId: count }
+        secretsTaken: 0,
+        roundsSurvived: 0,
+        // 成就专用
+        roundWonAtHp1: false,
+        roundEndSecrets: 0,
+        roundKillsNonDragon: 0,
+        dragonKills: 0,
+        dragonOneCastKills: 0,
+        finalHp: null,
+        firstRoundSuicide: false,
+        roundSpellCasts: [],   // [{round, spellId}]
+        maxFailsInRound: 0,
+        hadFullHpThenDied: false,
+      }])),
+      round: 0,
+    }
     await this.beginRound(state)
   }
 
@@ -198,6 +227,8 @@ export class AbracaRoom {
     const champion = [...state.players].sort((a, b) => b.score - a.score)[0]
     if (champion && champion.score >= state.targetScore) {
       state.phase = 'game_over'
+      // 上报战绩到 auth Worker（异步，不阻塞广播）
+      const reportPayload = this.buildMatchReport(state, champion)
       await this.saveState(state)
       this.broadcast(state, {
         type: 'game_over',
@@ -208,9 +239,47 @@ export class AbracaRoom {
             .sort((a, b) => b.score - a.score),
         },
       })
+      this.ctx.waitUntil(this.reportMatch(reportPayload))
       return
     }
     await this.beginRound(state)
+  }
+
+  buildMatchReport(state, champion) {
+    return {
+      game: 'abracadawhat',
+      roomId: this.roomId,
+      rounds: state.round,
+      players: Object.values(state.matchStats?.players || {}).map(ms => {
+        const sp = state.players.find(p => p.id === ms.playerId)
+        return {
+          ...ms,
+          score: sp?.score ?? ms.score,
+          isChampion: ms.playerId === champion.id,
+          finalHp: sp?.health ?? null,
+        }
+      }),
+    }
+  }
+
+  async reportMatch(payload) {
+    const secret = this.env?.MATCH_REPORT_SECRET
+    if (!secret) return
+    try {
+      const res = await fetch('https://auth.qmzhj.top/api/matches', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (res.ok && Array.isArray(data.newAchievements) && data.newAchievements.length > 0) {
+        // 把新成就广播回房间（结算画面展示）
+        const state = await this.getState()
+        this.broadcast(state, { type: 'achievements_unlocked', data: data.newAchievements })
+      }
+    } catch (err) {
+      console.error('report match failed:', err)
+    }
   }
 
   async beginRound(state) {
@@ -252,6 +321,66 @@ export class AbracaRoom {
     if (state.phase !== 'playing') return
     const spellId = Number(data?.spellId)
     const result = applyCast(state, playerId, spellId)
+    // 累积施法事件到战绩（无论成败都记，成就判定需要失败次数）
+    if (state.matchStats && state.matchStats.players[playerId]) {
+      const ms = state.matchStats.players[playerId]
+      if (result.ok) {
+        ms.spellsCast[spellId] = (ms.spellsCast[spellId] || 0) + 1
+        ms.roundSpellCasts.push({ round: state.round, spellId })
+      } else if (result.reason === 'missing') {
+        // 施法失败：记录最大失败次数（彩蛋"社死三连"用）
+        const failsThisTurn = (state.castFailed?.[playerId] === true) ? 1 : 0
+        ms.maxFailsInRound = Math.max(ms.maxFailsInRound, failsThisTurn)
+      }
+      // 伤害/击杀/治疗明细
+      for (const d of result.damaged || []) {
+        const victim = state.players.find(p => p.id === d.playerId)
+        const wasAliveBefore = victim && d.amount < victim.health + d.amount
+        if (victim && !victim.alive && wasAliveBefore) {
+          // 本次伤害直接导致死亡 → 击杀
+          ms.kills += 1
+          if (spellId === 1) {
+            ms.dragonKills += 1
+            ms.dragonOneCastKills += 1
+          } else {
+            ms.roundKillsNonDragon += 1
+          }
+        }
+      }
+      // 受击方：死亡计数 + 满血后死亡彩蛋
+      for (const d of result.damaged || []) {
+        const vStats = state.matchStats.players[d.playerId]
+        const vState = state.players.find(p => p.id === d.playerId)
+        if (vStats && vState && !vState.alive) {
+          vStats.deaths += 1
+        }
+        // 回光返照：本轮曾满血然后死亡（粗略判定：本轮内 health 曾达 6）
+      }
+      // 自杀（施法失败把自己炸死）
+      if (result.reason === 'missing' && result.died) {
+        ms.deaths += 1
+        if (state.round === 1) ms.firstRoundSuicide = true
+      }
+    }
+    // 轮结束时的特殊成就字段
+    if (state.phase === 'round_end' && state.matchStats && state.summary) {
+      const winnerId = state.summary.winnerId
+      const wStats = winnerId && state.matchStats.players[winnerId]
+      const wState = winnerId && state.players.find(p => p.id === winnerId)
+      if (wStats && wState) {
+        // 一线生机：赢时血量恰好 1
+        if (wState.health === 1) wStats.roundWonAtHp1 = true
+        // 秘密富翁：轮末存活时秘密牌数
+        wStats.roundEndSecrets = Math.max(wStats.roundEndSecrets, wState.secrets.length)
+      }
+      // 存活者 roundsSurvived +1
+      for (const p of state.players) {
+        const ms = state.matchStats.players[p.id]
+        if (ms && p.alive) ms.roundsSurvived += 1
+      }
+      // 非龙击杀是"单轮内"计数，轮结束重置
+      for (const ms of Object.values(state.matchStats.players)) ms.roundKillsNonDragon = 0
+    }
     await this.saveState(state)
     this.broadcast(state, { type: 'cast_result', data: result })
     this.broadcastStateAll(state)

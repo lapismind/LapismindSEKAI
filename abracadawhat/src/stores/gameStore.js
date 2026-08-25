@@ -14,6 +14,7 @@ export const useGameStore = defineStore('game', () => {
   const lastCastResult = ref(null)
   const roundEndSummary = ref(null)
   const lastGameOver = ref(null)
+  const newAchievements = ref([])
   const error = ref(null)
   const myPlayerId = useLobbyStore().myPlayerId
 
@@ -84,6 +85,9 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
         lastGameOver.value = data
       }),
+      wsClient.on(Msg.RCV_ACHIEVEMENTS_UNLOCKED, (data) => {
+        newAchievements.value = data || []
+      }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
         if (errorClearTimer) clearTimeout(errorClearTimer)
@@ -103,7 +107,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
-    lastCastResult, roundEndSummary, lastGameOver,
+    lastCastResult, roundEndSummary, lastGameOver, newAchievements,
     error, myPlayerId,
     connect, disconnect,
     startRound, cast, endTurn, nextRound,

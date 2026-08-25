@@ -20,6 +20,7 @@ export const Msg = {
   RCV_CAST_RESULT: 'cast_result',
   RCV_ROUND_END: 'round_end',
   RCV_GAME_OVER: 'game_over',
+  RCV_ACHIEVEMENTS_UNLOCKED: 'achievements_unlocked',
   RCV_PLAYER_JOINED: 'player_joined',
   RCV_ERROR: 'error',
 }
