@@ -1,0 +1,20 @@
+name = "sekai-auth"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# 统一认证服务：GitHub OAuth + 游客模式，跨子域共享会话
+[[routes]]
+pattern = "auth.qmzhj.top"
+custom_domain = true
+
+[vars]
+# GitHub OAuth App 的 Client ID（非敏感）
+GITHUB_CLIENT_ID = "Ov23liIDOFrXDXsBpFN3"
+# 管理员 GitHub 数字 ID，用于评论删除接口鉴权
+ADMIN_GITHUB_ID = "128724917"
+
+# 评论与用户数据（首次部署前先创建：npx wrangler d1 create sekai-db）
+[[d1_databases]]
+binding = "DB"
+database_name = "sekai-db"
+database_id = "93010df2-58d0-4858-ac1c-f3e9f07343ac"

@@ -16,7 +16,44 @@ export function isValidPlayerId(id) {
  * 身份 token —— 服务端 HMAC-SHA256 签发，格式：base64url(playerId).base64url(sig)。
  * 客户端拿到后存 sessionStorage（关浏览器即失效），
  * 重连时带同一 token，服务端验签恢复身份。
+ *
+ * v2 扩展（统一认证层）：payload 也支持 base64url(JSON)，形如
+ *   { playerId, provider, iat, exp }
+ * 信封仍是 payloadB64.sigB64 HMAC 结构；verifyIdentityToken 同时兼容两种
+ * payload（JSON 判定依据：解码后以 { 开头），旧格式 token 不受影响。
  */
+
+export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 天
+
+async function signPayload(payloadStr, secret) {
+  const payloadB64 = b64urlEncode(new TextEncoder().encode(payloadStr))
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  )
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payloadStr))
+  return payloadB64 + '.' + b64urlEncode(new Uint8Array(sig))
+}
+
+/**
+ * 会话 token：payload 带 playerId / provider(github|guest) / 过期时间。
+ * 与 createIdentityToken 同一信封与签名算法，供统一认证 Worker 使用。
+ */
+export async function createSessionToken(
+  { playerId, provider = 'guest', issuedAt = Date.now(), expiresInMs = SESSION_TTL_MS },
+  secret,
+) {
+  const payload = JSON.stringify({
+    playerId,
+    provider,
+    iat: issuedAt,
+    exp: issuedAt + expiresInMs,
+  })
+  return signPayload(payload, secret)
+}
 
 function b64urlEncode(bytes) {
   let str = ''
@@ -62,11 +99,31 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
   } catch { return null }
 
   const payloadStr = new TextDecoder().decode(payloadBytes)
-  const lastDot = payloadStr.lastIndexOf('.')
-  if (lastDot <= 0) return null
-  const playerId = payloadStr.slice(0, lastDot)
-  const ts = Number(payloadStr.slice(lastDot + 1))
-  if (!Number.isFinite(ts)) return null
+
+  let playerId, ts, provider, expiresAt
+  if (payloadStr.startsWith('{')) {
+    // v2 JSON payload：{ playerId, provider, iat, exp }
+    let data
+    try {
+      data = JSON.parse(payloadStr)
+    } catch {
+      return null
+    }
+    if (!data || typeof data.playerId !== 'string' || !data.playerId.startsWith('p')) return null
+    if (!Number.isFinite(data.iat) || !Number.isFinite(data.exp)) return null
+    if (data.provider !== 'github' && data.provider !== 'guest') return null
+    playerId = data.playerId
+    ts = data.iat
+    provider = data.provider
+    expiresAt = data.exp
+    if (Date.now() > expiresAt) return null
+  } else {
+    const lastDot = payloadStr.lastIndexOf('.')
+    if (lastDot <= 0) return null
+    playerId = payloadStr.slice(0, lastDot)
+    ts = Number(payloadStr.slice(lastDot + 1))
+    if (!Number.isFinite(ts)) return null
+  }
 
   // 验签
   const key = await crypto.subtle.importKey(
@@ -80,5 +137,5 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
   if (!ok) return null
 
   if (maxAgeMs !== Infinity && Date.now() - ts > maxAgeMs) return null
-  return { playerId, issuedAt: ts }
+  return expiresAt !== undefined ? { playerId, issuedAt: ts, provider, expiresAt } : { playerId, issuedAt: ts }
 }

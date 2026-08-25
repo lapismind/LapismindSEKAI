@@ -6,6 +6,7 @@ import { readRoomCodeFromUrl } from '@lapismind/lobby-kit'
 import { ProfileEditor } from '@lapismind/lobby-kit/vue'
 import PuzzleSubmitModal from '../components/PuzzleSubmitModal.vue'
 import FeedbackModal from '../components/FeedbackModal.vue'
+import IdentityBadge from '../components/IdentityBadge.vue'
 import { avatarChoices, avatarUrl } from '../game/avatars'
 
 const lobby = useLobbyStore()
@@ -40,12 +41,14 @@ function joinRoom() {
 function enterRoom(code) {
   lobby.setNickname(profileDraft.value.nickname)
   lobby.setAvatar(profileDraft.value.avatarId)
+  // 已登录用户以认证服务的稳定 playerId 进房；未就绪时沿用本地生成的
+  const serverPlayerId = lobby.identity?.playerId ?? lobby.myPlayerId
   // 把房间号写进 URL，方便分享
   const url = new URL(window.location.href)
   url.searchParams.set('room', code)
   window.history.replaceState({}, '', url)
-  game.enterRoom(code, lobby.myPlayerId)
-  game.connect(code, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
+  game.enterRoom(code, serverPlayerId)
+  game.connect(code, lobby.myNickname, serverPlayerId, lobby.myAvatarId)
 }
 
 function generateCode() {
@@ -92,6 +95,9 @@ function generateCode() {
 
     <!-- 昵称 + 头像（共享组件） -->
     <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
+
+    <!-- 当前身份：GitHub 用户显示昵称头像，游客显示登录入口 -->
+    <IdentityBadge />
 
     <!-- 邀请提示（来自分享链接） -->
     <div

@@ -17,6 +17,8 @@ import { api } from '../network/api'
 export const useLobbyStore = defineStore('lobby', () => {
   const kit = createLobbyStore()
   const state = reactive(kit.state)
+  // 统一身份：GitHub 登录用户用服务端 playerId，游客自动签发（见 IdentityBadge/auth）
+  const identity = ref(null)
   const puzzles = ref([])
 
   function setNickname(name) {
@@ -34,6 +36,7 @@ export const useLobbyStore = defineStore('lobby', () => {
 
   return {
     ...toRefs(state),
+    identity,
     puzzles,
     setNickname,
     setAvatar,

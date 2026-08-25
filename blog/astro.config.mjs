@@ -4,6 +4,7 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, fontProviders } from 'astro/config';
+import vue from '@astrojs/vue';
 
 // https://astro.build/config
 export default defineConfig({
@@ -11,7 +12,7 @@ export default defineConfig({
 	server: {
 		port: 3000,
 	},
-	integrations: [mdx(), sitemap()],
+	integrations: [mdx(), sitemap(), vue()],
 	markdown: {
 		shikiConfig: {
 			themes: {

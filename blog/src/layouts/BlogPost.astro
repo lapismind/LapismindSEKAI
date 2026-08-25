@@ -5,12 +5,15 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
+import Comments from '../components/Comments.astro';
 
 type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
 };
 
 const { title, description, pubDate, updatedDate, heroImage, readingTime } = Astro.props;
+// 评论区路径键：去掉尾斜杠的规范化路径，如 /blog/my-post
+const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 ---
 
 <html lang="zh-CN">
@@ -253,6 +256,9 @@ const { title, description, pubDate, updatedDate, heroImage, readingTime } = Ast
 						<nav class="toc-nav" id="toc-nav"></nav>
 					</aside>
 				</div>
+
+				<!-- 评论区：GitHub 登录后可发，游客可读 -->
+				<Comments pagePath={commentPath} />
 			</article>
 		</main>
 		<Footer />

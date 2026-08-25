@@ -8,12 +8,31 @@
 
 import { SoupRoom } from './soupRoom'
 import { PuzzleLib } from './puzzleLib'
+import { verifyIdentityToken } from '@lapismind/lobby-kit'
 
 export { SoupRoom, PuzzleLib }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
+
+    // 统一认证：/ws 握手前验会话 cookie（HttpOnly，跨子域共享）。
+    // 有效会话 → 以服务端 playerId 为准（覆盖客户端自报值）；
+    // 无有效会话 → 降级接受短期 HMAC token（showhand 同款，为后续强制登录留接口；
+    // 当前 turtle-soup 前端尚未带 token，因此 SESSION_SECRET 未配置时保持旧行为）。
+    if (url.pathname === '/ws' && env.SESSION_SECRET) {
+      const cookie = request.headers.get('cookie') || ''
+      const m = cookie.match(/(?:^|;\s*)session=([^;]+)/)
+      const identity = m ? await verifyIdentityToken(m[1], env.SESSION_SECRET) : null
+      if (identity) {
+        url.searchParams.set('playerId', identity.playerId)
+      } else {
+        const token = url.searchParams.get('token')
+        const legacy = token ? await verifyIdentityToken(token, env.IDENTITY_SECRET, 24 * 60 * 60 * 1000) : null
+        if (!legacy) return new Response('invalid identity', { status: 401 })
+        url.searchParams.set('playerId', legacy.playerId)
+      }
+    }
 
     if (url.pathname.startsWith('/ws')) {
       const roomId = url.searchParams.get('roomId')

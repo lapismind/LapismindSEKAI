@@ -15,7 +15,7 @@
     "avatars"
   ],
   "scripts": {
-    "test": "node tests/protocol.test.mjs && node tests/room-code.test.mjs && node tests/invite.test.mjs && node tests/player-id.test.mjs && node tests/ws-client.test.mjs && node tests/lobby-store.test.mjs"
+    "test": "node tests/protocol.test.mjs && node tests/room-code.test.mjs && node tests/invite.test.mjs && node tests/player-id.test.mjs && node tests/auth.test.mjs && node tests/ws-client.test.mjs && node tests/lobby-store.test.mjs"
   },
   "keywords": [
     "websocket",

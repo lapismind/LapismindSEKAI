@@ -30,6 +30,10 @@ class_name = "SoupRoom"
 name = "PUZZLE_LIB"
 class_name = "PuzzleLib"
 
+# 统一认证会话密钥（与 sekai-auth Worker 共用同一个值）。
+# 生产：npx wrangler secret put SESSION_SECRET；本地开发写 .dev.vars。
+# 设置后 Worker 会在 /ws 握手时验会话 cookie 并覆盖 playerId。
+
 # 首次部署必须注册 DO 类（免费计划使用 SQLite 存储后端）
 [[migrations]]
 tag = "v1"
