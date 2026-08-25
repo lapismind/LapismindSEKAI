@@ -175,7 +175,8 @@ async function handleCallback(request, url, env) {
   }
 
   // 会话 token 与游客同构，playerId 稳定绑定用户行
-  const playerId = 'pu' + row.id.toString(36) + crypto.randomUUID().slice(0, 8).replaceAll('-', '')
+  // 用 '-' 做定界符：解析时按第一个 '-' 截断，避免随机后缀被贪婪正则吞进 id
+  const playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
   const token = await createSessionToken({ playerId, provider: 'github' }, env.SESSION_SECRET)
 
   const rawDest = request.headers.get('cookie')?.match(/(?:^|;\s*)oauth_redirect=([^;]+)/)?.[1]
@@ -206,7 +207,8 @@ async function handleMe(request, env, cors = {}) {
   }
 
   // GitHub 用户从 D1 补全昵称头像；playerId 由 token 保证稳定
-  const m = session.playerId.match(/^pu([0-9a-z]+)/)
+  // 非贪婪：只取到第一个 '-' 之前的部分（旧格式无 '-'，保持原样兼容）
+  const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
   const userId = m ? parseInt(m[1], 36) : null
   let nickname = null, avatarUrl = null, githubId = null
   if (userId) {
@@ -276,7 +278,7 @@ async function postComment(request, env, cors = {}) {
     return json({ error: `content required, max ${COMMENT_MAX_LEN} chars` }, 400, cors)
   }
 
-  const m = session.playerId.match(/^pu([0-9a-z]+)/)
+  const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
   const userId = m ? parseInt(m[1], 36) : null
   if (!userId) return json({ error: 'invalid session' }, 401, cors)
   const user = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first()
@@ -311,7 +313,7 @@ async function deleteComment(request, commentId, env, cors = {}) {
   if (!session || session.provider !== 'github' || !env.ADMIN_GITHUB_ID) {
     return json({ error: 'forbidden' }, 403, cors)
   }
-  const m = session.playerId.match(/^pu([0-9a-z]+)/)
+  const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
   const userId = m ? parseInt(m[1], 36) : null
   if (!userId) return json({ error: 'forbidden' }, 403, cors)
   const user = await env.DB.prepare('SELECT github_id FROM users WHERE id = ?').bind(userId).first()
