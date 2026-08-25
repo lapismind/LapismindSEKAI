@@ -14,6 +14,8 @@
 
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
+import { evaluateAchievements, ACHIEVEMENT_DEFS } from './achievements.js'
+
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 const GITHUB_USER_API = 'https://api.github.com/user'
@@ -37,6 +39,7 @@ export default {
       if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
       if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env, cors)
       if (pathname === '/api/comments' && request.method === 'POST') return await postComment(request, env, cors)
+      if (pathname === '/api/matches' && request.method === 'POST') return await postMatch(request, env, cors)
       const delMatch = pathname.match(/^\/api\/comments\/(\d+)$/)
       if (delMatch && request.method === 'DELETE') return await deleteComment(request, delMatch[1], env, cors)
 
@@ -323,4 +326,121 @@ async function deleteComment(request, commentId, env, cors = {}) {
   const result = await env.DB.prepare('DELETE FROM comments WHERE id = ?').bind(commentId).run()
   if (!result.meta.changes) return json({ error: 'not found' }, 404)
   return json({ ok: true }, 200, cors)
+}
+
+// ---------- 第三阶段：战绩上报 ----------
+
+// DO 与 Worker 共享的上报密钥（wrangler secret put MATCH_REPORT_SECRET）
+async function verifyMatchReport(request, env) {
+  const auth = request.headers.get('authorization') || ''
+  const expected = 'Bearer ' + (env.MATCH_REPORT_SECRET || '')
+  if (!env.MATCH_REPORT_SECRET || auth !== expected) return false
+  return true
+}
+
+async function postMatch(request, env, cors = {}) {
+  if (!(await verifyMatchReport(request, env))) {
+    return json({ error: 'unauthorized' }, 401, cors)
+  }
+
+  let body
+  try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
+
+  const game = typeof body.game === 'string' ? body.game.slice(0, 32) : ''
+  const players = Array.isArray(body.players) ? body.players.slice(0, 10) : []
+  const rounds = Number.isInteger(body.rounds) ? body.rounds : 0
+  if (!game || players.length < 2) return json({ error: 'invalid payload' }, 400, cors)
+
+  // 写 matches
+  const matchResult = await env.DB.prepare(
+    'INSERT INTO matches (game, room_id, rounds) VALUES (?, ?, ?)'
+  ).bind(game, body.roomId || null, rounds).run()
+  const matchId = matchResult.meta.last_row_id
+
+  // 写 match_players + 收集每个玩家的上报数据
+  const cleanPlayers = []
+  for (const p of players) {
+    if (!p || typeof p.playerId !== 'string' || !p.playerId.startsWith('p')) continue
+    const row = {
+      playerId: p.playerId.slice(0, 64),
+      nickname: typeof p.nickname === 'string' ? p.nickname.slice(0, 64) : null,
+      score: Number.isInteger(p.score) ? p.score : 0,
+      isChampion: p.isChampion === true,
+      kills: Number.isInteger(p.kills) ? p.kills : 0,
+      deaths: Number.isInteger(p.deaths) ? p.deaths : 0,
+      spellsCast: typeof p.spellsCast === 'object' && p.spellsCast ? p.spellsCast : {},
+      secretsTaken: Number.isInteger(p.secretsTaken) ? p.secretsTaken : 0,
+      roundsSurvived: Number.isInteger(p.roundsSurvived) ? p.roundsSurvived : 0,
+      // 成就判定专用字段（不入库，只传给判定引擎）
+      roundWonAtHp1: p.roundWonAtHp1 === true,
+      roundEndSecrets: Number.isInteger(p.roundEndSecrets) ? p.roundEndSecrets : 0,
+      roundKillsNonDragon: Number.isInteger(p.roundKillsNonDragon) ? p.roundKillsNonDragon : 0,
+      dragonKills: Number.isInteger(p.dragonKills) ? p.dragonKills : 0,
+      dragonOneCastKills: Number.isInteger(p.dragonOneCastKills) ? p.dragonOneCastKills : 0,
+      finalHp: Number.isInteger(p.finalHp) ? p.finalHp : null,
+      firstRoundSuicide: p.firstRoundSuicide === true,
+      roundSpellCasts: Array.isArray(p.roundSpellCasts) ? p.roundSpellCasts : [],
+      maxFailsInRound: Number.isInteger(p.maxFailsInRound) ? p.maxFailsInRound : 0,
+      hadFullHpThenDied: p.hadFullHpThenDied === true,
+    }
+    cleanPlayers.push(row)
+    await env.DB.prepare(
+      `INSERT INTO match_players
+        (match_id, player_id, nickname, score, is_champion, kills, deaths, spells_cast, secrets_taken, rounds_survived)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(
+      matchId, row.playerId, row.nickname, row.score, row.isChampion ? 1 : 0,
+      row.kills, row.deaths, JSON.stringify(row.spellsCast), row.secretsTaken, row.roundsSurvived
+    ).run()
+  }
+
+  // 查每个玩家的 career 数据（跨场次累计）
+  const careerCache = {}
+  const careerLookup = async (playerId) => {
+    if (careerCache[playerId]) return careerCache[playerId]
+    const agg = await env.DB.prepare(
+      `SELECT
+         SUM((SELECT COALESCE(SUM(value), 0) FROM json_each(mp.spells_cast))) AS totalCasts,
+         SUM(mp.kills) AS totalKills,
+         SUM(mp.is_champion) AS totalWins
+       FROM match_players mp WHERE mp.player_id = ?`
+    ).bind(playerId).first()
+    // 每种魔法分别累计
+    const spellRows = await env.DB.prepare(
+      `SELECT je.key AS spellId, SUM(je.value) AS cnt
+       FROM match_players mp, json_each(mp.spells_cast) je
+       WHERE mp.player_id = ? GROUP BY je.key`
+    ).bind(playerId).all()
+    const spellCounts = {}
+    for (const r of spellRows.results || []) spellCounts[r.spellId] = r.cnt
+    const career = {
+      totalCasts: agg?.totalCasts || 0,
+      totalKills: agg?.totalKills || 0,
+      totalWins: agg?.totalWins || 0,
+      spellCounts,
+    }
+    careerCache[playerId] = career
+    return career
+  }
+
+  // 判定成就（career 查询不含本场刚写入的行，所以判定函数里都做了 career + 本场相加）
+  const unlocked = await evaluateAchievements({ ...body, players: cleanPlayers }, careerLookup)
+
+  // 写 achievements 表（UNIQUE 约束去重，只保留真正新达成的）
+  const newUnlocked = []
+  for (const u of unlocked) {
+    const res = await env.DB.prepare(
+      'INSERT OR IGNORE INTO achievements (player_id, achievement_key, match_id) VALUES (?, ?, ?)'
+    ).bind(u.playerId, u.key, matchId).run()
+    if (res.meta.changes > 0) newUnlocked.push(u)
+  }
+
+  return json({
+    ok: true,
+    matchId,
+    newAchievements: newUnlocked.map(u => ({
+      playerId: u.playerId,
+      ...ACHIEVEMENT_DEFS.find(d => d.key === u.key) || { key: u.key, name: u.key },
+    })),
+  }, 200, cors)
 }

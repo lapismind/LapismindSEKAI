@@ -1,0 +1,22 @@
+{
+  "game": "abracadawhat",
+  "roomId": "TEST-ROOM",
+  "rounds": 3,
+  "players": [
+    {
+      "playerId": "ptest-champ", "nickname": "champ", "score": 9, "isChampion": true,
+      "kills": 0, "deaths": 0, "spellsCast": {"3": 2, "8": 1}, "secretsTaken": 1,
+      "roundsSurvived": 3, "finalHp": 1
+    },
+    {
+      "playerId": "ptest-dragon", "nickname": "dragon", "score": 5, "isChampion": false,
+      "kills": 3, "deaths": 1, "spellsCast": {"1": 2}, "secretsTaken": 0,
+      "roundsSurvived": 2, "dragonKills": 3, "dragonOneCastKills": 3
+    },
+    {
+      "playerId": "ptest-suicide", "nickname": "oops", "score": 0, "isChampion": false,
+      "kills": 0, "deaths": 1, "spellsCast": {}, "secretsTaken": 0,
+      "roundsSurvived": 0, "firstRoundSuicide": true
+    }
+  ]
+}
