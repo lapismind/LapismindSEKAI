@@ -408,14 +408,14 @@ async function postMatch(request, env, cors = {}) {
          SUM(mp.is_champion) AS totalWins,
          SUM(mp.dragon_fails) AS dragonFails,
          SUM(mp.suicides) AS suicides
-       FROM match_players mp WHERE mp.player_id = ?`
-    ).bind(playerId).first()
+       FROM match_players mp WHERE mp.player_id = ? AND mp.match_id != ?`
+    ).bind(playerId, matchId).first()
     // 每种魔法分别累计
     const spellRows = await env.DB.prepare(
       `SELECT je.key AS spellId, SUM(je.value) AS cnt
        FROM match_players mp, json_each(mp.spells_cast) je
-       WHERE mp.player_id = ? GROUP BY je.key`
-    ).bind(playerId).all()
+       WHERE mp.player_id = ? AND mp.match_id != ? GROUP BY je.key`
+     ).bind(playerId, matchId).all()
     const spellCounts = {}
     for (const r of spellRows.results || []) spellCounts[r.spellId] = r.cnt
     const career = {
