@@ -1,12 +1,16 @@
--- 用户表：GitHub 登录用户；游客不落库
+-- 用户表：GitHub 登录用户 + 用户名密码账号；游客不落库
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  provider TEXT NOT NULL DEFAULT 'github',
-  github_id TEXT NOT NULL UNIQUE,
+  provider TEXT NOT NULL DEFAULT 'github',  -- 'github' | 'account'
+  github_id TEXT UNIQUE,                     -- 账号用户为 NULL
+  password_hash TEXT,                        -- PBKDF2-SHA256，仅账号用户
+  player_id TEXT UNIQUE,                     -- 持久化 playerId，重复登录复用（战绩/成就绑定用）
   nickname TEXT NOT NULL,
   avatar_url TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_account_name ON users(nickname) WHERE provider = 'account';
 
 -- 博客/游戏页评论
 CREATE TABLE IF NOT EXISTS comments (

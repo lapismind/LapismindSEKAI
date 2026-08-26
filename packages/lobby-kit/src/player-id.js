@@ -111,7 +111,7 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
     }
     if (!data || typeof data.playerId !== 'string' || !data.playerId.startsWith('p')) return null
     if (!Number.isFinite(data.iat) || !Number.isFinite(data.exp)) return null
-    if (data.provider !== 'github' && data.provider !== 'guest') return null
+    if (data.provider !== 'github' && data.provider !== 'guest' && data.provider !== 'account') return null
     playerId = data.playerId
     ts = data.iat
     provider = data.provider

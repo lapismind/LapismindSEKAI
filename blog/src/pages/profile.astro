@@ -33,7 +33,19 @@ import { SITE_TITLE } from '../consts';
 			.hint { margin-top: 1.6rem; padding: 1rem 1.3rem; border-radius: var(--radius-lg); border: 1px dashed var(--line); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }
 			.error-box { padding: 1.4rem 1.6rem; text-align: center; color: var(--muted); }
 			.skeleton { padding: 3rem; text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
-			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } }
+			.account-forms { margin-top: 2rem; }
+			.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 0.8rem; }
+			.form-card { display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem 1.5rem; }
+			.form-card h2 { margin: 0; font-size: 1.05rem; }
+			.form-card .form-note { margin: -0.2rem 0 0.2rem; font-size: 0.8rem; color: var(--muted); }
+			.form-card label { font-size: 0.8rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.35rem; }
+			.form-card input { padding: 0.55em 0.9em; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink); font-size: 0.92rem; outline: none; transition: border-color 0.15s ease; }
+			.form-card input:focus { border-color: var(--primary); }
+			.form-card .btn { justify-content: center; margin-top: 0.2rem; }
+			.form-msg { margin-top: 0.9rem; min-height: 1.4em; font-size: 0.85rem; text-align: center; }
+			.form-msg.err { color: #d64545; }
+			.form-msg.ok { color: oklch(0.6 0.14 150); }
+			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } .form-grid { grid-template-columns: 1fr; } }
 		</style>
 	</head>
 	<body>
@@ -74,6 +86,7 @@ import { SITE_TITLE } from '../consts';
 
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
+						<a href="#account-forms" class="btn btn-primary" id="pf-register-entry" hidden>注册账号 · 保存战绩</a>
 						<button id="pf-login" type="button" class="btn btn-primary" hidden>使用 GitHub 登录</button>
 						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
 					</div>
@@ -81,6 +94,27 @@ import { SITE_TITLE } from '../consts';
 					<p class="hint">
 						游客也可以玩所有游戏，战绩会绑定在这个 PLAYER ID 上；用 GitHub 登录后，评论身份和战绩可以跨设备保留。登录不会向本站暴露你的邮箱。
 					</p>
+
+					<section id="account-forms" class="account-forms" hidden>
+						<p class="eyebrow">account · 账号</p>
+						<div class="form-grid">
+							<form id="form-register" class="form-card glass">
+								<h2>注册新账号</h2>
+								<p class="form-note">当前是游客时注册，战绩和成就直接保留到新账号。</p>
+								<label>用户名<input id="reg-name" type="text" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" placeholder="3-20 位字母/数字/下划线" required /></label>
+								<label>密码<input id="reg-pass" type="password" minlength="6" maxlength="72" placeholder="至少 6 位" required /></label>
+								<button type="submit" class="btn btn-primary">注册</button>
+							</form>
+							<form id="form-login" class="form-card glass">
+								<h2>已有账号登录</h2>
+								<p class="form-note">换浏览器、换手机也能接着玩。</p>
+								<label>用户名<input id="log-name" type="text" autocomplete="username" required /></label>
+								<label>密码<input id="log-pass" type="password" autocomplete="current-password" required /></label>
+								<button type="submit" class="btn btn-ghost">登录</button>
+							</form>
+						</div>
+						<p id="form-msg" class="form-msg"></p>
+					</section>
 				</div>
 			</div>
 		</main>
@@ -116,21 +150,30 @@ import { SITE_TITLE } from '../consts';
 			let wired = false;
 			function render(user) {
 				const isGithub = user.provider === 'github';
+				const isAccount = user.provider === 'account';
 				el('pf-avatar').src = isGithub && user.avatarUrl ? user.avatarUrl : guestAvatarSrc;
 				const tag = el('pf-tag');
-				setText(tag, isGithub ? 'GITHUB 用户' : '游客 · 未登录');
-				tag.classList.toggle('guest', !isGithub);
-				setText(el('pf-name'), user.nickname || (isGithub ? 'GitHub 用户' : '游客'));
-				setText(el('pf-sub'), isGithub ? '已通过 GitHub 登录，身份跨设备同步' : '本地游客身份，可玩所有游戏');
+				setText(tag, isGithub ? 'GITHUB 用户' : isAccount ? '账号用户' : '游客 · 未登录');
+				tag.classList.toggle('guest', !user || user.provider === 'guest');
+				setText(el('pf-name'), user.nickname || (isGithub ? 'GitHub 用户' : isAccount ? '账号用户' : '游客'));
+				setText(el('pf-sub'), isGithub ? '已通过 GitHub 登录，身份跨设备同步' : isAccount ? '用户名密码登录，跨设备同步' : '本地游客身份，可玩所有游戏');
 				setText(el('pf-player-id'), user.playerId || '-');
-				setText(el('pf-github'), isGithub ? '#' + (user.githubId || '-') : '未绑定（以游客身份游玩）');
+				setText(el('pf-github'), isGithub ? '#' + (user.githubId || '-') : isAccount ? '未使用（用户名密码方式）' : '未绑定（以游客身份游玩）');
+				const logged = isGithub || isAccount;
 				if (isGithub && user.githubId) {
 					el('pf-github-link').href = 'https://github.com/' + encodeURIComponent(String(user.githubId));
 					el('pf-github-link').hidden = false;
 					el('pf-logout').hidden = false;
+					el('pf-register-entry').hidden = true;
+				} else if (isAccount) {
+					el('pf-github-link').hidden = true;
+					el('pf-logout').hidden = false;
+					el('pf-register-entry').hidden = true;
 				} else {
 					el('pf-login').hidden = false;
+					el('pf-register-entry').hidden = false;
 				}
+				el('account-forms').hidden = logged;
 				if (!wired) {
 					wired = true;
 					el('pf-login').addEventListener('click', () => auth.loginWithGithub(location.pathname));
@@ -142,6 +185,36 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			loadProfile();
+
+			// 账号表单：注册 / 密码登录
+			const msg = el('form-msg');
+			function showMsg(t, cls) { msg.textContent = t; msg.className = 'form-msg ' + cls; }
+			function mapError(code) {
+				const map = {
+					'invalid name': '用户名需 3-20 位字母/数字/下划线',
+					'invalid password': '密码至少 6 位',
+					'name taken': '这个用户名已被占用',
+					'wrong name or password': '用户名或密码不对',
+					'rate limited, try later': '操作太频繁，稍后再试',
+				};
+				return map[code] || '出错了，请稍后再试';
+			}
+
+			el('form-register').addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const r = await auth.register(el('reg-name').value.trim(), el('reg-pass').value);
+				if (!r.ok) return showMsg(mapError(r.error), 'err');
+				showMsg('注册成功，战绩已保留！', 'ok');
+				setTimeout(() => location.reload(), 800);
+			});
+
+			el('form-login').addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const r = await auth.loginWithPassword(el('log-name').value.trim(), el('log-pass').value);
+				if (!r.ok) return showMsg(mapError(r.error), 'err');
+				showMsg('登录成功！', 'ok');
+				setTimeout(() => location.reload(), 600);
+			});
 		</script>
 	</body>
 </html>

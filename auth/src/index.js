@@ -20,6 +20,11 @@ const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
 const GITHUB_USER_API = 'https://api.github.com/user'
 
+// 账号注册参数
+const ACCOUNT_NAME_RE = /^[a-zA-Z0-9_]{3,20}$/
+const PASSWORD_MIN_LEN = 6
+const PASSWORD_MAX_LEN = 72
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url)
@@ -34,6 +39,8 @@ export default {
     try {
       if (pathname === '/login') return handleLogin(url, env)
       if (pathname === '/callback') return await handleCallback(request, url, env)
+      if (pathname === '/api/register' && request.method === 'POST') return await handleRegister(request, env, cors)
+      if (pathname === '/api/login-password' && request.method === 'POST') return await handlePasswordLogin(request, env, cors)
       if (pathname === '/api/guest' && request.method === 'POST') return await handleGuest(env, cors)
       if (pathname === '/api/me') return await handleMe(request, env, cors)
       if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
@@ -177,9 +184,12 @@ async function handleCallback(request, url, env) {
     row = { id: result.meta.last_row_id }
   }
 
-  // 会话 token 与游客同构，playerId 稳定绑定用户行
-  // 用 '-' 做定界符：解析时按第一个 '-' 截断，避免随机后缀被贪婪正则吞进 id
-  const playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
+  // 会话 token 与游客同构，playerId 稳定绑定用户行（持久化在 users.player_id，重复登录复用）
+  let playerId = row.player_id
+  if (!playerId) {
+    playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
+    await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(playerId, row.id).run()
+  }
   const token = await createSessionToken({ playerId, provider: 'github' }, env.SESSION_SECRET)
 
   const rawDest = request.headers.get('cookie')?.match(/(?:^|;\s*)oauth_redirect=([^;]+)/)?.[1]
@@ -201,12 +211,134 @@ async function handleGuest(env, cors = {}) {
   )
 }
 
+// ---------- 用户名密码账号 ----------
+
+// ---------- 用户名密码账号（方案一） ----------
+
+// PBKDF2-SHA256；Workers 平台上限 100000 次迭代（超过会抛异常）
+const PBKDF2_ITERATIONS = 100000
+
+async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  )
+  const saltHex = Array.from(salt).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const hashHex = Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return saltHex + ':' + hashHex
+}
+
+async function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false
+  const [saltHex, expectedHex] = stored.split(':')
+  const salt = new Uint8Array(saltHex.match(/.{2}/g).map((h) => parseInt(h, 16)))
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    keyMaterial,
+    256
+  )
+  const actualHex = Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return actualHex === expectedHex
+}
+
+// 注册/密码登录共用：校验用户名密码格式，返回 { name, password } 或错误响应
+function parseAccountBody(body) {
+  const name = typeof body.name === 'string' ? body.name.trim() : ''
+  if (!ACCOUNT_NAME_RE.test(name)) {
+    return { error: json({ error: 'invalid name' }, 400) }
+  }
+  const password = typeof body.password === 'string' ? body.password : ''
+  if (password.length < PASSWORD_MIN_LEN || password.length > PASSWORD_MAX_LEN) {
+    return { error: json({ error: 'invalid password' }, 400) }
+  }
+  return { name, password }
+}
+
+// 注册即登录：当前是游客会话时沿用其 playerId，保住已有战绩与成就；否则生成并持久化新 ID
+async function handleRegister(request, env, cors = {}) {
+  let body
+  try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
+  const parsed = parseAccountBody(body)
+  if (parsed.error) return parsed.error
+  const { name, password } = parsed
+
+  // 注册限频：每分钟全局最多 3 次（个人站体量足够，先防批量灌水）
+  const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString().replace('T', ' ').slice(0, 19)
+  const recent = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM users WHERE provider = 'account' AND created_at > ?"
+  ).bind(since).first()
+  if (recent.n >= 3) return json({ error: 'rate limited, try later' }, 429, cors)
+
+  // 会话里可能是游客 → 升级时保留原 playerId 绑定的战绩
+  const session = await getSession(request, env)
+
+  const dup = await env.DB.prepare(
+    "SELECT id FROM users WHERE provider = 'account' AND nickname = ?"
+  ).bind(name).first()
+  if (dup) return json({ error: 'name taken' }, 409, cors)
+
+  const passwordHash = await hashPassword(password)
+
+  // 游客升级路径：users 表里没有对应行（游客不落库），直接新建并沿用 session.playerId
+  // 全新注册路径：同样新建行。两种情况都签发新会话
+  const result = await env.DB.prepare(
+    "INSERT INTO users (provider, github_id, password_hash, player_id, nickname, avatar_url) VALUES ('account', NULL, ?, ?, ?, NULL)"
+  ).bind(passwordHash, session?.playerId || null, name).run()
+  const userId = result.meta.last_row_id
+  const playerId = session?.playerId || 'pu' + userId.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
+  const token = await createSessionToken({ playerId, provider: 'account' }, env.SESSION_SECRET)
+
+  return json({
+    ok: true,
+    user: { provider: 'account', nickname: name, avatarUrl: null, playerId },
+  }, 200, { 'Set-Cookie': sessionCookie(token), ...cors })
+}
+
+async function handlePasswordLogin(request, env, cors = {}) {
+  let body
+  try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
+  const parsed = parseAccountBody(body)
+  if (parsed.error) return parsed.error
+  const { name, password } = parsed
+
+  const row = await env.DB.prepare(
+    "SELECT id, password_hash, player_id, nickname FROM users WHERE provider = 'account' AND nickname = ?"
+  ).bind(name).first()
+  // 统一报错文案：不暴露「用户存在但密码错」
+  if (!row || !(await verifyPassword(password, row.password_hash))) {
+    return json({ error: 'wrong name or password' }, 401, cors)
+  }
+
+  let playerId = row.player_id
+  if (!playerId) {
+    playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
+    await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(playerId, row.id).run()
+  }
+  const token = await createSessionToken({ playerId, provider: 'account' }, env.SESSION_SECRET)
+  return json({
+    ok: true,
+    user: { provider: 'account', nickname: row.nickname, avatarUrl: null, playerId },
+  }, 200, { 'Set-Cookie': sessionCookie(token), ...cors })
+}
+
 async function handleMe(request, env, cors = {}) {
   const session = await getSession(request, env)
   if (!session) return json({ user: null }, 200, cors)
 
   if (session.provider === 'guest') {
     return json({ user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: session.playerId } }, 200, cors)
+  }
+
+  // 账号用户：playerId 可能沿用自游客 ID（不含可解析行号），统一按 player_id 反查
+  if (session.provider === 'account') {
+    const row = await env.DB.prepare(
+      "SELECT nickname FROM users WHERE provider = 'account' AND player_id = ?"
+    ).bind(session.playerId).first()
+    return json({ user: { provider: 'account', nickname: row?.nickname || '账号用户', avatarUrl: null, playerId: session.playerId } }, 200, cors)
   }
 
   // GitHub 用户从 D1 补全昵称头像；playerId 由 token 保证稳定
@@ -265,7 +397,7 @@ async function listComments(url, env, cors = {}) {
 
 async function postComment(request, env, cors = {}) {
   const session = await getSession(request, env)
-  if (!session || session.provider !== 'github') {
+  if (!session || (session.provider !== 'github' && session.provider !== 'account')) {
     return json({ error: 'login required', needLogin: true }, 401, cors)
   }
 
@@ -281,24 +413,29 @@ async function postComment(request, env, cors = {}) {
     return json({ error: `content required, max ${COMMENT_MAX_LEN} chars` }, 400, cors)
   }
 
-  const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
-  const userId = m ? parseInt(m[1], 36) : null
-  if (!userId) return json({ error: 'invalid session' }, 401, cors)
-  const user = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(userId).first()
+  let user
+  if (session.provider === 'github') {
+    const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
+    const uid = m ? parseInt(m[1], 36) : null
+    if (!uid) return json({ error: 'invalid session' }, 401, cors)
+    user = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(uid).first()
+  } else {
+    user = await env.DB.prepare("SELECT id FROM users WHERE provider = 'account' AND player_id = ?").bind(session.playerId).first()
+  }
   if (!user) return json({ error: 'invalid session' }, 401, cors)
 
   // 频率限制：同一用户每分钟最多 5 条（用 D1 计数）
   const since = new Date(Date.now() - RATE_LIMIT_WINDOW_MS).toISOString().replace('T', ' ').slice(0, 19)
   const recent = await env.DB.prepare(
     "SELECT COUNT(*) AS n FROM comments WHERE user_id = ? AND created_at > ?"
-  ).bind(userId, since).first()
+  ).bind(user.id, since).first()
   if (recent.n >= RATE_LIMIT_MAX) {
     return json({ error: 'rate limited, try later' }, 429, cors)
   }
 
   const result = await env.DB.prepare(
     'INSERT INTO comments (user_id, page_path, content) VALUES (?, ?, ?)'
-  ).bind(userId, pagePath, content).run()
+  ).bind(user.id, pagePath, content).run()
 
   return json({
     ok: true,

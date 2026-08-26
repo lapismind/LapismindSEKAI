@@ -20,7 +20,7 @@ const submitting = ref(false)
 const loading = ref(true)
 const errorMsg = ref('')
 
-const canPost = computed(() => user.value?.provider === 'github')
+const canPost = computed(() => user.value?.provider === 'github' || user.value?.provider === 'account')
 
 async function api(path, opts = {}) {
   return fetch(`${props.authBaseUrl}${path}`, { credentials: 'include', ...opts })
@@ -45,8 +45,8 @@ onMounted(async () => {
     const me = await api('/api/me')
     if (me.ok) {
       const data = await me.json()
-      // 已有 GitHub 会话直接用；游客不主动种（避免无谓写 cookie），发帖时再提示登录
-      user.value = data?.user?.provider === 'github' ? data.user : null
+      // 已登录会话（GitHub 或账号）直接用；游客不主动种（避免无谓写 cookie），发帖时再提示登录
+      user.value = data?.user?.provider === 'github' || data?.user?.provider === 'account' ? data.user : null
     }
   } catch {
     /* 认证服务不可达时评论区仍可读 */
@@ -70,7 +70,7 @@ async function submit() {
       body: JSON.stringify({ page_path: props.pagePath, content }),
     })
     if (res.status === 401) {
-      errorMsg.value = '发布评论需要 GitHub 登录'
+      errorMsg.value = '发布评论需要先登录'
       return
     }
     if (res.status === 429) {
@@ -120,6 +120,8 @@ async function submit() {
     <div v-else class="mt-4 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-center text-sm text-slate-500 dark:border-slate-600">
       想参与讨论？
       <button type="button" class="font-semibold text-purple-600 hover:underline dark:text-purple-400" @click="login">GitHub 登录</button>
+      或到
+      <a href="/profile#account-forms" class="font-semibold text-purple-600 hover:underline dark:text-purple-400">个人资料页注册账号</a>
       后即可评论
     </div>
     <p v-if="errorMsg" class="mt-2 text-center text-xs text-red-500">{{ errorMsg }}</p>

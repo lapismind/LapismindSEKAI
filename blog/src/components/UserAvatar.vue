@@ -53,9 +53,9 @@ async function logout() {
 
     <transition name="pop">
       <div v-if="open" class="menu">
-        <template v-if="user?.provider === 'github'">
+        <template v-if="user">
           <div class="menu-head">
-            <img :src="user.avatarUrl" alt="" class="menu-avatar" />
+            <img :src="user.avatarUrl || guestAvatarSrc" alt="" class="menu-avatar" />
             <span class="menu-name">{{ user.nickname }}</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>
@@ -66,6 +66,7 @@ async function logout() {
             <span class="menu-name muted">游客身份 · 可玩所有游戏</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>
+          <a href="/profile#account-forms" class="menu-item">注册账号 · 保存战绩</a>
           <button type="button" class="menu-item primary" @click="login">
             GitHub 登录
           </button>
