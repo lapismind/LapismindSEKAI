@@ -7,15 +7,18 @@
  */
 import WebSocket from 'ws'
 
-const BASE = 'http://127.0.0.1:8789'
-const ROOM = 'MAR' + Math.random().toString(36).slice(2, 6).toUpperCase()
+const args = process.argv.slice(2)
+const BASE = args.includes('--prod') ? 'https://abracadawhat.qmzhj.top' : 'http://127.0.0.1:8789'
+const ROOM = (args.includes('--prod') ? 'PRODSMOKE' : 'MAR') + Math.random().toString(36).slice(2, 6).toUpperCase()
 const CAST_ORDER = [8, 7, 5, 3, 2, 4, 6, 1]
 const TARGET_KEY = 'hundred_casts'
-const MAX_MATCHES = 10
+const matchesIdx = args.indexOf('--matches')
+const MAX_MATCHES = matchesIdx >= 0 ? parseInt(args[matchesIdx + 1], 10) || 10 : 10
 
 function makeSocket(playerId, nickname, token) {
   return new Promise((resolve, reject) => {
-    const url = 'ws://127.0.0.1:8789/ws?roomId=' + ROOM + '&playerId=' + playerId +
+    const wsBase = BASE.replace('http', 'ws')
+    const url = wsBase + '/ws?roomId=' + ROOM + '&playerId=' + playerId +
       '&nickname=' + encodeURIComponent(nickname) + '&avatarId=1&token=' + encodeURIComponent(token)
     const ws = new WebSocket(url)
     const st = { ws, playerId, queue: [], unlocked: [] }
@@ -112,7 +115,7 @@ async function playMatch(players, hostIdx) {
 }
 
 async function main() {
-  const ids = ['pe2e-bot-a', 'pe2e-bot-b', 'pe2e-bot-c']
+  const ids = args.includes('--prod') ? ['pprod-smoke-a', 'pprod-smoke-b', 'pprod-smoke-c'] : ['pe2e-bot-a', 'pe2e-bot-b', 'pe2e-bot-c']
   const names = ['累计测试A', '累计测试B', '累计测试C']
   const tokens = []
   for (const id of ids) {
@@ -131,8 +134,8 @@ async function main() {
     const t0 = Date.now()
     await playMatch(players, 0)
     console.log('第 ' + m + ' 场结束，用时 ' + Math.round((Date.now() - t0) / 1000) + 's')
-    // 给上报留时间
-    await new Promise((r) => setTimeout(r, 2500))
+    // 给上报留时间（生产链路含跨服务 fetch + D1 写入，比本地慢）
+    await new Promise((r) => setTimeout(r, 10000))
     const hit = players.some((p) => p.unlocked.some((a) => a.key === TARGET_KEY))
     if (hit) {
       targetMatch = m
