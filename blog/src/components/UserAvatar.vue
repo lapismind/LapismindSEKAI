@@ -58,12 +58,14 @@ async function logout() {
             <img :src="user.avatarUrl" alt="" class="menu-avatar" />
             <span class="menu-name">{{ user.nickname }}</span>
           </div>
+          <a href="/profile" class="menu-item">个人资料</a>
           <button type="button" class="menu-item" @click="logout">退出登录</button>
         </template>
         <template v-else>
           <div class="menu-head">
             <span class="menu-name muted">游客身份 · 可玩所有游戏</span>
           </div>
+          <a href="/profile" class="menu-item">个人资料</a>
           <button type="button" class="menu-item primary" @click="login">
             GitHub 登录
           </button>

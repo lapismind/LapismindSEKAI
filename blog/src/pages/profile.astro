@@ -1,0 +1,147 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={'个人资料 - ' + SITE_TITLE} description="查看你的玩家身份、头像与游戏战绩绑定信息。" />
+		<style>
+			.profile-shell { max-width: 640px; margin: 0 auto; }
+			.profile-card { display: grid; grid-template-columns: auto 1fr; gap: 1.8rem; align-items: center; padding: 2rem 2.2rem; position: relative; overflow: hidden; }
+			.avatar-wrap { position: relative; }
+			.avatar-wrap img { width: 116px; height: 116px; border-radius: 28px; object-fit: cover; border: 3px solid var(--card-solid); box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md); background: var(--primary-ghost); }
+			.identity-tag { display: inline-flex; align-items: center; font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; padding: 0.25em 0.9em; border-radius: 999px; background: var(--gradient); color: #fff; box-shadow: var(--shadow-sm); }
+			.identity-tag.guest { background: var(--card-solid); color: var(--muted); border: 1px solid var(--line-strong); box-shadow: none; }
+			.identity h1 { margin: 0.5rem 0 0.3rem; font-size: 1.7rem; line-height: 1.25; }
+			.identity .sub { margin: 0 0 0.4rem; color: var(--ink-soft); font-size: 0.92rem; }
+			.meta-list { display: flex; flex-direction: column; padding: 0.5rem 1.4rem; margin-top: 1.2rem; }
+			.meta-row { display: grid; grid-template-columns: 8em 1fr; gap: 1rem; align-items: baseline; padding: 0.75em 0; border-bottom: 1px dashed var(--line); }
+			.meta-row:last-child { border-bottom: none; }
+			.meta-row .label { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.14em; color: var(--primary); }
+			.meta-row .text { margin: 0; font-size: 0.92rem; color: var(--ink-soft); word-break: break-all; }
+			.actions { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.4rem; }
+			.btn { display: inline-flex; align-items: center; padding: 0.62em 1.35em; border-radius: 999px; border: 1px solid transparent; font-size: 0.92rem; font-weight: 600; text-decoration: none; cursor: var(--cursor-pointer); transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease; }
+			.btn:hover { transform: translateY(-2px); }
+			.btn-primary { background: var(--gradient); color: #fff; }
+			.btn-primary:hover { filter: brightness(1.08); color: #fff; }
+			.btn-ghost { border-color: var(--line-strong); color: var(--ink-soft); background: var(--card-solid); }
+			.btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+			.hint { margin-top: 1.6rem; padding: 1rem 1.3rem; border-radius: var(--radius-lg); border: 1px dashed var(--line); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }
+			.error-box { padding: 1.4rem 1.6rem; text-align: center; color: var(--muted); }
+			.skeleton { padding: 3rem; text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
+			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } }
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<header class="page-head reveal">
+				<p class="eyebrow">player profile</p>
+				<h1>个人资料</h1>
+			</header>
+
+			<div class="profile-shell">
+				<div id="profile-loading" class="skeleton glass">正在读取身份……</div>
+				<div id="profile-error" class="error-box glass" hidden>
+					<p>身份服务暂时不可用，请稍后再试。</p>
+				</div>
+				<div id="profile-content" hidden>
+					<section class="profile-card glass">
+						<div class="avatar-wrap">
+							<img id="pf-avatar" src="" alt="玩家头像" width="116" height="116" />
+						</div>
+						<div class="identity">
+							<span id="pf-tag" class="identity-tag"></span>
+							<h1 id="pf-name"></h1>
+							<p id="pf-sub" class="sub"></p>
+						</div>
+					</section>
+
+					<section class="meta-list glass">
+						<div class="meta-row">
+							<span class="label">PLAYER ID</span>
+							<p class="text" id="pf-player-id"></p>
+						</div>
+						<div class="meta-row" id="pf-github-row">
+							<span class="label">GITHUB</span>
+							<p class="text" id="pf-github"></p>
+						</div>
+					</section>
+
+					<div class="actions">
+						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
+						<button id="pf-login" type="button" class="btn btn-primary" hidden>使用 GitHub 登录</button>
+						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
+					</div>
+
+					<p class="hint">
+						游客也可以玩所有游戏，战绩会绑定在这个 PLAYER ID 上；用 GitHub 登录后，评论身份和战绩可以跨设备保留。登录不会向本站暴露你的邮箱。
+					</p>
+				</div>
+			</div>
+		</main>
+		<Footer />
+
+		<script>
+			import { createAuthClient } from '@lapismind/lobby-kit';
+			import guestAvatar from '@lapismind/lobby-kit/avatars/0.png';
+
+			const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src;
+			const auth = createAuthClient();
+
+			const el = (id) => document.getElementById(id);
+			const loading = el('profile-loading');
+			const errorBox = el('profile-error');
+			const content = el('profile-content');
+
+			function setText(node, value) { node.textContent = value == null ? '' : String(value); }
+
+			async function loadProfile() {
+				try {
+					const user = await auth.init();
+					if (!user) throw new Error('no user');
+					render(user);
+					loading.hidden = true;
+					content.hidden = false;
+				} catch {
+					loading.hidden = true;
+					errorBox.hidden = false;
+				}
+			}
+
+			let wired = false;
+			function render(user) {
+				const isGithub = user.provider === 'github';
+				el('pf-avatar').src = isGithub && user.avatarUrl ? user.avatarUrl : guestAvatarSrc;
+				const tag = el('pf-tag');
+				setText(tag, isGithub ? 'GITHUB 用户' : '游客 · 未登录');
+				tag.classList.toggle('guest', !isGithub);
+				setText(el('pf-name'), user.nickname || (isGithub ? 'GitHub 用户' : '游客'));
+				setText(el('pf-sub'), isGithub ? '已通过 GitHub 登录，身份跨设备同步' : '本地游客身份，可玩所有游戏');
+				setText(el('pf-player-id'), user.playerId || '-');
+				setText(el('pf-github'), isGithub ? '#' + (user.githubId || '-') : '未绑定（以游客身份游玩）');
+				if (isGithub && user.githubId) {
+					el('pf-github-link').href = 'https://github.com/' + encodeURIComponent(String(user.githubId));
+					el('pf-github-link').hidden = false;
+					el('pf-logout').hidden = false;
+				} else {
+					el('pf-login').hidden = false;
+				}
+				if (!wired) {
+					wired = true;
+					el('pf-login').addEventListener('click', () => auth.loginWithGithub(location.pathname));
+					el('pf-logout').addEventListener('click', async () => {
+						await auth.logout();
+						location.reload();
+					});
+				}
+			}
+
+			loadProfile();
+		</script>
+	</body>
+</html>
