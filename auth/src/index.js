@@ -14,7 +14,7 @@
 
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
-import { evaluateAchievements, ACHIEVEMENT_DEFS } from './achievements.js'
+import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, ACHIEVEMENT_TARGETS, progressFromCareer } from './achievements.js'
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
@@ -43,6 +43,8 @@ export default {
       if (pathname === '/api/login-password' && request.method === 'POST') return await handlePasswordLogin(request, env, cors)
       if (pathname === '/api/guest' && request.method === 'POST') return await handleGuest(env, cors)
       if (pathname === '/api/me') return await handleMe(request, env, cors)
+      if (pathname === '/api/me/avatar' && request.method === 'POST') return await handleSetAvatar(request, env, cors)
+      if (pathname === '/api/achievements' && request.method === 'GET') return await handleAchievements(request, env, cors)
       if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
       if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env, cors)
       if (pathname === '/api/comments' && request.method === 'POST') return await postComment(request, env, cors)
@@ -190,7 +192,7 @@ async function handleCallback(request, url, env) {
     playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
     await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(playerId, row.id).run()
   }
-  const token = await createSessionToken({ playerId, provider: 'github' }, env.SESSION_SECRET)
+  const token = await createSessionToken({ playerId, provider: 'github', userId: row.id }, env.SESSION_SECRET)
 
   const rawDest = request.headers.get('cookie')?.match(/(?:^|;\s*)oauth_redirect=([^;]+)/)?.[1]
   const safeDest = rawDest ? sanitizeRedirect(decodeURIComponent(rawDest)) : DEFAULT_DEST
@@ -290,7 +292,7 @@ async function handleRegister(request, env, cors = {}) {
   ).bind(passwordHash, session?.playerId || null, name).run()
   const userId = result.meta.last_row_id
   const playerId = session?.playerId || 'pu' + userId.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
-  const token = await createSessionToken({ playerId, provider: 'account' }, env.SESSION_SECRET)
+  const token = await createSessionToken({ playerId, provider: 'account', userId }, env.SESSION_SECRET)
 
   return json({
     ok: true,
@@ -318,39 +320,179 @@ async function handlePasswordLogin(request, env, cors = {}) {
     playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
     await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(playerId, row.id).run()
   }
-  const token = await createSessionToken({ playerId, provider: 'account' }, env.SESSION_SECRET)
+  const token = await createSessionToken({ playerId, provider: 'account', userId: row.id }, env.SESSION_SECRET)
   return json({
     ok: true,
     user: { provider: 'account', nickname: row.nickname, avatarUrl: null, playerId },
   }, 200, { 'Set-Cookie': sessionCookie(token), ...cors })
 }
 
+// 从 playerId 反解用户行 id（token 内 playerId 形如 pu<id36>-<8> 时可用；账号/GitHub 通用）
+function parseUserIdFromPlayerId(playerId) {
+  if (!playerId) return null
+  const m = playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || playerId.match(/^pu([0-9a-z]+)/)
+  return m ? parseInt(m[1], 36) : null
+}
+
+// 解析账号会话对应的用户行 id。优先用 token 内 userId；否则按 player_id 定位；
+// 账号注册时若无游客会话，player_id 为 NULL 但 token 内 playerId 编码了 id，可反解并自动补齐 player_id（自愈老数据）
+async function resolveAccountId(session, env) {
+  if (session.userId) return session.userId
+  let row = await env.DB.prepare(
+    "SELECT id, player_id FROM users WHERE provider = 'account' AND player_id = ?"
+  ).bind(session.playerId).first()
+  if (row) {
+    if (!row.player_id) {
+      await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(session.playerId, row.id).run()
+    }
+    return row.id
+  }
+  const parsed = parseUserIdFromPlayerId(session.playerId)
+  if (parsed) {
+    const r2 = await env.DB.prepare('SELECT id FROM users WHERE id = ?').bind(parsed).first()
+    if (r2) {
+      await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(session.playerId, r2.id).run()
+      return r2.id
+    }
+  }
+  return null
+}
+
+// 读取当前会话对应的用户资料（含自选头像 avatarId）。handleMe 与 handleSetAvatar 共用
+async function loadCurrentUser(session, env) {
+  if (!session) return null
+  if (session.provider === 'guest') {
+    return { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: session.playerId, avatarId: null }
+  }
+  if (session.provider === 'account') {
+    const id = await resolveAccountId(session, env)
+    const row = id ? await env.DB.prepare('SELECT nickname, avatar_id FROM users WHERE id = ?').bind(id).first() : null
+    return {
+      provider: 'account',
+      nickname: row?.nickname || '账号用户',
+      avatarUrl: null,
+      playerId: session.playerId,
+      avatarId: row?.avatar_id || null,
+    }
+  }
+  // GitHub 用户从 D1 补全昵称头像；优先用 token 内 userId，旧令牌回退到 playerId 反解
+  const userId = session.userId || parseUserIdFromPlayerId(session.playerId)
+  let row = null
+  if (userId) {
+    row = await env.DB.prepare('SELECT github_id, nickname, avatar_url, avatar_id FROM users WHERE id = ?').bind(userId).first()
+  }
+  return {
+    provider: 'github',
+    nickname: row?.nickname || null,
+    avatarUrl: row?.avatar_url || null,
+    playerId: session.playerId,
+    userId,
+    githubId: row?.github_id || null,
+    avatarId: row?.avatar_id || null,
+    isAdmin: row ? String(row.github_id) === String(env.ADMIN_GITHUB_ID) : false,
+  }
+}
+
 async function handleMe(request, env, cors = {}) {
   const session = await getSession(request, env)
   if (!session) return json({ user: null }, 200, cors)
+  const user = await loadCurrentUser(session, env)
+  return json({ user }, 200, cors)
+}
 
-  if (session.provider === 'guest') {
-    return json({ user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: session.playerId } }, 200, cors)
+// 自选本地头像（1-26）。游客无落库记录，由前端用 localStorage 处理，这里仅对登录用户生效
+async function handleSetAvatar(request, env, cors = {}) {
+  const session = await getSession(request, env)
+  if (!session || session.provider === 'guest') {
+    return json({ error: 'login required' }, 401, cors)
+  }
+  let body
+  try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
+  const raw = typeof body.avatarId === 'string' ? body.avatarId : String(body.avatarId ?? '')
+  // 0 或空 = 清除，回到默认头像；1-26 为合法选择
+  if (!/^\d+$/.test(raw) || Number(raw) > 26) {
+    return json({ error: 'invalid avatar' }, 400, cors)
   }
 
-  // 账号用户：playerId 可能沿用自游客 ID（不含可解析行号），统一按 player_id 反查
   if (session.provider === 'account') {
-    const row = await env.DB.prepare(
-      "SELECT nickname FROM users WHERE provider = 'account' AND player_id = ?"
-    ).bind(session.playerId).first()
-    return json({ user: { provider: 'account', nickname: row?.nickname || '账号用户', avatarUrl: null, playerId: session.playerId } }, 200, cors)
+    const userId = await resolveAccountId(session, env)
+    if (!userId) return json({ error: 'user not found' }, 404, cors)
+    await env.DB.prepare('UPDATE users SET avatar_id = ? WHERE id = ?').bind(raw, userId).run()
+  } else {
+    const userId = session.userId || parseUserIdFromPlayerId(session.playerId)
+    if (!userId) return json({ error: 'invalid session' }, 401, cors)
+    await env.DB.prepare('UPDATE users SET avatar_id = ? WHERE id = ?').bind(raw, userId).run()
   }
 
-  // GitHub 用户从 D1 补全昵称头像；playerId 由 token 保证稳定
-  // 非贪婪：只取到第一个 '-' 之前的部分（旧格式无 '-'，保持原样兼容）
-  const m = session.playerId.match(/^pu([0-9a-z]+?)(?:-|$)/) || session.playerId.match(/^pu([0-9a-z]+)/)
-  const userId = m ? parseInt(m[1], 36) : null
-  let nickname = null, avatarUrl = null, githubId = null
-  if (userId) {
-    const row = await env.DB.prepare('SELECT github_id, nickname, avatar_url FROM users WHERE id = ?').bind(userId).first()
-    if (row) ({ github_id: githubId, nickname, avatar_url: avatarUrl } = row)
+  const user = await loadCurrentUser(session, env)
+  return json({ ok: true, user }, 200, cors)
+}
+
+// ---------- 成就展馆查询 ----------
+
+// 当前会话玩家的成就列表：全量目录 + 解锁标记 + 累计型进度，一次请求拿全
+async function handleAchievements(request, env, cors = {}) {
+  const session = await getSession(request, env)
+  if (!session) return json({ error: 'login required' }, 401, cors)
+
+  const { results } = await env.DB.prepare(
+    'SELECT achievement_key, unlocked_at FROM achievements WHERE player_id = ? ORDER BY unlocked_at DESC'
+  ).bind(session.playerId).all()
+
+  const unlockedAt = new Map(results.map(r => [r.achievement_key, r.unlocked_at]))
+  const career = await computeCareer(session.playerId, env)
+
+  const achievements = ACHIEVEMENT_DEFS.map(def => {
+    const unlocked = unlockedAt.has(def.key)
+    const entry = {
+      key: def.key,
+      name: def.name,
+      desc: def.desc,
+      stars: def.stars,
+      game: def.game,
+      unlocked,
+      unlockedAt: unlockedAt.get(def.key) || null,
+    }
+    if (ACHIEVEMENT_TARGETS[def.key]) {
+      entry.target = ACHIEVEMENT_TARGETS[def.key]
+      entry.progress = progressFromCareer(def.key, career)
+    }
+    return entry
+  })
+
+  return json({
+    achievements,
+    unlockedCount: unlockedAt.size,
+    total: ACHIEVEMENT_DEFS.length,
+  }, 200, cors)
+}
+
+// 汇总某玩家的跨场累计数据（与战绩上报时的 career 计算口径一致，仅查单玩家）
+async function computeCareer(playerId, env) {
+  const agg = await env.DB.prepare(
+    `SELECT
+       SUM((SELECT COALESCE(SUM(value), 0) FROM json_each(mp.spells_cast))) AS totalCasts,
+       SUM(mp.kills) AS totalKills,
+       SUM(mp.is_champion) AS totalWins,
+       SUM(mp.dragon_fails) AS dragonFails,
+       SUM(mp.suicides) AS suicides
+     FROM match_players mp WHERE mp.player_id = ?`
+  ).bind(playerId).first()
+  const spellRows = await env.DB.prepare(
+    `SELECT je.key AS spellId, SUM(je.value) AS cnt
+     FROM match_players mp, json_each(mp.spells_cast) je
+     WHERE mp.player_id = ? GROUP BY je.key`
+  ).bind(playerId).all()
+  const spellCounts = {}
+  for (const r of spellRows.results || []) spellCounts[r.spellId] = r.cnt
+  return {
+    totalCasts: agg?.totalCasts || 0,
+    totalKills: agg?.totalKills || 0,
+    totalWins: agg?.totalWins || 0,
+    dragonFails: agg?.dragonFails || 0,
+    suicides: agg?.suicides || 0,
+    spellCounts,
   }
-  return json({ user: { provider: 'github', nickname, avatarUrl, playerId: session.playerId, userId, githubId } }, 200, cors)
 }
 
 function handleLogout(cors = {}) {

@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict'
 import worker from '../src/index.js'
+import { ACHIEVEMENT_DEFS } from '../src/achievements.js'
 
 // ---- 假 D1：只覆盖 worker 用到的 SQL 形状 ----
 function makeFakeDB() {
   const users = new Map() // id -> row
   const comments = []
+  const achievements = [] // { player_id, achievement_key, unlocked_at }
   let nextUserId = 1
   let nextCommentId = 1
   return {
     users,
     comments,
+    achievements,
     prepare(sql) {
       const api = {
         args: [],
@@ -62,6 +65,15 @@ function makeFakeDB() {
           throw new Error('fake db: unsupported run: ' + sql)
         },
         async all() {
+          if (sql.startsWith('SELECT achievement_key')) {
+            const pid = api.args[0]
+            return {
+              results: achievements
+                .filter((r) => r.player_id === pid)
+                .sort((a, b) => (a.unlocked_at < b.unlocked_at ? 1 : -1))
+                .map((r) => ({ achievement_key: r.achievement_key, unlocked_at: r.unlocked_at })),
+            }
+          }
           if (sql.startsWith('SELECT c.id')) {
             const pagePath = api.args[0]
             const rows = comments
@@ -193,6 +205,53 @@ function cookieOf(res) {
 }
 
 console.log('worker smoke tests passed')
+
+// ---- 成就展馆：/api/achievements 返回全量目录 + 解锁标记；未登录 401 ----
+{
+  const env = makeEnv()
+
+  const anon = await worker.fetch(
+    new Request('https://auth.qmzhj.top/api/achievements'),
+    env,
+  )
+  assert.equal(anon.status, 401, '未登录不可读成就')
+
+  const guest = await worker.fetch(
+    new Request('https://auth.qmzhj.top/api/guest', { method: 'POST' }),
+    env,
+  )
+  const guestData = await guest.json()
+  const cookie = cookieOf(guest)
+
+  const empty = await worker.fetch(
+    new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
+    env,
+  )
+  assert.equal(empty.status, 200)
+  const emptyData = await empty.json()
+  assert.equal(emptyData.total, ACHIEVEMENT_DEFS.length, '全量目录随返回')
+  assert.equal(emptyData.unlockedCount, 0, '新游客零解锁')
+  assert.ok(emptyData.achievements.every((a) => a.unlocked === false), '未解锁标记一致')
+
+  // 手工塞两条解锁记录后回读
+  env.DB.achievements.push(
+    { player_id: guestData.user.playerId, achievement_key: 'first_cast', unlocked_at: '2026-08-27 10:00:00' },
+    { player_id: guestData.user.playerId, achievement_key: 'first_kill', unlocked_at: '2026-08-27 10:05:00' },
+  )
+  const unlocked = await worker.fetch(
+    new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
+    env,
+  )
+  const unlockedData = await unlocked.json()
+  assert.equal(unlockedData.unlockedCount, 2)
+  const byKey = Object.fromEntries(unlockedData.achievements.map((a) => [a.key, a]))
+  assert.equal(byKey.first_cast.unlocked, true, 'first_cast 已解锁')
+  assert.equal(byKey.first_kill.unlocked, true, 'first_kill 已解锁')
+  assert.equal(byKey.dragon_veteran.unlocked, false, '未解锁成就保持 false')
+  assert.equal(byKey.first_cast.unlockedAt, '2026-08-27 10:00:00', '带回解锁时间')
+}
+
+console.log('worker achievements tests passed')
 
 // ---- /login：state cookie + redirect 目的地 cookie + 开放重定向防护 ----
 {

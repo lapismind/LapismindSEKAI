@@ -3,10 +3,11 @@
  * 右上角用户头像岛 —— 游客显示 0 号占位头像（点击可登录），
  * GitHub 用户显示自己的头像（点击可退出）。全站 Header 共用。
  */
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { onBeforeUnmount } from 'vue'
 import { createAuthClient } from '@lapismind/lobby-kit'
 import guestAvatar from '@lapismind/lobby-kit/avatars/0.png'
+import { avatarUrlById } from '../lib/avatarChoices.js'
 
 // Astro 的图片导入返回元数据对象 { src, width, height }，<img :src> 需要 .src 字符串
 const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src
@@ -15,6 +16,12 @@ const user = ref(null)
 const open = ref(false)
 const auth = createAuthClient()
 const rootEl = ref(null)
+
+// 自选本地头像优先于 GitHub 头像；没有则回退到 GitHub 头像 / 游客占位
+const shownAvatar = computed(() => {
+  const local = user.value?.avatarId ? avatarUrlById(user.value.avatarId) : null
+  return local || user.value?.avatarUrl || guestAvatarSrc
+})
 
 function onDocClick(e) {
   if (rootEl.value && !rootEl.value.contains(e.target)) open.value = false
@@ -43,19 +50,19 @@ async function logout() {
   <div ref="rootEl" class="user-avatar">
     <button type="button" class="avatar-btn" :aria-label="user?.nickname || '游客'" @click="open = !open">
       <img
-        :src="user?.avatarUrl || guestAvatarSrc"
+        :src="shownAvatar"
         alt=""
         class="avatar-img"
-        :class="{ 'is-guest': !user?.avatarUrl }"
+        :class="{ 'is-guest': !user?.avatarUrl && !user?.avatarId }"
       />
-      <span v-if="!user?.avatarUrl" class="guest-dot" title="游客"></span>
+      <span v-if="!user?.avatarUrl && !user?.avatarId" class="guest-dot" title="游客"></span>
     </button>
 
     <transition name="pop">
       <div v-if="open" class="menu">
         <template v-if="user">
           <div class="menu-head">
-            <img :src="user.avatarUrl || guestAvatarSrc" alt="" class="menu-avatar" />
+            <img :src="shownAvatar" alt="" class="menu-avatar" />
             <span class="menu-name">{{ user.nickname }}</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>

@@ -43,16 +43,17 @@ async function signPayload(payloadStr, secret) {
  * 与 createIdentityToken 同一信封与签名算法，供统一认证 Worker 使用。
  */
 export async function createSessionToken(
-  { playerId, provider = 'guest', issuedAt = Date.now(), expiresInMs = SESSION_TTL_MS },
+  { playerId, provider = 'guest', userId, issuedAt = Date.now(), expiresInMs = SESSION_TTL_MS },
   secret,
 ) {
-  const payload = JSON.stringify({
+  const payload = {
     playerId,
     provider,
     iat: issuedAt,
     exp: issuedAt + expiresInMs,
-  })
-  return signPayload(payload, secret)
+  }
+  if (userId != null) payload.userId = userId
+  return signPayload(JSON.stringify(payload), secret)
 }
 
 function b64urlEncode(bytes) {
@@ -100,7 +101,7 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
 
   const payloadStr = new TextDecoder().decode(payloadBytes)
 
-  let playerId, ts, provider, expiresAt
+  let playerId, ts, provider, expiresAt, userId
   if (payloadStr.startsWith('{')) {
     // v2 JSON payload：{ playerId, provider, iat, exp }
     let data
@@ -116,6 +117,7 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
     ts = data.iat
     provider = data.provider
     expiresAt = data.exp
+    if (data.userId != null) userId = data.userId
     if (Date.now() > expiresAt) return null
   } else {
     const lastDot = payloadStr.lastIndexOf('.')
@@ -137,5 +139,8 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
   if (!ok) return null
 
   if (maxAgeMs !== Infinity && Date.now() - ts > maxAgeMs) return null
-  return expiresAt !== undefined ? { playerId, issuedAt: ts, provider, expiresAt } : { playerId, issuedAt: ts }
+  const session = { playerId, issuedAt: ts, provider }
+  if (expiresAt !== undefined) session.expiresAt = expiresAt
+  if (userId != null) session.userId = userId
+  return session
 }

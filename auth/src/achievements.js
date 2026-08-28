@@ -11,45 +11,87 @@
 
 export const ACHIEVEMENT_DEFS = [
   // ---------- 一星（4）----------
-  { key: 'first_cast', stars: 1, name: '初试啼声', desc: '欢迎来到魔法学院，请系好安全带' },
-  { key: 'first_kill', stars: 1, name: '开张', desc: '第一次让别人血条消失的感觉，上瘾' },
-  { key: 'potion_addict', stars: 1, name: '药罐子', desc: '生命在于嗑药' },
-  { key: 'spell_collector', stars: 1, name: '图鉴收集家', desc: '八系魔法，浅尝辄止' },
+  { key: 'first_cast', stars: 1, name: '初试啼声', desc: '累计施法达到 1 次（完成首次成功施法即解锁）' },
+  { key: 'first_kill', stars: 1, name: '开张', desc: '累计击杀达到 1 次' },
+  { key: 'potion_addict', stars: 1, name: '药罐子', desc: '累计施放增益/治疗类魔法（8 系）达到 10 次' },
+  { key: 'spell_collector', stars: 1, name: '图鉴收集家', desc: '累计使用过 8 个不同系别的魔法各至少 1 次' },
 
   // ---------- 二星（6）----------
-  { key: 'meteor', stars: 2, name: '流星火雨', desc: '下一位受害者已排队，请出示血条' },
-  { key: 'frost', stars: 2, name: '霜天', desc: '西伯利亚寒流，精准投递' },
-  { key: 'weather_child', stars: 2, name: '天气之子', desc: '今日天气：雷、雪、火，不宜出门' },
-  { key: 'night_walker', stars: 2, name: '夜行侠', desc: '全场的噩梦，都是我做的' },
-  { key: 'last_breath', stars: 2, name: '一线生机', desc: '死神伸了个手，被我打了张欠条' },
-  { key: 'secret_rich', stars: 2, name: '秘密富翁', desc: '猫头鹰看了都说内行' },
+  { key: 'meteor', stars: 2, name: '流星火雨', desc: '单局内连续 3 轮施放火系魔法（7 系）' },
+  { key: 'frost', stars: 2, name: '霜天', desc: '单局内连续 3 轮施放冰系魔法（6 系）' },
+  { key: 'weather_child', stars: 2, name: '天气之子', desc: '同一回合内同时施放雷、雪、火三系魔法（5/6/7 系）' },
+  { key: 'night_walker', stars: 2, name: '夜行侠', desc: '累计施放暗影/夜行类魔法（2 系）达到 20 次' },
+  { key: 'last_breath', stars: 2, name: '一线生机', desc: '在仅剩 1 点生命值时赢下当前回合' },
+  { key: 'secret_rich', stars: 2, name: '秘密富翁', desc: '单回合结束时同时持有至少 3 张秘密牌' },
 
   // ---------- 三星（7）----------
-  { key: 'comeback', stars: 3, name: '绝地反击', desc: '一滴血，一口龙息，一个王朝' },
-  { key: 'double_kill', stars: 3, name: '双杀现场', desc: '不用龙的连杀，才叫技术' },
-  { key: 'pacifist_king', stars: 3, name: '卡牌大师', desc: '全程未拔剑，登基那天满朝文武无话可说' },
-  { key: 'untouchable', stars: 3, name: '稳如老狗', desc: '全程没躺进过坟场，冠军含金量拉满' },
-  { key: 'hundred_casts', stars: 3, name: '百法齐鸣', desc: '第一百次施法，手已经比脑子快了' },
-  { key: 'dragon_clown', stars: 3, name: '奶龙大王', desc: '龙的传人，专治队友' },
-  { key: 'all_rounded', stars: 3, name: '齿轮全转', desc: '没有偏科的法师，只有偏执的法师' },
-  { key: 'dragon_triple_total', stars: 3, name: '三星龙', desc: '龙焰三重奏' },
+  { key: 'comeback', stars: 3, name: '绝地反击', desc: '击败一名生命值明显高于你的目标（以弱胜强）' },
+  { key: 'double_kill', stars: 3, name: '双杀现场', desc: '单次施法（非龙息）在同一回合造成 2 次击杀' },
+  { key: 'pacifist_king', stars: 3, name: '卡牌大师', desc: '全程未造成任何击杀却获得最终冠军' },
+  { key: 'untouchable', stars: 3, name: '稳如老狗', desc: '全程未被击倒（0 次阵亡）并夺得冠军' },
+  { key: 'hundred_casts', stars: 3, name: '百法齐鸣', desc: '累计施法达到 100 次' },
+  { key: 'dragon_clown', stars: 3, name: '奶龙大王', desc: '累计龙息失败与自杀各达到 10 次' },
+  { key: 'all_rounded', stars: 3, name: '齿轮全转', desc: '8 个系别每个累计施放均达到 5 次' },
+  { key: 'dragon_triple_total', stars: 3, name: '三星龙', desc: '单场对局中累计击杀 3 条龙' },
 
   // ---------- 四星（7）----------
-  { key: 'not_approved', stars: 4, name: '我不同意', desc: '你们数到七就庆祝？我还没同意' },
-  { key: 'opening_blast', stars: 4, name: '开幕雷击', desc: '开幕即终幕，谢幕的是其他人' },
-  { key: 'elemental', stars: 4, name: '元素反应', desc: '雷雪火齐发，物理老师看了沉默' },
-  { key: 'dragon_veteran', stars: 4, name: '驭龙老炮', desc: '龙见了我都要喊一声师父' },
-  { key: 'god_of_kill', stars: 4, name: '杀神', desc: '排行榜上我的名字后面跟着一片墓碑' },
-  { key: 'match_master', stars: 4, name: '常胜将军', desc: '五十座奖杯，摆满了我家的祭坛' },
-  { key: 'dragon_triple_one', stars: 4, name: '龙来', desc: '龙息所至，寸草不生' },
+  { key: 'not_approved', stars: 4, name: '我不同意', desc: '在明显落后局面下完成翻盘逆转' },
+  { key: 'opening_blast', stars: 4, name: '开幕雷击', desc: '开幕回合即召唤 3 连龙息' },
+  { key: 'elemental', stars: 4, name: '元素反应', desc: '任意回合内同时凑齐雷、雪、火三系魔法（5/6/7 系）' },
+  { key: 'dragon_veteran', stars: 4, name: '驭龙老炮', desc: '累计施放龙息类魔法（1 系）达到 30 次' },
+  { key: 'god_of_kill', stars: 4, name: '杀神', desc: '累计击杀达到 50 次' },
+  { key: 'match_master', stars: 4, name: '常胜将军', desc: '累计夺冠达到 50 次' },
+  { key: 'dragon_triple_one', stars: 4, name: '龙来', desc: '单次施法（龙息）在同一回合造成 3 次击杀' },
 
   // ---------- 彩蛋（6）----------
-  { key: 'egg_first_round_suicide', stars: 0, name: '出生即退场', desc: '开局一分钟，走完了一生' },
-  { key: 'egg_gentle', stars: 0, name: '独善其身', desc: '全场最温柔的法师，也是最没朋友的' },
-  { key: 'egg_full_then_dead', stars: 0, name: '回光返照', desc: '满血复活的下一秒，被物理超度' },
-  { key: 'egg_social_death', stars: 0, name: '社死现场', desc: '这一轮的观众席，笑声就没停过' },
-  { key: 'egg_no_secret_win', stars: 0, name: '白板登基', desc: '一张秘密牌都没摸，照样坐上了王座' },
+  { key: 'egg_first_round_suicide', stars: 0, name: '出生即退场', desc: '开局首回合即阵亡退场' },
+  { key: 'egg_gentle', stars: 0, name: '独善其身', desc: '全程只施放增益/治疗魔法（3、8 系）且 0 击杀' },
+  { key: 'egg_full_then_dead', stars: 0, name: '回光返照', desc: '经历残血→满血复活后，紧接着在同一局内被击杀' },
+  { key: 'egg_social_death', stars: 0, name: '社死现场', desc: '单回合内施法失败次数达到 3 次' },
+  { key: 'egg_no_secret_win', stars: 0, name: '白板登基', desc: '一张秘密牌都没摸到却夺得冠军' },
 ]
+
+// 成就所属游戏（用于展馆按游戏分组收束）
+export const GAMES = {
+  abracadawhat: '出包魔法师',
+}
+
+// 给所有成就补上默认归属（后续新游戏在 ACHIEVEMENT_DEFS 里显式写 game 即可）
+ACHIEVEMENT_DEFS.forEach((d) => { if (!d.game) d.game = 'abracadawhat' })
+
+// 累计次数型成就的目标值：达到即解锁；前端据此画百分比进度。
+// 不在表内的视为「单局达成」类，不显示百分比。
+export const ACHIEVEMENT_TARGETS = {
+  first_cast: 1,
+  first_kill: 1,
+  potion_addict: 10,        // 8 系魔法施放 ≥10
+  spell_collector: 8,       // 集齐 8 系
+  night_walker: 20,         // 2 系施放 ≥20
+  hundred_casts: 100,       // 累计施法 ≥100
+  dragon_clown: 10,         // 龙失败 & 自杀各需 ≥10，进度取两者较小值
+  dragon_veteran: 30,       // 1 系施放 ≥30
+  god_of_kill: 50,          // 累计击杀 ≥50
+  match_master: 50,         // 累计夺冠 ≥50
+}
+
+// 从跨场累计数据计算当前进度（仅累计型成就使用）
+export function progressFromCareer(key, career) {
+  const c = career || {}
+  const spell = (id) => (c.spellCounts && c.spellCounts[id]) || 0
+  switch (key) {
+    case 'first_cast': return c.totalCasts || 0
+    case 'first_kill': return c.totalKills || 0
+    case 'potion_addict': return spell(8)
+    case 'spell_collector': return new Set(Object.keys(c.spellCounts || {}).map(Number)).size
+    case 'night_walker': return spell(2)
+    case 'hundred_casts': return c.totalCasts || 0
+    case 'dragon_clown': return Math.min(c.dragonFails || 0, c.suicides || 0)
+    case 'dragon_veteran': return spell(1)
+    case 'god_of_kill': return c.totalKills || 0
+    case 'match_master': return c.totalWins || 0
+    default: return 0
+  }
+}
 
 // 判定表：key → (ctx) => boolean
 // ctx = { p, match, career }

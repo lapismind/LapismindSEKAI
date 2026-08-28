@@ -45,7 +45,63 @@ import { SITE_TITLE } from '../consts';
 			.form-msg { margin-top: 0.9rem; min-height: 1.4em; font-size: 0.85rem; text-align: center; }
 			.form-msg.err { color: #d64545; }
 			.form-msg.ok { color: oklch(0.6 0.14 150); }
+			.avatar-wrap { position: relative; }
+			.avatar-btn { position: relative; display: inline-block; padding: 0; border: 0; background: transparent; border-radius: 28px; cursor: var(--cursor-pointer); line-height: 0; }
+			.avatar-btn img { width: 116px; height: 116px; border-radius: 28px; object-fit: cover; border: 3px solid var(--card-solid); box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md); background: var(--primary-ghost); transition: transform 0.18s ease, box-shadow 0.18s ease; }
+			.avatar-btn:hover img { transform: scale(1.02); box-shadow: 0 0 0 2px var(--primary), var(--shadow-md); }
+			.avatar-btn:focus-visible img { box-shadow: 0 0 0 2px var(--primary), var(--shadow-md); }
+			.avatar-edit-badge { position: absolute; right: -4px; bottom: -4px; font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--gradient); padding: 0.2em 0.6em; border-radius: 999px; box-shadow: var(--shadow-sm); pointer-events: none; }
+			.avatar-hint { margin: 0.9rem 0 0; font-size: 0.82rem; color: var(--muted); }
+			.avatar-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.2rem; z-index: 60; }
+			.avatar-modal[hidden] { display: none; }
+			.avatar-modal-backdrop { position: absolute; inset: 0; background: rgba(10, 12, 24, 0.55); backdrop-filter: blur(2px); }
+			.avatar-modal-card { position: relative; width: min(440px, 100%); max-height: 86vh; overflow: auto; padding: 1.4rem 1.5rem 1.6rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+			.avatar-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+			.avatar-modal-head h2 { margin: 0; font-size: 1.15rem; }
+			.avatar-modal-close { border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink-soft); width: 34px; height: 34px; border-radius: 50%; font-size: 1.2rem; line-height: 1; cursor: var(--cursor-pointer); }
+			.avatar-modal-close:hover { border-color: var(--primary); color: var(--primary); }
+			.picker-note { margin: 0.4rem 0 1rem; font-size: 0.82rem; color: var(--muted); }
+			.avatar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 0.7rem; }
+			.avatar-cell { position: relative; aspect-ratio: 1 / 1; padding: 0; border: 2px solid var(--line); border-radius: 16px; background: var(--card-solid); overflow: hidden; cursor: var(--cursor-pointer); transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
+			.avatar-cell:hover { border-color: var(--primary); transform: translateY(-2px); }
+			.avatar-cell.is-active { border-color: transparent; background: linear-gradient(var(--card-solid), var(--card-solid)) padding-box, var(--gradient) border-box; box-shadow: var(--shadow-sm); }
+			.avatar-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+			.avatar-cell .check { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--gradient); color: #fff; font-size: 11px; line-height: 18px; text-align: center; box-shadow: var(--shadow-sm); }
 			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } .form-grid { grid-template-columns: 1fr; } }
+		</style>
+
+		<!-- 成就展馆：卡片全部由 JS 动态创建，样式须 is:global 才生效（项目已知教训） -->
+		<style is:global>
+			.ach-shell { margin-top: 1.2rem; padding: 1.4rem 1.6rem 1.6rem; }
+			.ach-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+			.ach-head h2 { margin: 0; font-size: 1.15rem; }
+			.ach-head .ach-summary { margin: 0; font-size: 0.85rem; color: var(--muted); font-family: var(--font-mono); }
+			.ach-game { margin-top: 1rem; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--card-bg); }
+			.ach-game:first-child { margin-top: 0; }
+			.ach-game-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; width: 100%; padding: 0.85rem 1.1rem; border: 0; background: transparent; cursor: var(--cursor-pointer); text-align: left; }
+			.ach-game-head:hover { background: var(--primary-ghost); }
+			.ach-game-info { display: flex; align-items: baseline; gap: 0.7rem; min-width: 0; }
+			.ach-game-name { font-size: 1rem; font-weight: 650; color: var(--ink); }
+			.ach-game-count { font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono); }
+			.ach-caret { color: var(--primary); font-size: 0.85rem; flex: none; transition: transform 0.15s ease; }
+			.ach-game-body { display: flex; flex-direction: column; padding: 0.2rem 0.6rem 0.7rem; }
+			.ach-row { display: flex; align-items: center; gap: 1rem; padding: 0.7rem 0.5rem; border-top: 1px dashed var(--line); }
+			.ach-row:first-child { border-top: none; }
+			.ach-row.locked { opacity: 0.62; filter: saturate(0.35); }
+			.ach-row-left { display: flex; align-items: flex-start; gap: 0.7rem; min-width: 0; flex: 1; }
+			.ach-stars { font-size: 0.72rem; letter-spacing: 0.1em; color: oklch(0.72 0.13 75); flex: none; padding-top: 0.15rem; min-width: 3.2em; }
+			.ach-row.locked .ach-stars { color: var(--line-strong); }
+			.ach-row-text { min-width: 0; }
+			.ach-name { margin: 0 0 0.15rem; font-size: 0.95rem; font-weight: 650; color: var(--ink); }
+			.ach-desc { margin: 0; font-size: 0.76rem; line-height: 1.5; color: var(--muted); }
+			.ach-row-right { flex: none; display: flex; align-items: center; gap: 0.6rem; }
+			.ach-mark { font-size: 1rem; color: var(--muted); }
+			.ach-row.earned .ach-mark { color: oklch(0.6 0.14 150); }
+			.ach-bar { width: 110px; height: 8px; border-radius: 999px; background: var(--line); overflow: hidden; }
+			.ach-bar-fill { display: block; height: 100%; border-radius: 999px; background: var(--gradient); transition: width 0.3s ease; }
+			.ach-row.earned .ach-bar-fill { background: oklch(0.6 0.14 150); }
+			.ach-pct { font-size: 0.72rem; color: var(--muted); font-family: var(--font-mono); white-space: nowrap; }
+			.ach-empty { padding: 1.4rem; text-align: center; color: var(--muted); font-size: 0.88rem; border: 1px dashed var(--line); border-radius: var(--radius); }
 		</style>
 	</head>
 	<body>
@@ -64,7 +120,10 @@ import { SITE_TITLE } from '../consts';
 				<div id="profile-content" hidden>
 					<section class="profile-card glass">
 						<div class="avatar-wrap">
-							<img id="pf-avatar" src="" alt="玩家头像" width="116" height="116" />
+							<button id="pf-avatar-btn" class="avatar-btn" type="button" aria-label="点击更换头像">
+								<img id="pf-avatar" src="" alt="玩家头像" width="116" height="116" />
+								<span class="avatar-edit-badge" aria-hidden="true">换头像</span>
+							</button>
 						</div>
 						<div class="identity">
 							<span id="pf-tag" class="identity-tag"></span>
@@ -72,6 +131,7 @@ import { SITE_TITLE } from '../consts';
 							<p id="pf-sub" class="sub"></p>
 						</div>
 					</section>
+					<p class="avatar-hint">点击头像即可更换，立即生效。</p>
 
 					<section class="meta-list glass">
 						<div class="meta-row">
@@ -82,6 +142,26 @@ import { SITE_TITLE } from '../consts';
 							<span class="label">GITHUB</span>
 							<p class="text" id="pf-github"></p>
 						</div>
+					</section>
+
+					<div id="avatar-modal" class="avatar-modal glass" hidden>
+						<div class="avatar-modal-backdrop" data-close="1"></div>
+						<div class="avatar-modal-card glass" role="dialog" aria-modal="true" aria-label="选择头像">
+							<div class="avatar-modal-head">
+								<h2>选择头像</h2>
+								<button class="avatar-modal-close" type="button" data-close="1" aria-label="关闭">×</button>
+							</div>
+							<p class="picker-note" id="pf-avatar-note">点一下就能换，立即生效。</p>
+							<div id="avatar-grid" class="avatar-grid" role="listbox" aria-label="可选头像"></div>
+						</div>
+					</div>
+
+					<section id="ach-section" class="ach-shell glass" hidden>
+						<div class="ach-head">
+							<h2>成就展馆</h2>
+							<p id="ach-summary" class="ach-summary">正在清点奖杯……</p>
+						</div>
+						<div id="ach-hall"></div>
 					</section>
 
 					<div class="actions">
@@ -123,6 +203,7 @@ import { SITE_TITLE } from '../consts';
 		<script>
 			import { createAuthClient } from '@lapismind/lobby-kit';
 			import guestAvatar from '@lapismind/lobby-kit/avatars/0.png';
+			import { avatarChoices, avatarUrlById } from '../lib/avatarChoices.js';
 
 			const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src;
 			const auth = createAuthClient();
@@ -139,6 +220,7 @@ import { SITE_TITLE } from '../consts';
 					const user = await auth.init();
 					if (!user) throw new Error('no user');
 					render(user);
+					await loadAchievements();
 					loading.hidden = true;
 					content.hidden = false;
 				} catch {
@@ -147,11 +229,208 @@ import { SITE_TITLE } from '../consts';
 				}
 			}
 
+			// ---------- 成就展馆（按游戏分组收束，可折叠） ----------
+			const GAME_NAMES = { abracadawhat: '出包魔法师' };
+			let currentUser = null;
+
+			async function loadAchievements() {
+				const section = el('ach-section');
+				try {
+					const res = await auth.getAchievements();
+					if (!res.ok) throw new Error('no achievements data');
+					currentUser = auth.getUser();
+					renderHall(res.achievements || []);
+					section.hidden = false;
+				} catch {
+					section.hidden = true; // 成就服务不可用时整块隐藏，不打扰资料页其他功能
+				}
+			}
+
+			function renderHall(list) {
+				const hall = el('ach-hall');
+				hall.textContent = '';
+				if (!list.length) {
+					const p = document.createElement('p');
+					p.className = 'ach-empty';
+					p.textContent = '成就目录还是空的，等成就系统上线后，这里会摆满奖杯。';
+					hall.appendChild(p);
+					setText(el('ach-summary'), '成就即将上线');
+					return;
+				}
+
+				// 彩蛋成就：非管理员直接隐藏（不显示锁，也不占位置）
+				const isAdmin = !!currentUser?.isAdmin;
+				const groups = new Map();
+				for (const a of list) {
+					if (a.stars === 0 && !isAdmin) continue;
+					const g = a.game || 'other';
+					if (!groups.has(g)) groups.set(g, []);
+					groups.get(g).push(a);
+				}
+
+				let totalUnlocked = 0, totalCount = 0, first = true;
+				for (const [g, arr] of groups) {
+					if (!arr.length) continue;
+					totalUnlocked += arr.filter((a) => a.unlocked).length;
+					totalCount += arr.length;
+
+					const card = document.createElement('section');
+					card.className = 'ach-game';
+
+					const head = document.createElement('button');
+					head.type = 'button';
+					head.className = 'ach-game-head';
+					head.setAttribute('aria-expanded', String(first));
+					const info = document.createElement('div');
+					info.className = 'ach-game-info';
+					const gname = document.createElement('span');
+					gname.className = 'ach-game-name';
+					gname.textContent = GAME_NAMES[g] || g;
+					const gcount = document.createElement('span');
+					gcount.className = 'ach-game-count';
+					gcount.textContent = arr.filter((a) => a.unlocked).length + ' / ' + arr.length + ' 已解锁';
+					info.append(gname, gcount);
+					const caret = document.createElement('span');
+					caret.className = 'ach-caret';
+					caret.textContent = first ? '▾' : '▸';
+					head.append(info, caret);
+
+					const body = document.createElement('div');
+					body.className = 'ach-game-body';
+					body.hidden = !first;
+					for (const a of arr) body.appendChild(renderAchRow(a));
+
+					head.addEventListener('click', () => {
+						const open = body.hidden;
+						body.hidden = !open;
+						head.setAttribute('aria-expanded', String(open));
+						caret.textContent = open ? '▾' : '▸';
+					});
+
+					card.append(head, body);
+					hall.appendChild(card);
+					first = false;
+				}
+
+				setText(el('ach-summary'), '已解锁 ' + totalUnlocked + ' / ' + totalCount);
+			}
+
+			function renderAchRow(a) {
+				const row = document.createElement('div');
+				row.className = 'ach-row ' + (a.unlocked ? 'earned' : 'locked');
+
+				const left = document.createElement('div');
+				left.className = 'ach-row-left';
+				const stars = document.createElement('span');
+				stars.className = 'ach-stars';
+				stars.textContent = a.stars === 0 ? '彩蛋' : '★'.repeat(a.stars);
+				const txt = document.createElement('div');
+				txt.className = 'ach-row-text';
+				const name = document.createElement('p');
+				name.className = 'ach-name';
+				name.textContent = a.name;
+				const desc = document.createElement('p');
+				desc.className = 'ach-desc';
+				desc.textContent = a.desc;
+				txt.append(name, desc);
+				left.append(stars, txt);
+
+				const right = document.createElement('div');
+				right.className = 'ach-row-right';
+				if (a.target && a.target > 0) {
+					// 累计次数型：右侧画百分比进度条
+					const pct = a.unlocked ? 100 : Math.max(0, Math.min(100, Math.round(((a.progress || 0) / a.target) * 100)));
+					const barWrap = document.createElement('div');
+					barWrap.className = 'ach-bar';
+					const bar = document.createElement('span');
+					bar.className = 'ach-bar-fill';
+					bar.style.width = pct + '%';
+					barWrap.appendChild(bar);
+					const pctText = document.createElement('span');
+					pctText.className = 'ach-pct';
+					pctText.textContent = a.unlocked ? '已达成' : (pct + '% · ' + (a.progress || 0) + '/' + a.target);
+					right.append(barWrap, pctText);
+				} else {
+					const mark = document.createElement('span');
+					mark.className = 'ach-mark';
+					mark.textContent = a.unlocked ? '✓' : '🔒';
+					right.appendChild(mark);
+				}
+
+				row.append(left, right);
+				if (a.unlocked && a.unlockedAt) row.title = '解锁于 ' + String(a.unlockedAt).slice(0, 10);
+				return row;
+			}
+
 			let wired = false;
+
+			// ---------- 头像选择（点击头像弹出弹窗） ----------
+			let pickerWired = false;
+			const avatarGrid = el('avatar-grid');
+			const avatarModal = el('avatar-modal');
+			function openAvatarModal() {
+				buildAvatarGrid();
+				highlightAvatar(auth.getUser()?.avatarId);
+				avatarModal.hidden = false;
+			}
+			function closeAvatarModal() { avatarModal.hidden = true; }
+			el('pf-avatar-btn').addEventListener('click', openAvatarModal);
+			avatarModal.querySelectorAll('[data-close]').forEach((c) => c.addEventListener('click', closeAvatarModal));
+			document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !avatarModal.hidden) closeAvatarModal(); });
+			function buildAvatarGrid() {
+				if (pickerWired) return;
+				avatarGrid.textContent = '';
+				for (const a of avatarChoices) {
+					const btn = document.createElement('button');
+					btn.type = 'button';
+					btn.className = 'avatar-cell';
+					btn.dataset.id = a.id;
+					btn.setAttribute('role', 'option');
+					btn.setAttribute('aria-label', '头像 ' + a.id);
+					const img = document.createElement('img');
+					img.src = a.url;
+					img.alt = '头像 ' + a.id;
+					btn.appendChild(img);
+					const chk = document.createElement('span');
+					chk.className = 'check';
+					chk.textContent = '✓';
+					chk.hidden = true;
+					chk.dataset.role = 'check';
+					btn.appendChild(chk);
+					btn.addEventListener('click', () => selectAvatar(a.id));
+					avatarGrid.appendChild(btn);
+				}
+				pickerWired = true;
+			}
+			function highlightAvatar(id) {
+				for (const cell of avatarGrid.children) {
+					const active = cell.dataset.id === String(id);
+					cell.classList.toggle('is-active', active);
+					const chk = cell.querySelector('[data-role="check"]');
+					if (chk) chk.hidden = !active;
+				}
+			}
+			async function selectAvatar(id) {
+				const note = el('pf-avatar-note');
+				const res = await auth.setAvatar(id);
+				if (!res.ok) { note.textContent = '切换失败，请稍后重试。'; return; }
+				const current = auth.getUser();
+				const localAvatar = avatarUrlById(current?.avatarId);
+				el('pf-avatar').src = localAvatar
+					? localAvatar
+					: (current?.avatarUrl || guestAvatarSrc);
+				highlightAvatar(current?.avatarId);
+				note.textContent = '已切换 ✓ 立即生效。';
+				closeAvatarModal();
+			}
+
 			function render(user) {
 				const isGithub = user.provider === 'github';
 				const isAccount = user.provider === 'account';
-				el('pf-avatar').src = isGithub && user.avatarUrl ? user.avatarUrl : guestAvatarSrc;
+				const localAvatar = avatarUrlById(user.avatarId);
+				el('pf-avatar').src = localAvatar
+					? localAvatar
+					: (isGithub && user.avatarUrl ? user.avatarUrl : guestAvatarSrc);
 				const tag = el('pf-tag');
 				setText(tag, isGithub ? 'GITHUB 用户' : isAccount ? '账号用户' : '游客 · 未登录');
 				tag.classList.toggle('guest', !user || user.provider === 'guest');
@@ -174,6 +453,12 @@ import { SITE_TITLE } from '../consts';
 					el('pf-register-entry').hidden = false;
 				}
 				el('account-forms').hidden = logged;
+				// 头像选择：构建一次网格，高亮当前选择
+				buildAvatarGrid();
+				highlightAvatar(user.avatarId);
+				el('pf-avatar-note').textContent = user.provider === 'guest'
+					? '游客头像仅保存在本机浏览器，登录后会同步到账号。'
+					: '点一下就能换，立即生效。';
 				if (!wired) {
 					wired = true;
 					el('pf-login').addEventListener('click', () => auth.loginWithGithub(location.pathname));
