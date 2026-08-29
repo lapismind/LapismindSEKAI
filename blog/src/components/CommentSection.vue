@@ -147,7 +147,7 @@ async function submit() {
       想参与讨论？
       <button type="button" class="cs-link" @click="login">GitHub 登录</button>
       或到
-      <a href="/profile#account-forms" class="cs-link">个人资料页注册账号</a>
+      <a href="/login" class="cs-link">进入 SEKAI 注册账号</a>
       后即可评论
     </div>
     <p v-if="errorMsg" class="cs-error">{{ errorMsg }}</p>

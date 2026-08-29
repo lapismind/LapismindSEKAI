@@ -1,0 +1,115 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import Header from '../components/Header.astro';
+import { SITE_TITLE } from '../consts';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={'进入 SEKAI - ' + SITE_TITLE} description="登录或注册账号：GitHub 登录，或用户名密码注册；游客战绩可无缝保留。" />
+		<style>
+			.page-head { margin-bottom: 2.2rem; }
+			.login-intro { margin-bottom: 1.6rem; padding: 1.2rem 1.4rem; }
+			.login-intro p { margin: 0; font-size: 0.92rem; line-height: 1.8; color: var(--ink-soft); }
+			.af-github { width: 100%; justify-content: center; }
+			.af-or { margin: 1rem 0 0.4rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
+			.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 0.8rem; }
+			.form-card { display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem 1.5rem; }
+			.form-card h2 { margin: 0; font-size: 1.05rem; }
+			.form-card .form-note { margin: -0.2rem 0 0.2rem; font-size: 0.8rem; color: var(--muted); }
+			.form-card label { font-size: 0.8rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.35rem; }
+			.form-card input { padding: 0.55em 0.9em; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink); font-size: 0.92rem; outline: none; transition: border-color 0.15s ease; }
+			.form-card input:focus { border-color: var(--primary); }
+			.form-card .btn { justify-content: center; margin-top: 0.2rem; }
+			.form-msg { margin-top: 0.9rem; min-height: 1.4em; font-size: 0.85rem; text-align: center; }
+			.form-msg.err { color: #d64545; }
+			.form-msg.ok { color: oklch(0.6 0.14 150); }
+			@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main">
+			<header class="page-head reveal">
+				<p class="eyebrow">enter · sekai</p>
+				<h1>进入 SEKAI</h1>
+			</header>
+
+			<section class="login-intro glass reveal">
+				<p>
+					登录后评论身份与战绩可以跨设备保留；游客直接玩也能保存战绩，想升级时在这里注册即可无缝带过去。
+				</p>
+			</section>
+
+			<section class="reveal">
+				<button type="button" class="btn btn-primary af-github" id="af-github">使用 GitHub 登录</button>
+			</section>
+
+			<p class="af-or">或用用户名密码</p>
+
+			<div class="form-grid reveal">
+				<form id="form-register" class="form-card glass">
+					<h2>注册新账号</h2>
+					<p class="form-note">当前是游客时注册，战绩和成就直接保留到新账号。</p>
+					<label>用户名<input id="reg-name" type="text" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" placeholder="3-20 位字母/数字/下划线" autocomplete="username" required /></label>
+					<label>密码<input id="reg-pass" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="至少 6 位" required /></label>
+					<button type="submit" class="btn btn-primary">注册</button>
+				</form>
+				<form id="form-login" class="form-card glass">
+					<h2>已有账号登录</h2>
+					<p class="form-note">换浏览器、换手机也能接着玩。</p>
+					<label>用户名<input id="log-name" type="text" autocomplete="username" required /></label>
+					<label>密码<input id="log-pass" type="password" autocomplete="current-password" required /></label>
+					<button type="submit" class="btn btn-ghost">登录</button>
+				</form>
+			</div>
+			<p id="form-msg" class="form-msg"></p>
+		</main>
+		<Footer />
+
+		<script>
+			import { createAuthClient } from '@lapismind/lobby-kit';
+
+			const auth = createAuthClient();
+			const el = (id: string) => document.getElementById(id) as HTMLElement;
+
+			// 已登录（GitHub/账号）直接回资料页，不在登录页停留
+			auth.init().then((user: any) => {
+				if (user && user.provider !== 'guest') location.replace('/profile');
+			}).catch(() => {});
+
+			el('af-github').addEventListener('click', () => auth.loginWithGithub(location.pathname));
+
+			const msg = el('form-msg');
+			function showMsg(t: string, cls: string) { msg.textContent = t; msg.className = 'form-msg ' + cls; }
+			function mapError(code: string) {
+				const map: Record<string, string> = {
+					'invalid name': '用户名需 3-20 位字母/数字/下划线',
+					'invalid password': '密码至少 6 位',
+					'name taken': '这个用户名已被占用',
+					'wrong name or password': '用户名或密码不对',
+					'rate limited, try later': '操作太频繁，稍后再试',
+				};
+				return map[code] || '出错了，请稍后再试';
+			}
+
+			el('form-register').addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const r = await auth.register((el('reg-name') as HTMLInputElement).value.trim(), (el('reg-pass') as HTMLInputElement).value);
+				if (!r.ok) return showMsg(mapError(r.error), 'err');
+				showMsg('注册成功，战绩已保留！', 'ok');
+				setTimeout(() => location.replace('/profile'), 800);
+			});
+
+			el('form-login').addEventListener('submit', async (e) => {
+				e.preventDefault();
+				const r = await auth.loginWithPassword((el('log-name') as HTMLInputElement).value.trim(), (el('log-pass') as HTMLInputElement).value);
+				if (!r.ok) return showMsg(mapError(r.error), 'err');
+				showMsg('登录成功！', 'ok');
+				setTimeout(() => location.replace('/profile'), 600);
+			});
+		</script>
+	</body>
+</html>

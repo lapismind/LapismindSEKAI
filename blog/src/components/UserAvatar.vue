@@ -62,7 +62,7 @@ async function logout() {
         <template v-if="!isGuest">
           <div class="menu-head">
             <img :src="shownAvatar" alt="" class="menu-avatar" />
-            <span class="menu-name">{{ user.nickname }}</span>
+            <span class="menu-name">{{ user.displayName || user.nickname }}</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>
           <button type="button" class="menu-item" @click="logout">退出登录</button>
@@ -70,10 +70,10 @@ async function logout() {
         <template v-else>
           <div class="menu-head">
             <img v-if="user?.avatarId || user?.avatarUrl" :src="shownAvatar" alt="" class="menu-avatar" />
-            <span class="menu-name muted">游客身份 · 可玩所有游戏</span>
+            <span class="menu-name muted">{{ user.nickname && user.nickname !== '游客' ? user.nickname + ' · 游客' : '游客身份 · 可玩所有游戏' }}</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>
-          <a href="/profile#account-forms" class="menu-item primary">进入 SEKAI</a>
+          <a href="/login" class="menu-item primary">进入 SEKAI</a>
         </template>
       </div>
     </transition>

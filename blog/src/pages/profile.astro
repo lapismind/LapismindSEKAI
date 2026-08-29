@@ -18,6 +18,12 @@ import { SITE_TITLE } from '../consts';
 			.identity-tag.guest { background: var(--card-solid); color: var(--muted); border: 1px solid var(--line-strong); box-shadow: none; }
 			.identity h1 { margin: 0.5rem 0 0.3rem; font-size: 1.7rem; line-height: 1.25; }
 			.identity .sub { margin: 0 0 0.4rem; color: var(--ink-soft); font-size: 0.92rem; }
+			.name-row { display: flex; align-items: baseline; gap: 0.5rem; }
+			.name-pencil { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--card-solid); color: var(--muted); font-size: 0.8rem; line-height: 1; cursor: var(--cursor-pointer); opacity: 0; transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+			.name-row:hover .name-pencil, .name-pencil:focus-visible { opacity: 1; }
+			.name-pencil:hover { color: var(--primary); border-color: var(--primary); }
+			.name-editor { padding: 0.15em 0.4em; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-solid); color: var(--ink); font: inherit; font-size: 1.7rem; font-weight: 700; line-height: 1.25; outline: none; }
+			.name-msg { margin: 0.3rem 0 0; font-size: 0.82rem; color: #d64545; }
 			.meta-list { display: flex; flex-direction: column; padding: 0.5rem 1.4rem; margin-top: 1.2rem; }
 			.meta-row { display: grid; grid-template-columns: 8em 1fr; gap: 1rem; align-items: baseline; padding: 0.75em 0; border-bottom: 1px dashed var(--line); }
 			.meta-row:last-child { border-bottom: none; }
@@ -33,20 +39,6 @@ import { SITE_TITLE } from '../consts';
 			.hint { margin-top: 1.6rem; padding: 1rem 1.3rem; border-radius: var(--radius-lg); border: 1px dashed var(--line); font-size: 0.85rem; color: var(--muted); line-height: 1.8; }
 			.error-box { padding: 1.4rem 1.6rem; text-align: center; color: var(--muted); }
 			.skeleton { padding: 3rem; text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
-			.account-forms { margin-top: 2rem; }
-			.af-github { width: 100%; justify-content: center; }
-			.af-or { margin: 1rem 0 0.4rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
-			.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 0.8rem; }
-			.form-card { display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem 1.5rem; }
-			.form-card h2 { margin: 0; font-size: 1.05rem; }
-			.form-card .form-note { margin: -0.2rem 0 0.2rem; font-size: 0.8rem; color: var(--muted); }
-			.form-card label { font-size: 0.8rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.35rem; }
-			.form-card input { padding: 0.55em 0.9em; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink); font-size: 0.92rem; outline: none; transition: border-color 0.15s ease; }
-			.form-card input:focus { border-color: var(--primary); }
-			.form-card .btn { justify-content: center; margin-top: 0.2rem; }
-			.form-msg { margin-top: 0.9rem; min-height: 1.4em; font-size: 0.85rem; text-align: center; }
-			.form-msg.err { color: #d64545; }
-			.form-msg.ok { color: oklch(0.6 0.14 150); }
 			.avatar-wrap { position: relative; }
 			.avatar-btn { position: relative; display: inline-block; padding: 0; border: 0; background: transparent; border-radius: 28px; cursor: var(--cursor-pointer); line-height: 0; }
 			.avatar-btn img { width: 116px; height: 116px; border-radius: 28px; object-fit: cover; border: 3px solid var(--card-solid); box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md); background: var(--primary-ghost); transition: transform 0.18s ease, box-shadow 0.18s ease; }
@@ -67,7 +59,7 @@ import { SITE_TITLE } from '../consts';
 			.avatar-cell.is-active { border-color: transparent; background: linear-gradient(var(--card-solid), var(--card-solid)) padding-box, var(--gradient) border-box; box-shadow: var(--shadow-sm); }
 			.avatar-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
 			.avatar-cell .check { position: absolute; right: 4px; bottom: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--gradient); color: #fff; font-size: 11px; line-height: 18px; text-align: center; box-shadow: var(--shadow-sm); }
-			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } .form-grid { grid-template-columns: 1fr; } }
+			@media (max-width: 640px) { .profile-card { grid-template-columns: 1fr; text-align: center; justify-items: center; padding: 1.6rem; } .actions { justify-content: center; } .meta-row { grid-template-columns: 1fr; gap: 0.2rem; text-align: left; } }
 		</style>
 
 		<!-- 成就展馆：卡片全部由 JS 动态创建，样式须 is:global 才生效（项目已知教训） -->
@@ -127,7 +119,11 @@ import { SITE_TITLE } from '../consts';
 						</div>
 						<div class="identity">
 							<span id="pf-tag" class="identity-tag"></span>
-							<h1 id="pf-name"></h1>
+														<div class="name-row">
+								<h1 id="pf-name"></h1>
+								<button id="pf-name-edit" class="name-pencil" type="button" aria-label="修改昵称">✎</button>
+							</div>
+							<p id="pf-name-msg" class="name-msg" hidden></p>
 							<p id="pf-sub" class="sub"></p>
 						</div>
 					</section>
@@ -165,7 +161,7 @@ import { SITE_TITLE } from '../consts';
 
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
-						<button id="pf-register-entry" type="button" class="btn btn-primary" hidden>进入 SEKAI</button>
+						<a id="pf-register-entry" class="btn btn-primary" href="/login" hidden>进入 SEKAI</a>
 						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
 					</div>
 
@@ -173,28 +169,6 @@ import { SITE_TITLE } from '../consts';
 						游客也可以玩所有游戏，战绩会绑定在这个 PLAYER ID 上；用 GitHub 登录后，评论身份和战绩可以跨设备保留。登录不会向本站暴露你的邮箱。
 					</p>
 
-					<section id="account-forms" class="account-forms" hidden>
-						<p class="eyebrow">account · 账号</p>
-						<button type="button" class="btn btn-primary af-github" id="af-github">使用 GitHub 登录</button>
-						<p class="af-or">或用用户名密码</p>
-						<div class="form-grid">
-							<form id="form-register" class="form-card glass">
-								<h2>注册新账号</h2>
-								<p class="form-note">当前是游客时注册，战绩和成就直接保留到新账号。</p>
-								<label>用户名<input id="reg-name" type="text" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" placeholder="3-20 位字母/数字/下划线" required /></label>
-								<label>密码<input id="reg-pass" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="至少 6 位" required /></label>
-								<button type="submit" class="btn btn-primary">注册</button>
-							</form>
-							<form id="form-login" class="form-card glass">
-								<h2>已有账号登录</h2>
-								<p class="form-note">换浏览器、换手机也能接着玩。</p>
-								<label>用户名<input id="log-name" type="text" autocomplete="username" required /></label>
-								<label>密码<input id="log-pass" type="password" autocomplete="current-password" required /></label>
-								<button type="submit" class="btn btn-ghost">登录</button>
-							</form>
-						</div>
-						<p id="form-msg" class="form-msg"></p>
-					</section>
 				</div>
 			</div>
 		</main>
@@ -215,15 +189,7 @@ import { SITE_TITLE } from '../consts';
 
 			function setText(node: HTMLElement, value: unknown) { node.textContent = value == null ? '' : String(value); }
 
-			// 账号区块默认收起，由「进入 SEKAI」入口或 #account-forms 锚点触发显示
-			function revealAccountForms() {
-				el('account-forms').hidden = false;
-				el('account-forms').scrollIntoView({ behavior: 'smooth' });
-			}
-			function maybeRevealAccountFromHash() {
-				if (location.hash === '#account-forms') revealAccountForms();
-			}
-
+			
 			async function loadProfile() {
 				loading.hidden = false;
 				errorBox.hidden = true;
@@ -235,7 +201,6 @@ import { SITE_TITLE } from '../consts';
 					await loadAchievements();
 					loading.hidden = true;
 					content.hidden = false;
-					maybeRevealAccountFromHash(); // 从「进入 SEKAI」入口带 #account-forms 进来时直接展开
 				} catch {
 					loading.hidden = true;
 					errorBox.hidden = false;
@@ -447,7 +412,7 @@ import { SITE_TITLE } from '../consts';
 				const tag = el('pf-tag');
 				setText(tag, isGithub ? 'GITHUB 用户' : isAccount ? '账号用户' : '游客 · 未登录');
 				tag.classList.toggle('guest', !user || user.provider === 'guest');
-				setText(el('pf-name'), user.nickname || (isGithub ? 'GitHub 用户' : isAccount ? '账号用户' : '游客'));
+				setText(el('pf-name'), user.displayName || user.nickname || (isGithub ? 'GitHub 用户' : isAccount ? '账号用户' : '游客'));
 				setText(el('pf-sub'), isGithub ? '已通过 GitHub 登录，身份跨设备同步' : isAccount ? '用户名密码登录，跨设备同步' : '本地游客身份，可玩所有游戏');
 				setText(el('pf-player-id'), user.playerId || '-');
 				setText(el('pf-github'), isGithub ? '@' + (user.nickname || user.githubId || '-') : isAccount ? '未使用（用户名密码方式）' : '未绑定（以游客身份游玩）');
@@ -464,7 +429,6 @@ import { SITE_TITLE } from '../consts';
 				} else {
 					el('pf-register-entry').hidden = false;
 				}
-				el('account-forms').hidden = true; // 默认收起，由「进入 SEKAI」入口触发显示
 				// 头像选择：构建一次网格，高亮当前选择
 				buildAvatarGrid();
 				highlightAvatar(user.avatarId);
@@ -475,45 +439,56 @@ import { SITE_TITLE } from '../consts';
 						await auth.logout();
 						location.reload();
 					});
-					// 「进入 SEKAI」入口：揭示底部的账号区块（注册/登录）
-					el('pf-register-entry').addEventListener('click', revealAccountForms);
-					el('af-github').addEventListener('click', () => auth.loginWithGithub(location.pathname));
-					window.addEventListener('hashchange', maybeRevealAccountFromHash);
+					el('pf-name-edit').addEventListener('click', startEditName);
+					el('pf-name').addEventListener('click', startEditName);
 				}
+			}
+
+			// 点击昵称或铅笔图标进入编辑：Enter/失焦保存，Esc 取消（改昵称属于基础操作，不写提示文案）
+			function startEditName() {
+				const nameEl = el('pf-name')
+				const current = nameEl.textContent || ''
+				el('pf-name-msg').hidden = true
+				const input = document.createElement('input')
+				input.type = 'text'
+				input.className = 'name-editor'
+				input.maxLength = 24
+				input.value = current
+				nameEl.replaceWith(input)
+				el('pf-name-edit').hidden = true
+				input.focus()
+				input.select()
+				let settled = false
+				const finish = async (save: boolean) => {
+					if (settled) return
+					settled = true
+					let next = current
+					if (save) {
+						const raw = input.value.trim()
+						const res = await auth.setNickname(raw)
+						if (res.ok) {
+							const u = auth.getUser()
+							next = (u?.displayName || u?.nickname || raw) as string
+						} else {
+							const msg = el('pf-name-msg')
+							msg.textContent = '保存失败，请重试'
+							msg.hidden = false
+						}
+					}
+					input.replaceWith(nameEl)
+					setText(nameEl, next)
+					el('pf-name-edit').hidden = false
+				}
+				input.addEventListener('keydown', (e: KeyboardEvent) => {
+					if (e.key === 'Enter') { e.preventDefault(); finish(true) }
+					else if (e.key === 'Escape') finish(false)
+				})
+				input.addEventListener('blur', () => finish(true))
 			}
 
 			loadProfile();
 			el('pf-retry').addEventListener('click', loadProfile);
 
-			// 账号表单：注册 / 密码登录
-			const msg = el('form-msg');
-			function showMsg(t: string, cls: string) { msg.textContent = t; msg.className = 'form-msg ' + cls; }
-			function mapError(code: string) {
-				const map: Record<string, string> = {
-					'invalid name': '用户名需 3-20 位字母/数字/下划线',
-					'invalid password': '密码至少 6 位',
-					'name taken': '这个用户名已被占用',
-					'wrong name or password': '用户名或密码不对',
-					'rate limited, try later': '操作太频繁，稍后再试',
-				};
-				return map[code] || '出错了，请稍后再试';
-			}
-
-			el('form-register').addEventListener('submit', async (e) => {
-				e.preventDefault();
-				const r = await auth.register((el('reg-name') as HTMLInputElement).value.trim(), (el('reg-pass') as HTMLInputElement).value);
-				if (!r.ok) return showMsg(mapError(r.error), 'err');
-				showMsg('注册成功，战绩已保留！', 'ok');
-				setTimeout(() => location.reload(), 800);
-			});
-
-			el('form-login').addEventListener('submit', async (e) => {
-				e.preventDefault();
-				const r = await auth.loginWithPassword((el('log-name') as HTMLInputElement).value.trim(), (el('log-pass') as HTMLInputElement).value);
-				if (!r.ok) return showMsg(mapError(r.error), 'err');
-				showMsg('登录成功！', 'ok');
-				setTimeout(() => location.reload(), 600);
-			});
 		</script>
 	</body>
 </html>
