@@ -162,7 +162,7 @@ import { SITE_TITLE } from '../consts';
 
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
-						<a href="#account-forms" class="btn btn-primary" id="pf-register-entry" hidden>注册账号 · 保存战绩</a>
+						<button type="button" class="btn btn-primary" id="pf-register-entry" hidden>进入 SEKAI</button>
 						<button id="pf-login" type="button" class="btn btn-primary" hidden>使用 GitHub 登录</button>
 						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
 					</div>
@@ -211,6 +211,15 @@ import { SITE_TITLE } from '../consts';
 
 			function setText(node, value) { node.textContent = value == null ? '' : String(value); }
 
+			// 账号区块默认收起，由「进入 SEKAI」入口或 #account-forms 锚点触发显示
+			function revealAccountForms() {
+				el('account-forms').hidden = false;
+				el('account-forms').scrollIntoView({ behavior: 'smooth' });
+			}
+			function maybeRevealAccountFromHash() {
+				if (location.hash === '#account-forms') revealAccountForms();
+			}
+
 			async function loadProfile() {
 				try {
 					const user = await auth.init();
@@ -219,6 +228,7 @@ import { SITE_TITLE } from '../consts';
 					await loadAchievements();
 					loading.hidden = true;
 					content.hidden = false;
+					maybeRevealAccountFromHash(); // 从「进入 SEKAI」入口带 #account-forms 进来时直接展开
 				} catch {
 					loading.hidden = true;
 					errorBox.hidden = false;
@@ -448,7 +458,7 @@ import { SITE_TITLE } from '../consts';
 					el('pf-login').hidden = false;
 					el('pf-register-entry').hidden = false;
 				}
-				el('account-forms').hidden = logged;
+				el('account-forms').hidden = true; // 默认收起，由「进入 SEKAI」入口触发显示
 				// 头像选择：构建一次网格，高亮当前选择
 				buildAvatarGrid();
 				highlightAvatar(user.avatarId);
@@ -460,6 +470,9 @@ import { SITE_TITLE } from '../consts';
 						await auth.logout();
 						location.reload();
 					});
+					// 「进入 SEKAI」入口：揭示底部的账号区块（注册/登录）
+					el('pf-register-entry').addEventListener('click', revealAccountForms);
+					window.addEventListener('hashchange', maybeRevealAccountFromHash);
 				}
 			}
 
