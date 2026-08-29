@@ -34,6 +34,8 @@ import { SITE_TITLE } from '../consts';
 			.error-box { padding: 1.4rem 1.6rem; text-align: center; color: var(--muted); }
 			.skeleton { padding: 3rem; text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 0.85rem; }
 			.account-forms { margin-top: 2rem; }
+			.af-github { width: 100%; justify-content: center; }
+			.af-or { margin: 1rem 0 0.4rem; text-align: center; font-size: 0.8rem; color: var(--muted); }
 			.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 0.8rem; }
 			.form-card { display: flex; flex-direction: column; gap: 0.7rem; padding: 1.4rem 1.5rem; }
 			.form-card h2 { margin: 0; font-size: 1.05rem; }
@@ -162,8 +164,6 @@ import { SITE_TITLE } from '../consts';
 
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
-						<button type="button" class="btn btn-primary" id="pf-register-entry" hidden>进入 SEKAI</button>
-						<button id="pf-login" type="button" class="btn btn-primary" hidden>使用 GitHub 登录</button>
 						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
 					</div>
 
@@ -173,6 +173,8 @@ import { SITE_TITLE } from '../consts';
 
 					<section id="account-forms" class="account-forms" hidden>
 						<p class="eyebrow">account · 账号</p>
+						<button type="button" class="btn btn-primary af-github" id="af-github">使用 GitHub 登录</button>
+						<p class="af-or">或用用户名密码</p>
 						<div class="form-grid">
 							<form id="form-register" class="form-card glass">
 								<h2>注册新账号</h2>
@@ -455,7 +457,6 @@ import { SITE_TITLE } from '../consts';
 					el('pf-logout').hidden = false;
 					el('pf-register-entry').hidden = true;
 				} else {
-					el('pf-login').hidden = false;
 					el('pf-register-entry').hidden = false;
 				}
 				el('account-forms').hidden = true; // 默认收起，由「进入 SEKAI」入口触发显示
@@ -472,6 +473,7 @@ import { SITE_TITLE } from '../consts';
 					});
 					// 「进入 SEKAI」入口：揭示底部的账号区块（注册/登录）
 					el('pf-register-entry').addEventListener('click', revealAccountForms);
+					el('af-github').addEventListener('click', () => auth.loginWithGithub(location.pathname));
 					window.addEventListener('hashchange', maybeRevealAccountFromHash);
 				}
 			}
