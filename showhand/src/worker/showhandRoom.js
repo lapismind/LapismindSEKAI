@@ -76,10 +76,10 @@ export class ShowhandRoom {
     const token = url.searchParams.get('token')
     let playerId
     if (secret) {
+      // 身份以验签后的 token 为准：/api/identity 会话优先签发（存在有效会话时
+      // token 只可能是会话 playerId），因此这里的 playerId 不会被 URL 参数冒充
       const identity = await verifyIdentityToken(token, secret, 24 * 60 * 60 * 1000)
-      if (!identity || identity.playerId !== (url.searchParams.get('playerId') || '')) {
-        return new Response('invalid token', { status: 401 })
-      }
+      if (!identity) return new Response('invalid token', { status: 401 })
       playerId = identity.playerId
     } else {
       // 未配置密钥时降级为旧行为（信任 URL 参数）

@@ -12,7 +12,7 @@ import ChipIcon from '../components/ChipIcon.vue'
 import { avatarUrl } from '../game/avatars'
 import { avatarChoices } from '../game/avatars'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
-import { ProfileEditor } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ProfileEditor } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const game = useGameStore()
@@ -24,6 +24,7 @@ const showProfile = ref(false)
 const copied = ref(false)
 const showHelp = ref(false)
 const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
+let lastIdentityPlayerId = lobby.myPlayerId
 const configMode = ref('five')
 const configRounds = ref(10)
 const configChips = ref(1000)
@@ -134,14 +135,29 @@ async function copyRoomLink() {
 }
 
 function saveProfile() {
-   lobby.setNickname(profileDraft.value.nickname)
-   lobby.setAvatar(profileDraft.value.avatarId)
-   showProfile.value = false
-   // 重连以更新服务端昵称/头像
-   game.disconnect()
-   game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
-   unsub?.()
-   unsub = game.hydrate({})
+  lobby.setNickname(profileDraft.value.nickname)
+  lobby.setAvatar(profileDraft.value.avatarId)
+  showProfile.value = false
+  // 重连以更新服务端昵称/头像
+  game.disconnect()
+  game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
+  unsub?.()
+  unsub = game.hydrate({})
+}
+
+// 身份变化（游客在房间内登录/注册升级）：同步大厅后以新身份重连，
+// 旧身份座位留在房间（如仍在游戏中则由房间逻辑处理）
+function onIdentityChange(user) {
+  const prev = lastIdentityPlayerId
+  lobby.syncIdentity(user)
+  const next = user?.playerId ?? null
+  lastIdentityPlayerId = next
+  if (game.inRoom && next && next !== prev) {
+    game.disconnect()
+    game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
+    unsub?.()
+    unsub = game.hydrate({})
+  }
 }
 
 // 观众视角：从 spectate_state 拿全桌完整牌
@@ -216,14 +232,17 @@ function seatHand(playerId) {
         >
           下一局
         </button>
-        <span
-          v-else-if="game.phase === 'settled' && game.roomState?.finished"
-          class="rounded-full bg-emerald-900/40 px-2.5 py-0.5 text-xs text-emerald-300"
-        >
-          🏆 整场结束
-        </span>
-      </div>
-   </header>
+          <span
+            v-else-if="game.phase === 'settled' && game.roomState?.finished"
+            class="rounded-full bg-emerald-900/40 px-2.5 py-0.5 text-xs text-emerald-300"
+          >
+            🏆 整场结束
+          </span>
+        </div>
+        <div class="flex items-center">
+          <AuthBadge compact @identity-change="onIdentityChange" />
+        </div>
+    </header>
 
     <!-- 个人资料编辑弹层 -->
     <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
