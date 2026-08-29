@@ -208,12 +208,12 @@ import { SITE_TITLE } from '../consts';
 			const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src;
 			const auth = createAuthClient();
 
-			const el = (id) => document.getElementById(id);
+			const el = (id: string) => document.getElementById(id) as HTMLElement;
 			const loading = el('profile-loading');
 			const errorBox = el('profile-error');
 			const content = el('profile-content');
 
-			function setText(node, value) { node.textContent = value == null ? '' : String(value); }
+			function setText(node: HTMLElement, value: unknown) { node.textContent = value == null ? '' : String(value); }
 
 			// 账号区块默认收起，由「进入 SEKAI」入口或 #account-forms 锚点触发显示
 			function revealAccountForms() {
@@ -243,8 +243,8 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			// ---------- 成就展馆（按游戏分组收束，可折叠） ----------
-			const GAME_NAMES = { abracadawhat: '出包魔法师' };
-			let currentUser = null;
+			const GAME_NAMES: Record<string, string> = { abracadawhat: '出包魔法师' };
+			let currentUser: any = null;
 
 			async function loadAchievements() {
 				const section = el('ach-section');
@@ -259,7 +259,7 @@ import { SITE_TITLE } from '../consts';
 				}
 			}
 
-			function renderHall(list) {
+			function renderHall(list: any[]) {
 				const hall = el('ach-hall');
 				hall.textContent = '';
 				if (!list.length) {
@@ -273,12 +273,12 @@ import { SITE_TITLE } from '../consts';
 
 				// 彩蛋成就：非管理员直接隐藏（不显示锁，也不占位置）
 				const isAdmin = !!currentUser?.isAdmin;
-				const groups = new Map();
+				const groups = new Map<string, any[]>();
 				for (const a of list) {
 					if (a.stars === 0 && !isAdmin) continue;
 					const g = a.game || 'other';
 					if (!groups.has(g)) groups.set(g, []);
-					groups.get(g).push(a);
+					groups.get(g)!.push(a);
 				}
 
 				let totalUnlocked = 0, totalCount = 0, first = true;
@@ -328,7 +328,7 @@ import { SITE_TITLE } from '../consts';
 				setText(el('ach-summary'), '已解锁 ' + totalUnlocked + ' / ' + totalCount);
 			}
 
-			function renderAchRow(a) {
+			function renderAchRow(a: any) {
 				const row = document.createElement('div');
 				row.className = 'ach-row ' + (a.unlocked ? 'earned' : 'locked');
 
@@ -410,26 +410,26 @@ import { SITE_TITLE } from '../consts';
 					chk.hidden = true;
 					chk.dataset.role = 'check';
 					btn.appendChild(chk);
-					btn.addEventListener('click', () => selectAvatar(a.id));
+					btn.addEventListener('click', () => selectAvatar(a.id ?? ''));
 					avatarGrid.appendChild(btn);
 				}
 				pickerWired = true;
 			}
-			function highlightAvatar(id) {
-				for (const cell of avatarGrid.children) {
+			function highlightAvatar(id: string | number | null | undefined) {
+				for (const cell of Array.from(avatarGrid.children) as HTMLElement[]) {
 					const active = cell.dataset.id === String(id);
 					cell.classList.toggle('is-active', active);
-					const chk = cell.querySelector('[data-role="check"]');
+					const chk = cell.querySelector('[data-role="check"]') as HTMLElement | null;
 					if (chk) chk.hidden = !active;
 				}
 			}
-			async function selectAvatar(id) {
+			async function selectAvatar(id: string) {
 				const note = el('pf-avatar-note');
 				const res = await auth.setAvatar(id);
 				if (!res.ok) { note.hidden = false; note.textContent = '切换失败，请稍后重试。'; return; }
 				const current = auth.getUser();
 				const localAvatar = avatarUrlById(current?.avatarId);
-				el('pf-avatar').src = localAvatar
+				(el('pf-avatar') as HTMLImageElement).src = localAvatar
 					? localAvatar
 					: (current?.avatarUrl || guestAvatarSrc);
 				highlightAvatar(current?.avatarId);
@@ -437,11 +437,11 @@ import { SITE_TITLE } from '../consts';
 				closeAvatarModal();
 			}
 
-			function render(user) {
+			function render(user: any) {
 				const isGithub = user.provider === 'github';
 				const isAccount = user.provider === 'account';
 				const localAvatar = avatarUrlById(user.avatarId);
-				el('pf-avatar').src = localAvatar
+				(el('pf-avatar') as HTMLImageElement).src = localAvatar
 					? localAvatar
 					: (isGithub && user.avatarUrl ? user.avatarUrl : guestAvatarSrc);
 				const tag = el('pf-tag');
@@ -450,10 +450,10 @@ import { SITE_TITLE } from '../consts';
 				setText(el('pf-name'), user.nickname || (isGithub ? 'GitHub 用户' : isAccount ? '账号用户' : '游客'));
 				setText(el('pf-sub'), isGithub ? '已通过 GitHub 登录，身份跨设备同步' : isAccount ? '用户名密码登录，跨设备同步' : '本地游客身份，可玩所有游戏');
 				setText(el('pf-player-id'), user.playerId || '-');
-				setText(el('pf-github'), isGithub ? '#' + (user.githubId || '-') : isAccount ? '未使用（用户名密码方式）' : '未绑定（以游客身份游玩）');
-				const logged = isGithub || isAccount;
+				setText(el('pf-github'), isGithub ? '@' + (user.nickname || user.githubId || '-') : isAccount ? '未使用（用户名密码方式）' : '未绑定（以游客身份游玩）');
+				
 				if (isGithub && user.githubId) {
-					el('pf-github-link').href = 'https://github.com/' + encodeURIComponent(String(user.githubId));
+					(el('pf-github-link') as HTMLAnchorElement).href = 'https://github.com/' + encodeURIComponent(String(user.nickname || user.githubId));
 					el('pf-github-link').hidden = false;
 					el('pf-logout').hidden = false;
 					el('pf-register-entry').hidden = true;
@@ -487,9 +487,9 @@ import { SITE_TITLE } from '../consts';
 
 			// 账号表单：注册 / 密码登录
 			const msg = el('form-msg');
-			function showMsg(t, cls) { msg.textContent = t; msg.className = 'form-msg ' + cls; }
-			function mapError(code) {
-				const map = {
+			function showMsg(t: string, cls: string) { msg.textContent = t; msg.className = 'form-msg ' + cls; }
+			function mapError(code: string) {
+				const map: Record<string, string> = {
 					'invalid name': '用户名需 3-20 位字母/数字/下划线',
 					'invalid password': '密码至少 6 位',
 					'name taken': '这个用户名已被占用',
@@ -501,7 +501,7 @@ import { SITE_TITLE } from '../consts';
 
 			el('form-register').addEventListener('submit', async (e) => {
 				e.preventDefault();
-				const r = await auth.register(el('reg-name').value.trim(), el('reg-pass').value);
+				const r = await auth.register((el('reg-name') as HTMLInputElement).value.trim(), (el('reg-pass') as HTMLInputElement).value);
 				if (!r.ok) return showMsg(mapError(r.error), 'err');
 				showMsg('注册成功，战绩已保留！', 'ok');
 				setTimeout(() => location.reload(), 800);
@@ -509,7 +509,7 @@ import { SITE_TITLE } from '../consts';
 
 			el('form-login').addEventListener('submit', async (e) => {
 				e.preventDefault();
-				const r = await auth.loginWithPassword(el('log-name').value.trim(), el('log-pass').value);
+				const r = await auth.loginWithPassword((el('log-name') as HTMLInputElement).value.trim(), (el('log-pass') as HTMLInputElement).value);
 				if (!r.ok) return showMsg(mapError(r.error), 'err');
 				showMsg('登录成功！', 'ok');
 				setTimeout(() => location.reload(), 600);

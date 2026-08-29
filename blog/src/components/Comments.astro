@@ -1,7 +1,7 @@
 ---
 // 评论岛挂载点 —— 服务端算出 pagePath，客户端加载 Vue 岛。
 import CommentSection from './CommentSection.vue';
-const { pagePath } = Astro.props;
+const { pagePath } = Astro.props as { pagePath: string };
 ---
 
-<CommentSection client:visible pagePath={pagePath} />
+<CommentSection client:visible pagePath={pagePath} authBaseUrl="https://auth.qmzhj.top" />
