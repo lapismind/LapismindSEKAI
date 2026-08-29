@@ -83,15 +83,27 @@ new_sqlite_classes = ["XxxRoom"]
 
 ```powershell
 npx wrangler secret put IDENTITY_SECRET
+# 统一认证会话密钥（与 sekai-auth Worker 用同一个值；设置后博客登录/游客身份才能带进大厅）
+npx wrangler secret put SESSION_SECRET
 ```
 
 本地开发在项目根目录写 `.dev.vars` 文件（已被 .gitignore 排除）：
 
 ```
 IDENTITY_SECRET=dev-secret-xxx
+SESSION_SECRET=与 sekai-auth 相同的值
 ```
 
 检查已设置的 secret：`npx wrangler secret list`。
+
+**统一认证与会话携带（重要）**：游戏大厅/房间的登录机制由 @lapismind/lobby-kit 的
+auth 客户端提供——页面加载时 auth.init() 自动读跨子域会话：博客登录的 GitHub/账号
+用户直接带过来，游客自动登录拿到服务端 playerId。要让 Worker 侧真正以会话身份为准
+（覆盖客户端自报 playerId、杜绝任意 ID 冒充），必须给每个游戏 Worker 配置
+SESSION_SECRET，且与 sekai-auth 的 SESSION_SECRET 相同。未配置时：登录功能与博客
+账号携带照常（前端经 auth /api/me 读会话即带上账号），只是 Worker 侧无法对会话
+cookie 验签——防冒充绑定与 /ws 会话身份优先不启用（showhand/abraca 降级为旧 token
+机制；turtle 无会话门禁）。
 
 ### 4. 本地开发
 

@@ -227,8 +227,76 @@ npm test        # 目前 6 个测试文件，全部纯 node 无浏览器依赖
 - [ ] 房间页接 `buildInviteUrl()` + `copyToClipboard()`
 - [ ] WebSocket 用 `createWSClient()`，别自己裸写 new WebSocket
 - [ ] 服务端 DO 接 identity token 校验（参考 showhand worker）
+- [ ] 大厅与房间各放一个 AuthBadge「统一登录」组件（游客登录 / GitHub / 账号注册登录，见「九」）
+- [ ] Worker 配置 SESSION_SECRET（与 sekai-auth 相同），/ws 会话覆盖 playerId（参考三个游戏 worker）
 - [ ] 游戏特有逻辑放游戏侧 store / core，不要往包里加
 
 ---
 
 *最后更新：2026-08-22 · 基于 lobby-kit 0.1.0*
+### 九、统一登录（跨游戏共享）
+
+所有联机游戏共用同一个认证体系（sekai-auth）：登录后种下的 HttpOnly 会话 cookie
+（domain=.qmzhj.top）跨子域携带，所以**博客登录的用户点进游戏大厅会自动带账号**；
+游客进任意游戏也会自动登录（拿到服务端 playerId）。
+
+### 9.1 客户端：main.js 预加载
+
+```js
+// main.js
+import { getSharedAuth } from '@lapismind/lobby-kit'
+import { useLobbyStore } from './stores/lobbyStore'
+
+const pinia = createPinia()
+async function bootstrap() {
+  // 2 秒超时兜底：认证服务慢/不可达不阻塞进游戏，身份稍后由 AuthBadge 补齐
+  const auth = getSharedAuth()
+  const user = await Promise.race([
+    auth.init().catch(() => null),
+    new Promise((resolve) => setTimeout(() => resolve(null), 2000)),
+  ])
+  useLobbyStore(pinia).syncIdentity(user)
+  createApp(App).use(pinia).mount('#app')
+}
+bootstrap()
+```
+
+### 9.2 大厅身份徽章
+
+```vue
+<!-- LobbyView.vue -->
+<AuthBadge @identity-change="onIdentityChange" />
+
+<script setup>
+function onIdentityChange(user) {
+  lobby.syncIdentity(user) // 同步后 myPlayerId 就是会话 playerId，入房自动带上
+}
+</script>
+```
+
+深色主题（如海龟汤）传 dark，房间内传 compact。游客在徽章里可一键
+GitHub 登录，或用用户名密码注册（注册 = 游客升级，战绩成就保留）/ 登录。
+
+### 9.3 房间内换身份重连
+
+游客在房间里登录/注册升级后 playerId 会变：AuthBadge 通过 identity-change 通知，
+游戏侧同步大厅身份并用新 playerId 重连（参考 showhand RoomView 的 onIdentityChange）。
+
+### 9.4 Worker：会话优先
+
+各游戏 Worker 配置 SESSION_SECRET（与 sekai-auth 相同）后：
+
+- /api/identity：存在有效会话时只给会话 playerId 签发 token（杜绝任意 ID 冒充）
+
+游戏分两种接入形态：
+
+1. **token 架构（showhand / abracadawhat）**：/ws 只做 token 校验后原样转发；
+   DO 以**验签后的 token 身份**为准（忽略 URL 自报 playerId）。因为 /api/identity
+   会话优先签发，token 只可能是会话 playerId，URL 冒充就此失效。
+2. **无 token 架构（turtle-soup）**：/ws 验证会话后把身份写入请求头
+   x-sekai-session-player-id 再转发，soupRoom 优先读该头、回退 URL 参数。
+   注意不要用 new Request(request, { url }) 改写 URL——该写法在部分运行时不可靠。
+
+未配置 SESSION_SECRET 时：登录功能与博客账号携带照常（前端经 auth /api/me 读会话即带上账号），
+只是 Worker 侧无法对会话 cookie 验签——防冒充绑定与 /ws 会话身份优先不启用。
+部署密钥流程见 GAME-DEPLOY.md「密钥与环境变量」。
