@@ -181,7 +181,7 @@ import { SITE_TITLE } from '../consts';
 								<h2>注册新账号</h2>
 								<p class="form-note">当前是游客时注册，战绩和成就直接保留到新账号。</p>
 								<label>用户名<input id="reg-name" type="text" minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" placeholder="3-20 位字母/数字/下划线" required /></label>
-								<label>密码<input id="reg-pass" type="password" minlength="6" maxlength="72" placeholder="至少 6 位" required /></label>
+								<label>密码<input id="reg-pass" type="password" autocomplete="new-password" minlength="6" maxlength="72" placeholder="至少 6 位" required /></label>
 								<button type="submit" class="btn btn-primary">注册</button>
 							</form>
 							<form id="form-login" class="form-card glass">
