@@ -3,6 +3,7 @@ import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
+import { AuthBadge } from '@lapismind/lobby-kit/vue'
 import { avatarUrl } from '../game/avatars'
 import winGif from '../assets/win.gif'
 import GameBoard from '../components/GameBoard.vue'
@@ -26,6 +27,7 @@ const moderatorPending = ref(null) // 真人主持人待判定的问题
 const copied = ref(false)
 let unbind = null
 let openOff = null
+let lastIdentityPlayerId = lobby.identity?.playerId ?? lobby.myPlayerId
 
 onMounted(() => {
   unbind = game.bindServer({
@@ -46,6 +48,18 @@ onBeforeUnmount(() => {
   unbind?.()
   openOff?.()
 })
+
+// 身份变化（游客在房间内登录/注册升级）：同步大厅后以新身份重连
+function onIdentityChange(user) {
+  const prev = lastIdentityPlayerId
+  lobby.syncIdentity(user)
+  const next = user?.playerId ?? null
+  lastIdentityPlayerId = next
+  if (game.inRoom && next && next !== prev) {
+    game.enterRoom(game.roomId, next)
+    game.reconnect(game.roomId, lobby.myNickname, next, lobby.myAvatarId)
+  }
+}
 
 // ---- 房主配置 ----
 const cfg = computed(() => ({
@@ -136,7 +150,7 @@ const hasApplied = computed(() =>
   <div class="flex h-full flex-col overflow-hidden">
     <!-- 顶栏 -->
     <header class="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-3 py-2">
-      <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
         <span class="text-sm font-semibold text-slate-200">房间 {{ game.roomId }}</span>
         <button
           type="button"
@@ -182,10 +196,13 @@ const hasApplied = computed(() =>
           type="button"
           class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
           @click="handleLeave"
-        >
-          离开
-        </button>
-      </div>
+          >
+            离开
+          </button>
+        </div>
+        <div class="flex items-center">
+          <AuthBadge dark compact @identity-change="onIdentityChange" />
+        </div>
     </header>
 
     <!-- 等待阶段：房主配置 + 选谜题 -->

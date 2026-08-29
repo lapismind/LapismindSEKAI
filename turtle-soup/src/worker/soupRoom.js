@@ -50,7 +50,10 @@ export class SoupRoom {
   async handleWebSocketUpgrade(req) {
     const url = new URL(req.url)
     const nickname = url.searchParams.get('nickname') || '玩家'
-    const playerId = url.searchParams.get('playerId') || crypto.randomUUID()
+    // 会话优先：Worker 验证会话后注入 x-sekai-session-player-id 头（覆盖客户端自报值），
+    // 无会话时回退 URL 参数（旧 token 路径 / 未配置 SESSION_SECRET 的开发环境）
+    const sessionPlayerId = req.headers.get('x-sekai-session-player-id')
+    const playerId = sessionPlayerId || url.searchParams.get('playerId') || crypto.randomUUID()
     const avatarId = url.searchParams.get('avatarId') || '0'
 
     const state = await this.getState()

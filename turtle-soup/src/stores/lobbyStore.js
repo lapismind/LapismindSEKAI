@@ -18,6 +18,7 @@ export const useLobbyStore = defineStore('lobby', () => {
   const kit = createLobbyStore()
   const state = reactive(kit.state)
   // 统一身份：GitHub 登录用户用服务端 playerId，游客自动签发（见 IdentityBadge/auth）
+  // 统一身份：auth.getUser() 结果；GitHub/账号登录用户用服务端 playerId，游客自动签发（见 AuthBadge/auth）
   const identity = ref(null)
   const puzzles = ref([])
 
@@ -34,12 +35,33 @@ export const useLobbyStore = defineStore('lobby', () => {
     puzzles.value = data.puzzles ?? []
   }
 
+  /**
+   * 用认证服务身份填充大厅：博客登录的用户（GitHub/账号）进入大厅时自动带上
+   * 服务端稳定 playerId 与资料；游客自动登录后拿到的也是服务端签发 playerId，
+   * 保证连接 WebSocket 的身份与会话 cookie 一致（Worker 侧以会话为准）。
+   */
+  function syncIdentity(user) {
+    identity.value = user
+    if (!user) return
+    if (user.playerId) state.myPlayerId = user.playerId
+    if (user.provider === 'guest') {
+      // 游客昵称/头像存 localStorage，auth.init 已回读进 user；默认 '游客' 不覆盖玩家默认名
+      if (user.nickname && user.nickname !== '游客') state.myNickname = user.nickname
+      if (user.avatarId) state.myAvatarId = String(user.avatarId)
+    } else {
+      const name = user.displayName || user.nickname
+      if (name) state.myNickname = name
+      if (user.avatarId) state.myAvatarId = String(user.avatarId)
+    }
+  }
+
   return {
     ...toRefs(state),
     identity,
     puzzles,
     setNickname,
     setAvatar,
+    syncIdentity,
     fetchPuzzles,
   }
 })

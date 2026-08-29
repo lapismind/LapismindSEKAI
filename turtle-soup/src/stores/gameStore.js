@@ -71,6 +71,12 @@ export const useGameStore = defineStore('game', () => {
     wsClient.connect({ roomId: roomIdVal, nickname, playerId, avatarId })
   }
 
+  /** 房间内换身份重连：不重置 inRoom（避免界面切回大厅），直接关旧连开新连 */
+  function reconnect(roomIdVal, nickname, playerId, avatarId = '0') {
+    wsClient.disconnect()
+    connect(roomIdVal, nickname, playerId, avatarId)
+  }
+
   function disconnect() {
     wsClient.disconnect()
     inRoom.value = false
@@ -199,6 +205,7 @@ export const useGameStore = defineStore('game', () => {
     amModerator,
     enterRoom,
     connect,
+    reconnect,
     disconnect,
     setHostConfig,
     applyModerator,

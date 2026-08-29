@@ -24,14 +24,18 @@ export default {
       const cookie = request.headers.get('cookie') || ''
       const m = cookie.match(/(?:^|;\s*)session=([^;]+)/)
       const identity = m ? await verifyIdentityToken(m[1], env.SESSION_SECRET) : null
+      // 会话身份通过请求头注入 DO（RequestInit.url 重写在部分运行时不可靠）：
+      // 有效会话 → 覆盖为会话 playerId；无会话（旧 token 路径/未配置）→ 删除该头，回退 URL 参数
+      const headers = new Headers(request.headers)
       if (identity) {
-        url.searchParams.set('playerId', identity.playerId)
+        headers.set('x-sekai-session-player-id', identity.playerId)
       } else {
         const token = url.searchParams.get('token')
         const legacy = token ? await verifyIdentityToken(token, env.IDENTITY_SECRET, 24 * 60 * 60 * 1000) : null
         if (!legacy) return new Response('invalid identity', { status: 401 })
-        url.searchParams.set('playerId', legacy.playerId)
+        headers.delete('x-sekai-session-player-id')
       }
+      request = new Request(request, { headers })
     }
 
     if (url.pathname.startsWith('/ws')) {

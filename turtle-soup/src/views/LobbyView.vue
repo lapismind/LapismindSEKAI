@@ -3,10 +3,9 @@ import { onMounted, ref } from 'vue'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
 import { readRoomCodeFromUrl } from '@lapismind/lobby-kit'
-import { ProfileEditor } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ProfileEditor } from '@lapismind/lobby-kit/vue'
 import PuzzleSubmitModal from '../components/PuzzleSubmitModal.vue'
 import FeedbackModal from '../components/FeedbackModal.vue'
-import IdentityBadge from '../components/IdentityBadge.vue'
 import { avatarChoices, avatarUrl } from '../game/avatars'
 
 const lobby = useLobbyStore()
@@ -49,6 +48,11 @@ function enterRoom(code) {
   window.history.replaceState({}, '', url)
   game.enterRoom(code, serverPlayerId)
   game.connect(code, lobby.myNickname, serverPlayerId, lobby.myAvatarId)
+}
+
+// 身份变化（登录/注册/游客自动登录就绪）→ 同步大厅，入房时以会话身份为准
+function onIdentityChange(user) {
+  lobby.syncIdentity(user)
 }
 
 function generateCode() {
@@ -96,8 +100,8 @@ function generateCode() {
     <!-- 昵称 + 头像（共享组件） -->
     <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
 
-    <!-- 当前身份：GitHub 用户显示昵称头像，游客显示登录入口 -->
-    <IdentityBadge />
+    <!-- 当前身份：博客登录用户自动携带账号；游客可在此登录/注册 -->
+    <AuthBadge dark @identity-change="onIdentityChange" />
 
     <!-- 邀请提示（来自分享链接） -->
     <div
