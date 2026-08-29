@@ -7,6 +7,7 @@
 | 项目 | 地址 | 说明 |
 |------|------|------|
 | 联机海龟汤 | [soup.qmzhj.top](https://soup.qmzhj.top) | 回合制推理游戏。向主持人提问（只能答是/否/无关），推出真相即胜出，支持真人/AI 主持 |
+| 出包魔法师 | [abracadawhat.qmzhj.top](https://abracadawhat.qmzhj.top) | 2–5 人暗牌推理对决，宣告魔法由服务端判定成败 |
 | 多人梭哈 | [showhand.qmzhj.top](https://showhand.qmzhj.top) | 五张/七张两种模式，固定局数积分赛 |
 | 博客 | [blog.qmzhj.top](https://blog.qmzhj.top) | 开发记录和作品集 |
 
@@ -16,7 +17,7 @@
 |------|------|------|
 | [turtle-soup](./turtle-soup) | ✅ 已上线 | 第一个完整上线的联机游戏 |
 | [showhand](./showhand) | ✅ 已上线 | 设计文档在 `showhand/docs/specs/` |
-| [abracadawhat](./abracadawhat) | 🔨 开发中 | 《出包魔法师》联机版：2–5 人暗牌推理。你只能看别人的牌，宣告魔法由服务端判定成败 |
+| [abracadawhat](./abracadawhat) | ✅ 已上线 | 《出包魔法师》联机版：2–5 人暗牌推理。你只能看别人的牌，宣告魔法由服务端判定成败 |
 | [slay-the-spire](./slay-the-spire) | ⏸️ 搁置 | 杀戮尖塔复刻，纯单机。核心战斗循环可玩，内容量追不上原版 |
 | [card-game](./card-game) | 📦 已归档 | 最早的技术验证项目，验证了 DO/WebSocket 可行，为海龟汤铺路 |
 | [blog](./blog) | ✅ 已上线 | Astro 博客，开发记录都在这 |
@@ -60,4 +61,4 @@ npm run build && npx wrangler deploy
 
 ---
 
-*最后更新：2026-08-23*
+*最后更新：2026-08-29*

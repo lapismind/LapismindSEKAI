@@ -10,6 +10,7 @@ import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import Mascot from '../assets/mascot.png';
 import HeroBg from '../assets/mafuyu-hero.webp';
 import SoupLobby from '../assets/soup-lobby.png';
+import { profileStatus } from '../data/profile';
 import { games } from '../data/projects';
 
 const allPosts = (await getCollection('blog')).sort(
@@ -545,18 +546,14 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			<section class="now-card glass reveal">
 				<div class="now-list">
 					<p class="eyebrow">now · 现在在做</p>
-					<div class="now-row">
-						<span class="label">正在开发</span>
-						<p class="value"><strong>出包魔法师</strong> —— 2–5 人联机魔法对决（WebSocket + Durable Objects）</p>
-					</div>
-					<div class="now-row">
-						<span class="label">最近在学</span>
-						<p class="value">Astro 生态与 Cloudflare 组件的更深用法</p>
-					</div>
-					<div class="now-row">
-						<span class="label">下一步</span>
-						<p class="value">把开发过程沉淀成更多的博客文章</p>
-					</div>
+					{
+						profileStatus.map((s) => (
+							<div class="now-row">
+								<span class="label">{s.label}</span>
+								<p class="value">{s.text}</p>
+							</div>
+						))
+					}
 				</div>
 				<div class="now-stats">
 					<div class="stat">

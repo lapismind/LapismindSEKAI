@@ -7,9 +7,9 @@ export const profileIdentity = {
 } as const;
 
 export const profileStatus = [
-	{ label: '正在开发', text: 'Card Game —— 联机卡牌对战，WebSocket + Durable Objects。' },
+	{ label: '正在开发', text: '出包魔法师 —— 2–5 人联机魔法对决（WebSocket + Durable Objects）。' },
 	{ label: '最近在学', text: 'Astro 生态与 Cloudflare 组件的更深用法。' },
-	{ label: '刚刚上线', text: '「真冬的海龟汤」v1.0.0，以及这篇上线记录。' },
+	{ label: '下一步', text: '把开发过程沉淀成更多的博客文章。' },
 ] as const;
 
 export const profileTech = [
