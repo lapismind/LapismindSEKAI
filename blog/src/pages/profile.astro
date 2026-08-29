@@ -116,6 +116,7 @@ import { SITE_TITLE } from '../consts';
 				<div id="profile-loading" class="skeleton glass">正在读取身份……</div>
 				<div id="profile-error" class="error-box glass" hidden>
 					<p>身份服务暂时不可用，请稍后再试。</p>
+					<button type="button" class="btn btn-ghost" id="pf-retry">重试</button>
 				</div>
 				<div id="profile-content" hidden>
 					<section class="profile-card glass">
@@ -223,6 +224,9 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			async function loadProfile() {
+				loading.hidden = false;
+				errorBox.hidden = true;
+				content.hidden = true;
 				try {
 					const user = await auth.init();
 					if (!user) throw new Error('no user');
@@ -479,6 +483,7 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			loadProfile();
+			el('pf-retry').addEventListener('click', loadProfile);
 
 			// 账号表单：注册 / 密码登录
 			const msg = el('form-msg');
