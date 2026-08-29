@@ -267,7 +267,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 			function initToc() {
 				const prose = document.querySelector('.prose');
 				const nav = document.getElementById('toc-nav');
-				const wrap = nav && nav.closest('.toc');
+				const wrap = (nav && nav.closest('.toc')) as HTMLElement | null;
 				if (!prose || !nav || !wrap) return;
 
 				const headings = [...prose.querySelectorAll('h2, h3')];
@@ -277,7 +277,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				}
 
 				// 目录项
-				headings.forEach((h) => {
+				headings.forEach((h: Element) => {
 					const a = document.createElement('a');
 					a.href = '#';
 					a.textContent = h.textContent || '';
@@ -299,7 +299,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 					});
 				}
 
-				function scrollToHeading(h) {
+				function scrollToHeading(h: Element) {
 					const y = h.getBoundingClientRect().top + window.scrollY - 84;
 					window.scrollTo({ top: y, behavior: 'smooth' });
 				}

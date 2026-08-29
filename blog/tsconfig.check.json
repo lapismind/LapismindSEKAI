@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/components/MusicDock.astro",
+    "src/components/Live2dMascot.astro"
+  ]
+}

@@ -20,11 +20,11 @@ function isAllowedSource(request: Request): boolean {
 }
 
 export default {
-	async fetch(request, env): Promise<Response> {
+	async fetch(request: Request, env: Env): Promise<Response> {
 		const { pathname } = new URL(request.url);
 		if (pathname.startsWith('/live2d/') && !isAllowedSource(request)) {
 			return new Response('Forbidden', { status: 403 });
 		}
 		return env.ASSETS.fetch(request);
 	},
-} satisfies ExportedHandler<Env>;
+};

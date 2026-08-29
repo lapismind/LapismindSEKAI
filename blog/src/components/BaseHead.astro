@@ -61,6 +61,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 
 <!-- 全局交互：滚动显隐 / 页头阴影 / 文章阅读进度 -->
 <script>
+	const sw = window as Window & { __snowCleanup?: () => void };
 	function initGlobalBehaviors() {
 		// 滚动显现
 		const reveals = document.querySelectorAll('.reveal');
@@ -91,7 +92,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 		window.addEventListener('scroll', onScrollHeader, { passive: true });
 
 		// 阅读进度条
-		const bar = document.querySelector('.reading-progress');
+		const bar = document.querySelector('.reading-progress') as HTMLElement | null;
 		if (bar) {
 			const onScroll = () => {
 				const doc = document.documentElement;
@@ -103,7 +104,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 		}
 
 		// 回到顶部按钮
-		const topBtn = document.querySelector('.back-to-top');
+		const topBtn = document.querySelector('.back-to-top') as HTMLElement | null;
 		if (topBtn) {
 			const onScrollTop = () => {
 				const show = window.scrollY > 480;
@@ -117,14 +118,14 @@ const { title, description, image = FallbackImage } = Astro.props;
 		}
 
 		// 细雪飘落（真冬主题的轻量氛围，性能可控）
-		const snowCanvas = document.querySelector('.snow-canvas');
+		const snowCanvas = document.querySelector('.snow-canvas') as HTMLCanvasElement | null;
 		if (snowCanvas && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-			if (window.__snowCleanup) window.__snowCleanup();
-			const ctx = snowCanvas.getContext('2d');
+			if (sw.__snowCleanup) sw.__snowCleanup();
+			const ctx = snowCanvas.getContext('2d')!;
 			let raf = 0;
 			let W = 0;
 			let H = 0;
-			let flakes = [];
+			let flakes: { x: number; y: number; r: number; s: number; drift: number; spd: number; a: number }[] = [];
 			const count = Math.min(70, Math.max(20, Math.floor(window.innerWidth / 22)));
 			const make = () => ({
 				x: Math.random() * W,
@@ -170,7 +171,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 			window.addEventListener('resize', resize);
 			document.addEventListener('visibilitychange', onVis);
 			raf = requestAnimationFrame(step);
-			window.__snowCleanup = cleanup;
+			sw.__snowCleanup = cleanup;
 		}
 	}
 

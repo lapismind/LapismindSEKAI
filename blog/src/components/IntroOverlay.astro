@@ -152,6 +152,7 @@ import Heart from '../assets/intro-heart.webp';
 </style>
 
 <script>
+	const w = window as Window & { __introDone?: boolean };
 	function runIntro() {
 		const el = document.getElementById('intro');
 		if (!el) return;
@@ -165,12 +166,12 @@ import Heart from '../assets/intro-heart.webp';
 			!isHome ||
 			window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
 			playedBefore ||
-			window.__introDone
+			w.__introDone
 		) {
 			el.remove();
 			return;
 		}
-		window.__introDone = true;
+		w.__introDone = true;
 		// 等第一帧渲染后开始
 		requestAnimationFrame(() => {
 			setTimeout(() => {
@@ -197,7 +198,7 @@ import Heart from '../assets/intro-heart.webp';
 		const el = document.getElementById('intro');
 		if (!el) return;
 		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
-		if (!isHome || window.__introDone) {
+		if (!isHome || w.__introDone) {
 			el.remove();
 		}
 	}
