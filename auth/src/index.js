@@ -584,7 +584,6 @@ async function listComments(url, env, cors = {}) {
       nickname: r.display_name || r.nickname,
       avatarUrl: r.avatar_url,
       avatarId: r.avatar_id,
-      avatarId: r.avatar_id,
     })),
     total: total.n,
     page,
