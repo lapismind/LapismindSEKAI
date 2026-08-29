@@ -9,7 +9,7 @@
 
 ## 项目地图
 
-- src/pages — 路由页面：index / about / profile / projects / blog / 404
+- src/pages — 路由页面：index / about / profile / login / projects / blog / 404
 - src/layouts/BlogPost.astro — 文章布局（目录 / 阅读进度 / 评论区挂载）
 - src/components — Header / Footer / BaseHead 全站骨架；CommentSection / UserAvatar 是 Vue 交互岛（认证相关）；Live2dMascot / MusicDock / IntroOverlay 是花活组件
 - src/data — profile.ts / projects.ts / music-player.json：页面多为数据驱动，改文案优先改这里

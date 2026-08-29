@@ -80,3 +80,17 @@
 - astro check 门禁：npm run check（tsconfig.check.json 排除 MusicDock/Live2dMascot 两个存量脚本组件），当前 0 errors。
 - auth/.gitignore：忽略 .dev.vars / e2e-cookies.txt / 日志，运行产物不再入库。
 - ESLint 门禁：eslint.config.js（flat）覆盖 .astro/.vue/.js，.ts 交给 astro check。排版类规则（vue/max-attributes-per-line 等）显式关闭，避免与手写风格冲突。
+### 15. 登录入口收敛到独立 /login 页（2026-08-29 交互调整）
+- 账号区块（GitHub 登录 / 注册 / 密码登录）从 /profile 移出，独立成 src/pages/login.astro；/profile 只保留身份/头像/成就。
+- 所有「进入 SEKAI」入口（头像菜单、资料页游客按钮、评论区注册链接）统一路由到 /login，不再用 #account-forms 锚点。
+- /login 已登录（GitHub/账号）访问会自动跳 /profile；注册/登录成功也回 /profile。
+- 坑：eslint astro 检查会把「已登录自动跳转」的 .then 参数判为 implicit any，记得标注 (user: any)。
+### 16. UI 文案规范：基础功能不做明文标识（2026-08-29）
+- 反面案例：hy3 模型写头像切换时，入口按钮写「切头像」，弹窗卡片里又写「点击头像立即切换」——同一件事标注两遍，把用户当傻子。
+- 规范：基础功能用直觉交互本身当提示——点头像弹选择器、点昵称直接进编辑，最多一个无文字图标（带 aria-label）；不加「点击这里」「点击头像即可」类重复文案。
+- 错误提示、状态反馈这类信息性文案不在此列，该写还得写。
+### 17. 修改昵称：展示名与登录名解耦（2026-08-29）
+- users 表新增 display_name（迁移 004），/api/me/nickname 只改 display_name；nickname 仍是登录名（账号用户名 / GitHub login），改昵称不影响登录。
+- 游客昵称存 localStorage（guestNickname），与头像同模式，不落库。
+- 评论列表展示名 = display_name || nickname（listComments 已合并返回）。
+- UI：/profile 点击昵称或铅笔图标（仅 aria-label）进入内联编辑，Enter/失焦保存、Esc 取消，不加提示文案（见 16 条规范）。
