@@ -165,6 +165,7 @@ import { SITE_TITLE } from '../consts';
 
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
+						<button id="pf-register-entry" type="button" class="btn btn-primary" hidden>进入 SEKAI</button>
 						<button id="pf-logout" type="button" class="btn btn-ghost" hidden>退出登录</button>
 					</div>
 
@@ -470,7 +471,6 @@ import { SITE_TITLE } from '../consts';
 				el('pf-avatar-note').hidden = true;
 				if (!wired) {
 					wired = true;
-					el('pf-login').addEventListener('click', () => auth.loginWithGithub(location.pathname));
 					el('pf-logout').addEventListener('click', async () => {
 						await auth.logout();
 						location.reload();
