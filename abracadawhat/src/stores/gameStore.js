@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { wsClient } from '../network/wsClient'
 import { Msg } from '../core/protocol'
 import { useLobbyStore } from './lobbyStore'
@@ -16,7 +16,10 @@ export const useGameStore = defineStore('game', () => {
   const lastGameOver = ref(null)
   const newAchievements = ref([])
   const error = ref(null)
-  const myPlayerId = useLobbyStore().myPlayerId
+  const lobbyStore = useLobbyStore()
+  // 响应式读大厅 playerId：认证身份（会话 playerId）就绪后会更新，
+  // 房间内登录/换号后 me/回合判断等跟着最新身份走
+  const myPlayerId = computed(() => lobbyStore.myPlayerId)
 
   let errorClearTimer = null
 

@@ -14,6 +14,7 @@ import {
   copyToClipboard,
   generateRoomCode,
 } from '@lapismind/lobby-kit'
+import { AuthBadge } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const lobby = useLobbyStore()
@@ -23,6 +24,7 @@ const roomCode = computed(() => (route.params.code ?? '').toString().toUpperCase
 const helpOpen = ref(false)
 const copied = ref(false)
 let unsubs = []
+let lastIdentityPlayerId = lobby.myPlayerId
 
 onMounted(() => {
   if (!game.inRoom || game.roomId !== roomCode.value) {
@@ -38,6 +40,23 @@ onUnmounted(() => {
   unsubs.forEach(u => u())
   game.disconnect()
 })
+
+// 身份变化（游客在房间内登录/注册升级）：同步大厅后以新身份重连
+function onIdentityChange(user) {
+  const prev = lastIdentityPlayerId
+  lobby.syncIdentity(user)
+  const next = user?.playerId ?? null
+  lastIdentityPlayerId = next
+  if (game.inRoom && next && next !== prev) {
+    game.disconnect()
+    game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
+    unsubs.forEach(u => u())
+    unsubs = game.hydrate({
+      onCastResult: () => {},
+      onRoundEnd: () => {},
+    })
+  }
+}
 
 const isHost = computed(() => game.roomState?.hostId === game.myPlayerId)
 const me = computed(() => game.roomState?.players.find(p => p.id === game.myPlayerId))
@@ -59,7 +78,7 @@ async function copyInvite() {
   <div class="mx-auto min-h-full max-w-6xl px-4 py-4">
     <!-- 顶栏 -->
     <header class="mb-3 flex items-center justify-between gap-2">
-      <div class="flex items-baseline gap-3">
+        <div class="flex items-baseline gap-3">
         <h1 class="text-lg font-bold text-[#333333]">🧙 出包魔法师</h1>
         <span class="text-xs text-[#8A8299]">房间号: {{ roomCode }}</span>
         <span v-if="game.roomState && game.roomState.round > 0" class="text-sm text-brand-600">
@@ -71,9 +90,12 @@ async function copyInvite() {
           📖 规则
         </button>
         <button type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500" @click="copyInvite">
-          {{ copied ? '✓ 已复制' : '🔗 邀请' }}
-        </button>
-      </div>
+            {{ copied ? '✓ 已复制' : '🔗 邀请' }}
+          </button>
+        </div>
+        <div class="flex items-center">
+          <AuthBadge compact @identity-change="onIdentityChange" />
+        </div>
     </header>
 
     <!-- 等待中 -->

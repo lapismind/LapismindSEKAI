@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { generateRoomCode, readRoomCodeFromUrl } from '@lapismind/lobby-kit'
-import { ProfileEditor } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ProfileEditor } from '@lapismind/lobby-kit/vue'
 import { avatarChoices } from '../game/avatars'
 
 const lobby = useLobbyStore()
@@ -33,6 +33,11 @@ function enterRoom(code) {
   lobby.setAvatar(profileDraft.value.avatarId)
   router.push({ path: `/room/${code}` })
 }
+
+// 身份变化（登录/注册/游客自动登录就绪）→ 同步大厅，入房时以会话身份为准
+function onIdentityChange(user) {
+  lobby.syncIdentity(user)
+}
 </script>
 
 <template>
@@ -53,6 +58,9 @@ function enterRoom(code) {
     </div>
 
     <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
+
+    <!-- 统一身份：博客登录用户自动携带账号；游客可在此登录/注册 -->
+    <AuthBadge @identity-change="onIdentityChange" />
 
     <button
       type="button"
