@@ -50,8 +50,6 @@ import { SITE_TITLE } from '../consts';
 			.avatar-btn img { width: 116px; height: 116px; border-radius: 28px; object-fit: cover; border: 3px solid var(--card-solid); box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md); background: var(--primary-ghost); transition: transform 0.18s ease, box-shadow 0.18s ease; }
 			.avatar-btn:hover img { transform: scale(1.02); box-shadow: 0 0 0 2px var(--primary), var(--shadow-md); }
 			.avatar-btn:focus-visible img { box-shadow: 0 0 0 2px var(--primary), var(--shadow-md); }
-			.avatar-edit-badge { position: absolute; right: -4px; bottom: -4px; font-size: 0.72rem; font-weight: 700; color: #fff; background: var(--gradient); padding: 0.2em 0.6em; border-radius: 999px; box-shadow: var(--shadow-sm); pointer-events: none; }
-			.avatar-hint { margin: 0.9rem 0 0; font-size: 0.82rem; color: var(--muted); }
 			.avatar-modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 1.2rem; z-index: 60; }
 			.avatar-modal[hidden] { display: none; }
 			.avatar-modal-backdrop { position: absolute; inset: 0; background: rgba(10, 12, 24, 0.55); backdrop-filter: blur(2px); }
@@ -122,7 +120,6 @@ import { SITE_TITLE } from '../consts';
 						<div class="avatar-wrap">
 							<button id="pf-avatar-btn" class="avatar-btn" type="button" aria-label="点击更换头像">
 								<img id="pf-avatar" src="" alt="玩家头像" width="116" height="116" />
-								<span class="avatar-edit-badge" aria-hidden="true">换头像</span>
 							</button>
 						</div>
 						<div class="identity">
@@ -131,7 +128,6 @@ import { SITE_TITLE } from '../consts';
 							<p id="pf-sub" class="sub"></p>
 						</div>
 					</section>
-					<p class="avatar-hint">点击头像即可更换，立即生效。</p>
 
 					<section class="meta-list glass">
 						<div class="meta-row">
@@ -151,7 +147,7 @@ import { SITE_TITLE } from '../consts';
 								<h2>选择头像</h2>
 								<button class="avatar-modal-close" type="button" data-close="1" aria-label="关闭">×</button>
 							</div>
-							<p class="picker-note" id="pf-avatar-note">点一下就能换，立即生效。</p>
+							<p class="picker-note" id="pf-avatar-note" hidden></p>
 							<div id="avatar-grid" class="avatar-grid" role="listbox" aria-label="可选头像"></div>
 						</div>
 					</div>
@@ -413,14 +409,14 @@ import { SITE_TITLE } from '../consts';
 			async function selectAvatar(id) {
 				const note = el('pf-avatar-note');
 				const res = await auth.setAvatar(id);
-				if (!res.ok) { note.textContent = '切换失败，请稍后重试。'; return; }
+				if (!res.ok) { note.hidden = false; note.textContent = '切换失败，请稍后重试。'; return; }
 				const current = auth.getUser();
 				const localAvatar = avatarUrlById(current?.avatarId);
 				el('pf-avatar').src = localAvatar
 					? localAvatar
 					: (current?.avatarUrl || guestAvatarSrc);
 				highlightAvatar(current?.avatarId);
-				note.textContent = '已切换 ✓ 立即生效。';
+				note.hidden = true;
 				closeAvatarModal();
 			}
 
@@ -456,9 +452,7 @@ import { SITE_TITLE } from '../consts';
 				// 头像选择：构建一次网格，高亮当前选择
 				buildAvatarGrid();
 				highlightAvatar(user.avatarId);
-				el('pf-avatar-note').textContent = user.provider === 'guest'
-					? '游客头像仅保存在本机浏览器，登录后会同步到账号。'
-					: '点一下就能换，立即生效。';
+				el('pf-avatar-note').hidden = true;
 				if (!wired) {
 					wired = true;
 					el('pf-login').addEventListener('click', () => auth.loginWithGithub(location.pathname));

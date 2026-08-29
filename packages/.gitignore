@@ -1,2 +1,2 @@
-# lobby-kit 是独立 git 仓库，根仓库不跟踪
-lobby-kit/
+# lobby-kit 现在由根仓库直接跟踪（通过 auth/package.json 的 file: 软链消费，部署打包即用源码）。
+# 如需作为独立 npm 包发布，记得同步 bump 版本并 publish。

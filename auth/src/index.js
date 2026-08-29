@@ -292,7 +292,7 @@ async function handleRegister(request, env, cors = {}) {
   ).bind(passwordHash, session?.playerId || null, name).run()
   const userId = result.meta.last_row_id
   const playerId = session?.playerId || 'pu' + userId.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
-  const token = await createSessionToken({ playerId, provider: 'account', userId }, env.SESSION_SECRET)
+  const token = await createSessionToken({ playerId, provider: 'account', userId, nickname: name }, env.SESSION_SECRET)
 
   return json({
     ok: true,
@@ -320,7 +320,7 @@ async function handlePasswordLogin(request, env, cors = {}) {
     playerId = 'pu' + row.id.toString(36) + '-' + crypto.randomUUID().slice(0, 8).replaceAll('-', 'x')
     await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(playerId, row.id).run()
   }
-  const token = await createSessionToken({ playerId, provider: 'account', userId: row.id }, env.SESSION_SECRET)
+  const token = await createSessionToken({ playerId, provider: 'account', userId: row.id, nickname: row.nickname }, env.SESSION_SECRET)
   return json({
     ok: true,
     user: { provider: 'account', nickname: row.nickname, avatarUrl: null, playerId },
@@ -354,6 +354,11 @@ async function resolveAccountId(session, env) {
       await env.DB.prepare('UPDATE users SET player_id = ? WHERE id = ?').bind(session.playerId, r2.id).run()
       return r2.id
     }
+  }
+  // 最后兜底：用户名唯一，按昵称定位（覆盖极老会话且 player_id 完全缺失的边界情况）
+  if (session.nickname) {
+    const r3 = await env.DB.prepare("SELECT id FROM users WHERE provider = 'account' AND nickname = ?").bind(session.nickname).first()
+    if (r3) return r3.id
   }
   return null
 }

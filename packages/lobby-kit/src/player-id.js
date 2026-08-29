@@ -43,7 +43,7 @@ async function signPayload(payloadStr, secret) {
  * 与 createIdentityToken 同一信封与签名算法，供统一认证 Worker 使用。
  */
 export async function createSessionToken(
-  { playerId, provider = 'guest', userId, issuedAt = Date.now(), expiresInMs = SESSION_TTL_MS },
+  { playerId, provider = 'guest', userId, nickname, issuedAt = Date.now(), expiresInMs = SESSION_TTL_MS },
   secret,
 ) {
   const payload = {
@@ -53,6 +53,7 @@ export async function createSessionToken(
     exp: issuedAt + expiresInMs,
   }
   if (userId != null) payload.userId = userId
+  if (nickname != null) payload.nickname = nickname
   return signPayload(JSON.stringify(payload), secret)
 }
 
@@ -101,7 +102,7 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
 
   const payloadStr = new TextDecoder().decode(payloadBytes)
 
-  let playerId, ts, provider, expiresAt, userId
+  let playerId, ts, provider, expiresAt, userId, nickname
   if (payloadStr.startsWith('{')) {
     // v2 JSON payload：{ playerId, provider, iat, exp }
     let data
@@ -118,6 +119,7 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
     provider = data.provider
     expiresAt = data.exp
     if (data.userId != null) userId = data.userId
+    if (data.nickname != null) nickname = data.nickname
     if (Date.now() > expiresAt) return null
   } else {
     const lastDot = payloadStr.lastIndexOf('.')
@@ -142,5 +144,6 @@ export async function verifyIdentityToken(token, secret, maxAgeMs = Infinity) {
   const session = { playerId, issuedAt: ts, provider }
   if (expiresAt !== undefined) session.expiresAt = expiresAt
   if (userId != null) session.userId = userId
+  if (nickname != null) session.nickname = nickname
   return session
 }
