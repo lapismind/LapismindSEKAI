@@ -48,4 +48,35 @@
 
 ## 未解决
 
-（无）
+（无；已知问题清单见 docs/review-2026-08-29.md）
+
+## 2026-08-29（质量审阅发现的实锤问题，待修）
+
+来源：docs/review-2026-08-29.md，Playwright 实测复现。
+
+### 8. MusicDock 在 SPA 切页后整体失效 + 播放被重置（一条根因） —— 已修复（bind 守卫改为元素 dataset；init 只首跑一次；audio.src 需解析成绝对 URL 再比较）
+- 现象：首页→其他页→回首页后，播放器所有按钮点击无效（面板打不开）。
+- 根因：bind() 用 window.__mdBound 做全局守卫，第二次及以后切页直接 return，监听器仍挂在已被移除的旧 DOM 元素上（src/components/MusicDock.astro:222）。
+- 连带：每次 astro:page-load 都会 init() → setTrack(默认曲) + 重设 audio.src，切页即停歌回默认曲（"切页不断歌"名不副实）；播放中标题仍显示"（未播放）"（init 里强制加后缀，播放不更新）。
+- 修法方向：bind 按元素实例守卫（如元素 dataset 标记），不要用全局布尔；init 只在模块初始化时跑一次，page-load 只重绑。
+
+### 9. 中文歌词字幕实际不可用 —— 已修复（2026-08-29 下载 6 首歌翻译 JSON 到 public/music/lyrics/，全站自托管）
+- /music/lyrics/music_*.json 目录只有 README，六首歌全部 404；前端有日文 LRC 降级所以不崩。
+- 要么补数据文件，要么从 site-features.md 撤掉"中文对译"宣传。
+
+### 10. 评论区头像与分页半成品 —— 已修复（auth 回传 avatar_id；CommentSection 支持本地头像与「加载更多」分页，样式并入 CSS 变量）
+- listComments 不回传 avatar_id，账号用户自选头像不显示（auth/src/index.js:520）。
+- 后端分页参数齐全但前端无翻页 UI，评论 >20 条无法查看。
+
+### 11. auth 测试桩没跟上成就 v2 —— 已修复（fake DB 补 SUM/json_each 桩，npm test 四套全绿）
+- npm test 红：fake DB 不支持 computeCareer 的 SUM 查询 → /api/achievements 500（auth/tests/worker.test.mjs:48）。
+- 修法：测试桩补 SELECT SUM(...) FROM match_players / json_each 两条查询的形状。
+
+### 12. 资料页 GitHub 主页链接用数字 githubId 拼 URL —— 已修复（改用 nickname 登录名）
+- src/pages/profile.astro:456 生成 https://github.com/<数字>（死链）；应改用登录名（user.nickname）。
+
+### 13. 新增：密码登录限频 + 测试门禁（2026-08-29）
+- 密码登录失败计数：login_attempts 表（迁移 003），同一用户名 10 分钟最多 10 次失败，成功即清空。
+- astro check 门禁：npm run check（tsconfig.check.json 排除 MusicDock/Live2dMascot 两个存量脚本组件），当前 0 errors。
+- auth/.gitignore：忽略 .dev.vars / e2e-cookies.txt / 日志，运行产物不再入库。
+- ESLint 门禁：eslint.config.js（flat）覆盖 .astro/.vue/.js，.ts 交给 astro check。排版类规则（vue/max-attributes-per-line 等）显式关闭，避免与手写风格冲突。
