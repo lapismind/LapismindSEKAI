@@ -32,6 +32,8 @@ packages/
 | `room-code.js` | `generateRoomCode(len=6)` / `isValidRoomCode(code)` | 6 位房间码，排除易混淆字符（0/O/1/I） |
 | `player-id.js` | `generatePlayerId()` / `isValidPlayerId(id)` | `p + 时间戳36进制 + 随机`，会话内唯一 |
 | `lobby-store.js` | `createLobbyStore()` | 大厅状态工厂：昵称 / 头像 / playerId / 房间码，返回普通对象（非响应式），Pinia 侧薄包装 |
+| `auth.js` | `createAuthClient(opts)` / `getSharedAuth(opts)` | 统一认证客户端：init 自动游客登录/读跨子域会话、GitHub/账号登录、游客升级注册、getIdentity/refresh、成就查询；getSharedAuth 为页面级共享实例 |
+| `vue/` | `ProfileEditor.vue` / `AuthBadge.vue` | 共享 Vue 组件：个人资料编辑（昵称+头像九宫格）；统一身份徽章（登录状态展示 + GitHub/账号登录/注册入口），经 `@lapismind/lobby-kit/vue` 导出 |
 | `avatars/` | `avatars/list.js`：`AVATAR_FILES` / `AVATAR_COUNT` / `isValidAvatarId` | 26 张头像 png + 纯数据清单；图片资源经 `@lapismind/lobby-kit/avatars/` 子路径导出 |
 
 ### 在新游戏接入（三步）

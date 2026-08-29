@@ -9,6 +9,6 @@ export {
   createSessionToken,
   SESSION_TTL_MS,
 } from './player-id.js'
-export { createAuthClient } from './auth.js'
+export { createAuthClient, getSharedAuth } from './auth.js'
 export { createWSClient } from './ws-client.js'
 export { createLobbyStore } from './lobby-store.js'

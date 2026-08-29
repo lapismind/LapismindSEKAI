@@ -3,15 +3,19 @@
  *
  * 用法：
  *   const auth = createAuthClient({ baseUrl: 'https://auth.qmzhj.top' })
- *   await auth.init()        // 页面加载时调一次：/api/me，未登录自动游客
+ *   await auth.init()        // 页面加载时调一次：/api/me，未登录自动游客登录
  *   auth.getUser()           // { provider, nickname, avatarUrl, playerId } | null
  *   auth.loginWithGithub()   // 跳转 GitHub 授权
  *   auth.register(name, password)     // 用户名密码注册（游客会话下注册 = 升级，战绩保留）
  *   auth.loginWithPassword(name, password)
+ *   auth.getIdentity()       // 归一化 { playerId, nickname, avatarId }，入房前填充大厅
+ *   auth.refresh()           // 重新拉取 /api/me（登录回调/注册之后刷新身份）
  *   auth.getAchievements()            // 当前玩家的成就展馆数据（全量目录 + 解锁标记）
  *   auth.isGuest()
  *
- * 会话在 HttpOnly cookie 里（domain=.qmzhj.top），跨子域自动携带；
+ * 会话在 HttpOnly cookie 里（domain=.qmzhj.top），跨子域自动携带——
+ * 博客登录的用户进入游戏大厅时，init() 会直接读到同一会话，无需二次登录；
+ * 游客则由 init() 自动走 /api/guest 签发会话，拿到服务端 playerId。
  * 本模块只负责读身份和触发登录，不接触 token 本身。
  */
 
@@ -84,6 +88,40 @@ export function createAuthClient({
   }
 
   function getUser() {
+    return user
+  }
+
+  /**
+   * 归一化的游戏身份：{ playerId, nickname, avatarId }。
+   * 在创建/加入房间前用这套值填充大厅状态，保证连接 WebSocket 的身份
+   * 与会话 cookie 一致（Worker 侧以会话为准覆盖 playerId）。
+   * - 游客：playerId 为服务端签发（会话 cookie 绑定），昵称/头像回读 localStorage；
+   * - 登录用户（github / account）：playerId 为稳定 ID，昵称/头像来自服务端资料。
+   * init() 未就绪或失败时返回 null。
+   */
+  function getIdentity() {
+    if (!user) return null
+    const id = { playerId: user.playerId }
+    if (user.provider === 'guest') {
+      id.nickname = readGuestNickname() || user.nickname || '游客'
+      id.avatarId = readGuestAvatar() || user.avatarId || '0'
+    } else {
+      id.nickname = user.displayName || user.nickname || '玩家'
+      id.avatarId = user.avatarId || '0'
+    }
+    return id
+  }
+
+  /**
+   * 重新拉取当前身份（只读 /api/me，不触发游客创建）。
+   * 用于认证动作之后刷新身份：GitHub 回调回到页面 / 注册登录成功 / 手动重试。
+   * 拉取失败时保持上一次已知身份，不抛异常。
+   */
+  async function refresh() {
+    try {
+      const next = await fetchMe()
+      if (next) user = next
+    } catch { /* 保持原身份 */ }
     return user
   }
 
@@ -205,5 +243,13 @@ export function createAuthClient({
     user = data.user
     return { ok: true, user }
   }
-  return { init, getUser, loginWithGithub, register, loginWithPassword, getAchievements, setNickname, setAvatar, logout, isGuest }
+  return { init, getUser, getIdentity, refresh, loginWithGithub, register, loginWithPassword, getAchievements, setNickname, setAvatar, logout, isGuest }
+}
+
+// 页面级共享实例：main.js 预加载与 UI 组件（AuthBadge）共用同一个 client，
+// 避免重复 init 请求；登录/注册后各处的 getUser() 看到同一份身份。
+let sharedAuth = null
+export function getSharedAuth(opts = {}) {
+  if (!sharedAuth) sharedAuth = createAuthClient(opts)
+  return sharedAuth
 }

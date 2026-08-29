@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createAuthClient } from '../src/auth.js'
+import { createAuthClient, getSharedAuth } from '../src/auth.js'
 
 // Fake fetch：模拟认证服务的三种状态
 function makeFakeFetch() {
@@ -141,6 +141,62 @@ function makeFakeFetch() {
   // 非法 avatarId 直接拒绝，不发请求
   const res2 = await auth.setAvatar('999')
   assert.equal(res2.ok, false, '超出范围被拒绝')
+}
+
+{
+  // getIdentity：登录用户返回服务端 playerId + 昵称；游客回读本地头像昵称
+  const fake = makeFakeFetch()
+  fake.setMode('logged-in')
+  const auth = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: fake.fetch })
+  await auth.init()
+  const id = auth.getIdentity()
+  assert.equal(id.playerId, 'pu1abc', '登录用户用服务端稳定 playerId')
+  assert.equal(id.nickname, 'octocat')
+  assert.equal(id.avatarId, '0', '未设置头像时缺省 0')
+}
+
+{
+  // getIdentity：游客场景，localStorage 里的头像/昵称被带出
+  const store = { guestAvatarId: '12', guestNickname: '章鱼哥' }
+  globalThis.localStorage = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v) },
+  }
+  const guestFetch = async (url) => {
+    if (url.endsWith('/api/me')) return { ok: true, json: async () => ({ user: null }) }
+    if (url.endsWith('/api/guest')) return { ok: true, json: async () => ({ ok: true, user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: 'pGuest1' } }) }
+    return { ok: false, json: async () => ({}) }
+  }
+  const auth = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: guestFetch })
+  await auth.init()
+  const id = auth.getIdentity()
+  assert.equal(id.playerId, 'pGuest1')
+  assert.equal(id.nickname, '章鱼哥', '游客昵称回读 localStorage')
+  assert.equal(id.avatarId, '12', '游客头像回读 localStorage')
+  delete globalThis.localStorage
+}
+
+{
+  // refresh：只调 /api/me 更新身份，登录态变更后可拿到最新 user
+  const fake = makeFakeFetch()
+  const auth = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: fake.fetch })
+  await auth.init()
+  assert.equal(auth.getUser().provider, 'guest')
+  fake.setMode('logged-in')
+  const user = await auth.refresh()
+  assert.equal(user.provider, 'github', 'refresh 后读到最新身份')
+  assert.equal(auth.getUser().provider, 'github')
+  assert.equal(fake.calls.filter((c) => c.url.endsWith('/api/me')).length, 2, 'refresh 只加一次 /api/me')
+}
+
+{
+  // getSharedAuth：同一页面共用实例，重复调用不重复 init 请求
+  const fake = makeFakeFetch()
+  const a = getSharedAuth({ baseUrl: 'https://auth.test', fetchImpl: fake.fetch })
+  const b = getSharedAuth({ baseUrl: 'https://auth.test', fetchImpl: fake.fetch })
+  assert.equal(a, b, '共享实例为同一对象')
+  await a.init()
+  assert.equal(fake.calls.length, 2, '只有一次 /api/me + /api/guest')
 }
 
 {
