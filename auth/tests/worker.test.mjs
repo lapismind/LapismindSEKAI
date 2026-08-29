@@ -7,12 +7,14 @@ function makeFakeDB() {
   const users = new Map() // id -> row
   const comments = []
   const achievements = [] // { player_id, achievement_key, unlocked_at }
+  const loginAttempts = [] // { key, created_at }
   let nextUserId = 1
   let nextCommentId = 1
   return {
     users,
     comments,
     achievements,
+    loginAttempts,
     prepare(sql) {
       const api = {
         args: [],
@@ -32,6 +34,15 @@ function makeFakeDB() {
             const u = users.get(api.args[0])
             return u ? { ...u } : null
           }
+          if (sql.includes('FROM login_attempts')) {
+            const key = api.args[0]
+            const since = api.args[1]
+            return { n: loginAttempts.filter((a) => a.key === key && a.created_at > since).length }
+          }
+          if (sql.includes('FROM users WHERE provider = ') && sql.includes('account') && sql.includes('nickname = ?')) {
+            for (const [, u] of users) if (u.provider === 'account' && u.nickname === api.args[0]) return u
+            return null
+          }
           if (sql.includes('COUNT(*)')) {
             // 列表总数：按 page_path；限流计数：按 user_id + 时间窗
             const n =
@@ -44,6 +55,10 @@ function makeFakeDB() {
             const uid = api.args[0]
             const since = api.args[1]
             return { n: comments.filter((c) => c.user_id === uid && c.created_at > since).length }
+          }
+          if (sql.includes('SUM(') && sql.includes('match_players')) {
+            // 成就 career 汇总：测试桩不造对局数据，返回全零即可
+            return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
           }
           throw new Error('fake db: unsupported first: ' + sql)
         },
@@ -61,6 +76,18 @@ function makeFakeDB() {
           if (sql.startsWith('INSERT INTO comments')) {
             comments.push({ id: nextCommentId, user_id: api.args[0], page_path: api.args[1], content: api.args[2], created_at: new Date().toISOString().replace('T', ' ').slice(0, 19) })
             return { meta: { last_row_id: nextCommentId++ } }
+          }
+          if (sql.startsWith('INSERT INTO login_attempts')) {
+            loginAttempts.push({ key: api.args[0], created_at: new Date().toISOString().replace('T', ' ').slice(0, 19) })
+            return { meta: { last_row_id: loginAttempts.length } }
+          }
+          if (sql.startsWith('DELETE FROM login_attempts')) {
+            const key = api.args[0]
+            const before = loginAttempts.length
+            for (let i = loginAttempts.length - 1; i >= 0; i--) {
+              if (loginAttempts[i].key === key) loginAttempts.splice(i, 1)
+            }
+            return { meta: { changes: before - loginAttempts.length } }
           }
           throw new Error('fake db: unsupported run: ' + sql)
         },
@@ -87,6 +114,10 @@ function makeFakeDB() {
                 avatar_url: null,
               }))
             return { results: rows.slice(api.args[2], api.args[2] + api.args[1]) }
+          }
+          if (sql.includes('json_each')) {
+            // 分魔法累计：空结果即可
+            return { results: [] }
           }
           throw new Error('fake db: unsupported all: ' + sql)
         },
@@ -277,3 +308,52 @@ console.log('worker achievements tests passed')
 }
 
 console.log('worker login-flow tests passed')
+
+// ---- 密码登录限频：失败计数 + 成功清空 + 锁定 ----
+{
+  const env = makeEnv()
+
+  // 造一个账号行 + 合法密码哈希（PBKDF2 与实现同参数）
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const keyMaterial = await crypto.subtle.importKey('raw', new TextEncoder().encode('secret123'), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' }, keyMaterial, 256)
+  const saltHex = Array.from(salt).map((b) => b.toString(16).padStart(2, '0')).join('')
+  const hashHex = Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('')
+  env.DB.users.set(1, {
+    id: 1, provider: 'account', github_id: null,
+    password_hash: saltHex + ':' + hashHex,
+    player_id: 'pu1-abcdefgh', nickname: 'lockuser', avatar_url: null, avatar_id: null,
+  })
+
+  const tryLogin = async (password) => {
+    return worker.fetch(new Request('https://auth.qmzhj.top/api/login-password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'lockuser', password }),
+    }), env)
+  }
+
+  // 5 次错密码：单次 401、计数 5
+  for (let i = 0; i < 5; i++) {
+    const res = await tryLogin('wrong-pass')
+    assert.equal(res.status, 401, `第 ${i + 1} 次错密码 401`)
+  }
+  assert.equal(env.DB.loginAttempts.length, 5, '失败计数累计 5 条')
+
+  // 中途正确登录成功：200 且清空计数
+  const ok = await tryLogin('secret123')
+  assert.equal(ok.status, 200, '正确密码可登录')
+  assert.equal(env.DB.loginAttempts.length, 0, '成功后清空失败计数')
+
+  // 连续 10 次失败后锁定（第 11 次连正确密码也 429）
+  for (let i = 0; i < 10; i++) {
+    const res = await tryLogin('wrong-pass')
+    assert.equal(res.status, 401, `第 ${i + 1} 次错密码 401`)
+  }
+  const locked = await tryLogin('secret123')
+  const lockedData = await locked.json()
+  assert.equal(locked.status, 429, '锁定期内正确密码也被拒')
+  assert.equal(lockedData.error, 'too many failed attempts, try later')
+}
+
+console.log('worker password-limit tests passed')

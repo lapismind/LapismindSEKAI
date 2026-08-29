@@ -1,0 +1,6 @@
+.dev.vars
+node_modules/
+.wrangler/
+tail*.log
+tests/e2e-cookies.txt
+tests/*.tmp

@@ -64,3 +64,12 @@ CREATE TABLE IF NOT EXISTS achievements (
 );
 
 CREATE INDEX IF NOT EXISTS idx_achievements_pid ON achievements(player_id);
+
+-- 密码登录失败计数（限频用；登录成功即清空该用户名记录）
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  key TEXT NOT NULL,                    -- 'pw:<用户名>'
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_key ON login_attempts(key, created_at);

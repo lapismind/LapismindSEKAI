@@ -300,6 +300,10 @@ async function handleRegister(request, env, cors = {}) {
   }, 200, { 'Set-Cookie': sessionCookie(token), ...cors })
 }
 
+// 密码登录撞库防护：同一用户名 10 分钟内最多 10 次失败；登录成功即清空计数
+const PASSWORD_ATTEMPT_MAX = 10
+const PASSWORD_ATTEMPT_WINDOW_MS = 600000
+
 async function handlePasswordLogin(request, env, cors = {}) {
   let body
   try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
@@ -307,13 +311,28 @@ async function handlePasswordLogin(request, env, cors = {}) {
   if (parsed.error) return parsed.error
   const { name, password } = parsed
 
+  const attemptKey = 'pw:' + name.toLowerCase()
+
+  // 失败计数限频：先查再验，锁定期内连正确密码也一并拒绝
+  const since = new Date(Date.now() - PASSWORD_ATTEMPT_WINDOW_MS).toISOString().replace('T', ' ').slice(0, 19)
+  const recent = await env.DB.prepare(
+    'SELECT COUNT(*) AS n FROM login_attempts WHERE key = ? AND created_at > ?'
+  ).bind(attemptKey, since).first()
+  if (recent.n >= PASSWORD_ATTEMPT_MAX) {
+    return json({ error: 'too many failed attempts, try later' }, 429, cors)
+  }
+
   const row = await env.DB.prepare(
     "SELECT id, password_hash, player_id, nickname FROM users WHERE provider = 'account' AND nickname = ?"
   ).bind(name).first()
   // 统一报错文案：不暴露「用户存在但密码错」
   if (!row || !(await verifyPassword(password, row.password_hash))) {
+    await env.DB.prepare('INSERT INTO login_attempts (key) VALUES (?)').bind(attemptKey).run()
     return json({ error: 'wrong name or password' }, 401, cors)
   }
+
+  // 登录成功：清空该用户名的失败计数
+  await env.DB.prepare('DELETE FROM login_attempts WHERE key = ?').bind(attemptKey).run()
 
   let playerId = row.player_id
   if (!playerId) {
@@ -517,7 +536,7 @@ async function listComments(url, env, cors = {}) {
   const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page_size') || '20', 10) || 20))
 
   const { results } = await env.DB.prepare(
-    `SELECT c.id, c.content, c.created_at, u.nickname, u.avatar_url
+    `SELECT c.id, c.content, c.created_at, u.nickname, u.avatar_url, u.avatar_id
      FROM comments c JOIN users u ON u.id = c.user_id
      WHERE c.page_path = ?
      ORDER BY c.created_at DESC, c.id DESC
@@ -535,6 +554,8 @@ async function listComments(url, env, cors = {}) {
       createdAt: r.created_at,
       nickname: r.nickname,
       avatarUrl: r.avatar_url,
+      avatarId: r.avatar_id,
+      avatarId: r.avatar_id,
     })),
     total: total.n,
     page,
