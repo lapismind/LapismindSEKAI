@@ -36,7 +36,7 @@ const showFaceDown = computed(() => props.isMe)
       <div class="text-xs text-[#8A8299]">{{ player.score }} 分</div>
       <!-- 生命 + 秘密牌：数字呈现，收进头像列下方，收紧横向空间适配手机 -->
       <div class="mt-0.5 flex items-center gap-2 text-xs leading-none">
-        <span class="text-red-500" :title="'生命 ' + player.health + '/6'">♥ {{ player.health }}</span>
+        <span :title="'生命 ' + player.health + '/6'">♥ {{ player.health }}</span>
         <span class="text-purple-500">🔮×{{ player.secretsCount }}</span>
       </div>
     </div>
