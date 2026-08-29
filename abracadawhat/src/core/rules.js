@@ -279,13 +279,13 @@ export function refillHand(state, playerId) {
   }
 }
 
-export function endTurn(state, playerId, options = {}) {
+export function endTurn(state, playerId) {
   if (state.phase !== 'playing') return { ok: false, error: '本轮已结束' }
   if (state.currentPlayerId !== playerId) return { ok: false, error: '不是你的回合' }
 
   // 规则：必须至少宣告过一次魔法（无论成败），才允许主动结束回合。
   const attempted = state.castSucceeded?.[playerId] || state.castFailed?.[playerId]
-  if (!attempted && !options.force) {
+  if (!attempted) {
     return { ok: false, error: '至少需要宣告一次魔法才能结束回合' }
   }
 

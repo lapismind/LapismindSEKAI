@@ -34,19 +34,12 @@ const showFaceDown = computed(() => props.isMe)
         <span v-if="isMe" class="text-brand-600">我</span>
       </div>
       <div class="text-xs text-[#8A8299]">{{ player.score }} 分</div>
+      <!-- 生命 + 秘密牌：数字呈现，收进头像列下方，收紧横向空间适配手机 -->
+      <div class="mt-0.5 flex items-center gap-2 text-xs leading-none">
+        <span class="text-red-500" :title="'生命 ' + player.health + '/6'">♥ {{ player.health }}</span>
+        <span class="text-purple-500">🔮×{{ player.secretsCount }}</span>
+      </div>
     </div>
-
-    <!-- 生命值（同一行） -->
-    <div class="shrink-0 text-sm tracking-tight" :title="'生命 ' + player.health + '/6'">
-      <span
-        v-for="i in 6"
-        :key="i"
-        :class="i <= player.health ? 'text-red-500' : 'text-[#E4DEEC]'"
-      >❤️</span>
-    </div>
-
-    <!-- 秘密牌 -->
-    <div class="shrink-0 text-xs text-purple-500">🔮×{{ player.secretsCount }}</div>
 
     <!-- 手牌（横排，同一行右侧） -->
     <div class="ml-auto flex flex-row gap-1.5">

@@ -15,7 +15,6 @@ import { prepareRound, applyCast, endTurn, TARGET_SCORE } from '../core/rules'
 import { verifyIdentityToken } from '@lapismind/lobby-kit'
 
 const MAX_PLAYERS = 5
-const TURN_TIMEOUT_MS = 60000
 
 export class AbracaRoom {
   constructor(ctx, env) {
@@ -339,7 +338,6 @@ export class AbracaRoom {
       const att = ws.deserializeAttachment() ?? {}
       if (att.playerId) this.sendHandTo(state, ws, att.playerId)
     }
-    this.armTimer()
   }
 
   async doCast(state, playerId, data) {
@@ -430,10 +428,7 @@ export class AbracaRoom {
       if (att.playerId) this.sendHandTo(state, ws, att.playerId)
     }
     if (state.phase === 'round_end') {
-      this.clearTimer()
       this.broadcast(state, { type: 'round_end', data: state.summary })
-    } else {
-      this.armTimer()
     }
   }
 
@@ -455,32 +450,6 @@ export class AbracaRoom {
       const att = ws.deserializeAttachment() ?? {}
       if (att.playerId) this.sendHandTo(state, ws, att.playerId)
     }
-    this.armTimer()
-  }
-
-  armTimer() {
-    this.ctx.storage.setAlarm(Date.now() + TURN_TIMEOUT_MS)
-  }
-
-  clearTimer() {
-    this.ctx.storage.deleteAlarm()
-  }
-
-  /** 超时视为主动结束当前玩家的回合 */
-  async alarm() {
-    await this.enqueue(async () => {
-      const state = await this.getState()
-      if (state.phase !== 'playing' || !state.currentPlayerId) return
-      const pid = state.currentPlayerId
-      // 超时托管：无论是否宣告过，都强制把回合交给下一位。
-      const result = endTurn(state, pid, { force: true })
-      await this.saveState(state)
-      if (result.ok) {
-        this.broadcast(state, { type: 'turn_to', data: { ...result, timeout: true } })
-        this.broadcastStateAll(state)
-        this.armTimer()
-      }
-    })
   }
 
   broadcastStateAll(state) {
