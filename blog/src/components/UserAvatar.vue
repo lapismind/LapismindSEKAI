@@ -23,6 +23,9 @@ const shownAvatar = computed(() => {
   return local || user.value?.avatarUrl || guestAvatarSrc
 })
 
+// 游客：未登录或 provider 为 guest（/api/guest 也会返回 user 对象，不能只按 user 是否为真判断）
+const isGuest = computed(() => !user.value || user.value.provider === 'guest')
+
 function onDocClick(e) {
   if (rootEl.value && !rootEl.value.contains(e.target)) open.value = false
 }
@@ -60,7 +63,7 @@ async function logout() {
 
     <transition name="pop">
       <div v-if="open" class="menu">
-        <template v-if="user">
+        <template v-if="!isGuest">
           <div class="menu-head">
             <img :src="shownAvatar" alt="" class="menu-avatar" />
             <span class="menu-name">{{ user.nickname }}</span>
@@ -70,6 +73,7 @@ async function logout() {
         </template>
         <template v-else>
           <div class="menu-head">
+            <img v-if="user?.avatarId || user?.avatarUrl" :src="shownAvatar" alt="" class="menu-avatar" />
             <span class="menu-name muted">游客身份 · 可玩所有游戏</span>
           </div>
           <a href="/profile" class="menu-item">个人资料</a>
