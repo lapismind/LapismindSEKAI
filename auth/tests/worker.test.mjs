@@ -30,6 +30,10 @@ function makeFakeDB() {
           if (sql === 'SELECT id FROM users WHERE id = ?' || sql.startsWith('SELECT id FROM users')) {
             return users.has(api.args[0]) ? { id: api.args[0] } : null
           }
+          if (sql.startsWith('SELECT nickname, avatar_id')) {
+            const u = users.get(api.args[0])
+            return u ? { ...u } : null
+          }
           if (sql.startsWith('SELECT github_id, nickname')) {
             const u = users.get(api.args[0])
             return u ? { ...u } : null
@@ -63,6 +67,10 @@ function makeFakeDB() {
           throw new Error('fake db: unsupported first: ' + sql)
         },
         async run() {
+          if (sql.includes('SET display_name')) {
+            users.get(api.args[1]).display_name = api.args[0]
+            return { meta: { changes: 1 } }
+          }
           if (sql.startsWith('UPDATE users SET')) {
             const [nickname, avatarUrl, id] = api.args
             Object.assign(users.get(id), { nickname, avatar_url: avatarUrl })
@@ -110,7 +118,8 @@ function makeFakeDB() {
                 id: c.id,
                 content: c.content,
                 created_at: c.created_at,
-                nickname: users.get(c.user_id)?.nickname ?? 'unknown',
+                nickname: (users.get(c.user_id)?.display_name || users.get(c.user_id)?.nickname) ?? 'unknown',
+                avatar_id: users.get(c.user_id)?.avatar_id ?? null,
                 avatar_url: null,
               }))
             return { results: rows.slice(api.args[2], api.args[2] + api.args[1]) }
@@ -357,3 +366,46 @@ console.log('worker login-flow tests passed')
 }
 
 console.log('worker password-limit tests passed')
+
+// ---- 修改昵称：登录用户落库 display_name，游客 401，参数校验 ----
+{
+  const env = makeEnv()
+  // 造一个账号用户（display_name 为空）
+  env.DB.users.set(1, {
+    id: 1, provider: 'account', github_id: null, password_hash: null,
+    player_id: 'pu1-abc', nickname: 'alice', avatar_url: null, avatar_id: null, display_name: null,
+  })
+  const { createSessionToken } = await import('@lapismind/lobby-kit')
+  const token = await createSessionToken({ playerId: 'pu1-abc', provider: 'account', userId: 1, nickname: 'alice' }, SECRET)
+  const cookie = `session=${token}`
+
+  // 游客 → 401
+  const guestRes = await worker.fetch(new Request('https://auth.qmzhj.top/api/me/nickname', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ nickname: 'x' }),
+  }), env)
+  assert.equal(guestRes.status, 401, '游客不可改昵称')
+
+  // 空 / 超长 → 400
+  const bad = await worker.fetch(new Request('https://auth.qmzhj.top/api/me/nickname', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ nickname: '   ' }),
+  }), env)
+  assert.equal(bad.status, 400, '空昵称拒绝')
+  const tooLong = await worker.fetch(new Request('https://auth.qmzhj.top/api/me/nickname', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ nickname: 'x'.repeat(25) }),
+  }), env)
+  assert.equal(tooLong.status, 400, '超长昵称拒绝')
+
+  // 正常修改：display_name 落库，登录名不动
+  const ok = await worker.fetch(new Request('https://auth.qmzhj.top/api/me/nickname', {
+    method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify({ nickname: '爱丽丝' }),
+  }), env)
+  assert.equal(ok.status, 200)
+  const okData = await ok.json()
+  assert.equal(okData.user.displayName, '爱丽丝', '返回 displayName')
+  assert.equal(okData.user.nickname, 'alice', '登录名不变')
+  const me = await worker.fetch(new Request('https://auth.qmzhj.top/api/me', { headers: { cookie } }), env)
+  const meData = await me.json()
+  assert.equal(meData.user.displayName, '爱丽丝', '/api/me 带 displayName')
+}
+
+console.log('worker nickname tests passed')

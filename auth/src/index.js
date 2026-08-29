@@ -44,6 +44,7 @@ export default {
       if (pathname === '/api/guest' && request.method === 'POST') return await handleGuest(env, cors)
       if (pathname === '/api/me') return await handleMe(request, env, cors)
       if (pathname === '/api/me/avatar' && request.method === 'POST') return await handleSetAvatar(request, env, cors)
+      if (pathname === '/api/me/nickname' && request.method === 'POST') return await handleSetNickname(request, env, cors)
       if (pathname === '/api/achievements' && request.method === 'GET') return await handleAchievements(request, env, cors)
       if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
       if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env, cors)
@@ -390,10 +391,11 @@ async function loadCurrentUser(session, env) {
   }
   if (session.provider === 'account') {
     const id = await resolveAccountId(session, env)
-    const row = id ? await env.DB.prepare('SELECT nickname, avatar_id FROM users WHERE id = ?').bind(id).first() : null
+    const row = id ? await env.DB.prepare('SELECT nickname, avatar_id, display_name FROM users WHERE id = ?').bind(id).first() : null
     return {
       provider: 'account',
       nickname: row?.nickname || '账号用户',
+      displayName: row?.display_name || null,
       avatarUrl: null,
       playerId: session.playerId,
       avatarId: row?.avatar_id || null,
@@ -403,11 +405,12 @@ async function loadCurrentUser(session, env) {
   const userId = session.userId || parseUserIdFromPlayerId(session.playerId)
   let row = null
   if (userId) {
-    row = await env.DB.prepare('SELECT github_id, nickname, avatar_url, avatar_id FROM users WHERE id = ?').bind(userId).first()
+    row = await env.DB.prepare('SELECT github_id, nickname, avatar_url, avatar_id, display_name FROM users WHERE id = ?').bind(userId).first()
   }
   return {
     provider: 'github',
     nickname: row?.nickname || null,
+    displayName: row?.display_name || null,
     avatarUrl: row?.avatar_url || null,
     playerId: session.playerId,
     userId,
@@ -452,6 +455,32 @@ async function handleSetAvatar(request, env, cors = {}) {
   return json({ ok: true, user }, 200, cors)
 }
 
+// 修改展示昵称（与登录名/账号名解耦，仅存 display_name；游客由前端 localStorage 处理）
+async function handleSetNickname(request, env, cors = {}) {
+  const session = await getSession(request, env)
+  if (!session || session.provider === 'guest') {
+    return json({ error: 'login required' }, 401, cors)
+  }
+  let body
+  try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
+  const raw = typeof body.nickname === 'string' ? body.nickname.trim() : ''
+  if (!raw || raw.length > 24) {
+    return json({ error: 'invalid nickname' }, 400, cors)
+  }
+
+  if (session.provider === 'account') {
+    const userId = await resolveAccountId(session, env)
+    if (!userId) return json({ error: 'user not found' }, 404, cors)
+    await env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(raw, userId).run()
+  } else {
+    const userId = session.userId || parseUserIdFromPlayerId(session.playerId)
+    if (!userId) return json({ error: 'invalid session' }, 401, cors)
+    await env.DB.prepare('UPDATE users SET display_name = ? WHERE id = ?').bind(raw, userId).run()
+  }
+
+  const user = await loadCurrentUser(session, env)
+  return json({ ok: true, user }, 200, cors)
+}
 // ---------- 成就展馆查询 ----------
 
 // 当前会话玩家的成就列表：全量目录 + 解锁标记 + 累计型进度，一次请求拿全
@@ -536,7 +565,7 @@ async function listComments(url, env, cors = {}) {
   const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get('page_size') || '20', 10) || 20))
 
   const { results } = await env.DB.prepare(
-    `SELECT c.id, c.content, c.created_at, u.nickname, u.avatar_url, u.avatar_id
+    `SELECT c.id, c.content, c.created_at, u.nickname, u.display_name, u.avatar_url, u.avatar_id
      FROM comments c JOIN users u ON u.id = c.user_id
      WHERE c.page_path = ?
      ORDER BY c.created_at DESC, c.id DESC
@@ -552,7 +581,7 @@ async function listComments(url, env, cors = {}) {
       id: r.id,
       content: r.content,
       createdAt: r.created_at,
-      nickname: r.nickname,
+      nickname: r.display_name || r.nickname,
       avatarUrl: r.avatar_url,
       avatarId: r.avatar_id,
       avatarId: r.avatar_id,

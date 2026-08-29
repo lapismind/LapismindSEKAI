@@ -169,4 +169,53 @@ function makeFakeFetch() {
   delete globalThis.localStorage
 }
 
+
+{
+  // setNickname：游客存 localStorage，本地立即生效；下次 init 回读
+  const store = {}
+  globalThis.localStorage = {
+    getItem: (k) => (k in store ? store[k] : null),
+    setItem: (k, v) => { store[k] = String(v) },
+  }
+  const guestFetch = async (url) => {
+    if (url.endsWith('/api/me')) return { ok: true, json: async () => ({ user: null }) }
+    if (url.endsWith('/api/guest')) return { ok: true, json: async () => ({ ok: true, user: { provider: 'guest', nickname: '游客', avatarUrl: null, playerId: 'pGuest1' } }) }
+    return { ok: false, json: async () => ({}) }
+  }
+  const auth = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: guestFetch })
+  await auth.init()
+  const res = await auth.setNickname('小游客')
+  assert.equal(res.ok, true)
+  assert.equal(res.local, true, '游客走本地存储分支')
+  assert.equal(auth.getUser().nickname, '小游客', '本地昵称立即生效')
+  assert.equal(store.guestNickname, '小游客', '写入 localStorage')
+  const bad = await auth.setNickname('   ')
+  assert.equal(bad.ok, false, '空昵称拒绝')
+  assert.equal(auth.getUser().nickname, '小游客', '无效昵称不影响本地')
+  const auth2 = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: guestFetch })
+  await auth2.init()
+  assert.equal(auth2.getUser().nickname, '小游客', 'init 回读游客本地昵称')
+  delete globalThis.localStorage
+}
+
+{
+  // setNickname：登录用户 POST /api/me/nickname，回读 displayName、登录名不动
+  let nicknameBody = null
+  const fakeFetch = async (url, opts = {}) => {
+    if (url.endsWith('/api/me')) return { ok: true, json: async () => ({ user: { provider: 'github', nickname: 'octocat', avatarUrl: null, playerId: 'pu1abc' } }) }
+    if (url.endsWith('/api/me/nickname')) {
+      nicknameBody = JSON.parse(opts.body || '{}')
+      return { ok: true, json: async () => ({ ok: true, user: { provider: 'github', nickname: 'octocat', displayName: nicknameBody.nickname, avatarUrl: null, playerId: 'pu1abc' } }) }
+    }
+    return { ok: false, json: async () => ({}) }
+  }
+  const auth = createAuthClient({ baseUrl: 'https://auth.test', fetchImpl: fakeFetch })
+  await auth.init()
+  const res = await auth.setNickname('Octo 喵')
+  assert.equal(res.ok, true)
+  assert.equal(nicknameBody.nickname, 'Octo 喵', 'POST body 携带昵称')
+  assert.equal(auth.getUser().displayName, 'Octo 喵', '回读 displayName')
+  assert.equal(auth.getUser().nickname, 'octocat', '登录名不变')
+}
+
 console.log('auth tests passed')

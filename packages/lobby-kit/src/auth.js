@@ -41,6 +41,15 @@ export function createAuthClient({
     return null
   }
 
+  // 游客不落库：昵称同样存 localStorage，init 时回读到 user 上
+  function readGuestNickname() {
+    try {
+      if (typeof localStorage === 'undefined') return null
+      const saved = localStorage.getItem('guestNickname')
+      if (saved && saved.trim()) return saved.trim().slice(0, 24)
+    } catch { /* localStorage 不可用时静默跳过 */ }
+    return null
+  }
   async function guestLogin() {
     const res = await fetchImpl(`${baseUrl}/api/guest`, {
       method: 'POST',
@@ -62,6 +71,8 @@ export function createAuthClient({
           if (user && user.provider === 'guest') {
             const saved = readGuestAvatar()
             if (saved) user.avatarId = saved
+            const nick = readGuestNickname()
+            if (nick) user.nickname = nick
           }
         } catch {
           user = null // 认证服务不可达时静默降级为未登录
@@ -166,5 +177,33 @@ export function createAuthClient({
     return { ok: true, user }
   }
 
-  return { init, getUser, loginWithGithub, register, loginWithPassword, getAchievements, setAvatar, logout, isGuest }
+  /**
+   * 修改展示昵称。
+   * - 登录用户（github / account）：POST /api/me/nickname 落库（display_name）。
+   * - 游客：无落库，存 localStorage 并直接更新本地 user。
+   */
+  async function setNickname(nickname) {
+    const raw = String(nickname ?? '').trim().slice(0, 24)
+    if (!raw) return { ok: false, error: 'invalid nickname' }
+
+    if (user?.provider === 'guest') {
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('guestNickname', raw)
+      } catch { /* 忽略 localStorage 不可用 */ }
+      if (user) user.nickname = raw
+      return { ok: true, local: true, user }
+    }
+
+    const res = await fetchImpl(baseUrl + '/api/me/nickname', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nickname: raw }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) return { ok: false, error: data.error || 'set nickname failed' }
+    user = data.user
+    return { ok: true, user }
+  }
+  return { init, getUser, loginWithGithub, register, loginWithPassword, getAchievements, setNickname, setAvatar, logout, isGuest }
 }

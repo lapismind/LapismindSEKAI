@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT,                        -- PBKDF2-SHA256，仅账号用户
   player_id TEXT UNIQUE,                     -- 持久化 playerId，重复登录复用（战绩/成就绑定用）
   nickname TEXT NOT NULL,
+  display_name TEXT,               -- 展示昵称（可改）；为空时回退用 nickname
   avatar_url TEXT,
   avatar_id TEXT,                       -- 本地头像 id：'1'~'26' 对应 lobby-kit 头像资源，NULL/0 表示用默认（GitHub 头像或游客占位）
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
