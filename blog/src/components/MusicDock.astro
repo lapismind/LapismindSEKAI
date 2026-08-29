@@ -129,7 +129,7 @@ import songs from '../data/music-player.json';
 		index = idx;
 		const song = SONGS[index];
 		els.jacket.src = song.jacket;
-		els.title.textContent = song.title;
+		refreshTitle();
 		els.artist.textContent = `${song.artist}`;
 		els.subZh.textContent = '加载中…';
 		els.subJp.textContent = '';
@@ -156,7 +156,6 @@ import songs from '../data/music-player.json';
 		els.src.querySelectorAll('button').forEach((b) => {
 			b.classList.toggle('disabled', b.dataset.src === 'se' && !song.hasSe);
 			b.classList.toggle('active', b.dataset.src === source);
-			b.title = b.dataset.src === 'se' ? '虚拟歌手版' : '角色翻唱版';
 			b.title = b.dataset.src === 'vs' ? '虚拟歌手版' : '角色翻唱版（世界 ver）';
 		});
 	}
@@ -219,11 +218,13 @@ import songs from '../data/music-player.json';
 			tracks: document.getElementById('md-tracks'),
 			list: document.getElementById('md-list'),
 		};
-		if (window.__mdBound) {
-			// 只剩绑定关系：状态已经在 setTrack 里
+		const dockEl = document.getElementById('music-dock');
+		if (!dockEl) return;
+		if (dockEl.dataset.mdBound === '1') {
+			// 同一份 DOM 只绑一次；切页后元素重建、标记随元素消失，会重新绑定
 			return;
 		}
-		window.__mdBound = true;
+		dockEl.dataset.mdBound = '1';
 
 		els.toggle.addEventListener('click', () => {
 			const open = els.panel.classList.toggle('open');
@@ -276,6 +277,15 @@ import songs from '../data/music-player.json';
 		});
 	}
 
+	let initialized = false;
+
+	// 标题后缀：播放中不带"（未播放）"，暂停/停止时带上
+	function refreshTitle() {
+		const song = SONGS[index];
+		if (!song) return;
+		els.title.textContent = audio && !audio.paused ? song.title : song.title + '（未播放）';
+	}
+
 	function init() {
 		const data = document.getElementById('md-data');
 		if (!data) return;
@@ -291,8 +301,14 @@ import songs from '../data/music-player.json';
 			audio.addEventListener('loadedmetadata', () => {
 				els.dur.textContent = fmtTime(audio.duration);
 			});
-			audio.addEventListener('pause', () => els.play.classList.remove('playing'));
-			audio.addEventListener('play', () => els.play.classList.add('playing'));
+			audio.addEventListener('pause', () => {
+				els.play.classList.remove('playing');
+				refreshTitle();
+			});
+			audio.addEventListener('play', () => {
+				els.play.classList.add('playing');
+				refreshTitle();
+			});
 			audio.addEventListener('error', () => {
 				els.subJp.textContent = '音源暂不可用';
 			});
@@ -302,12 +318,57 @@ import songs from '../data/music-player.json';
 		}
 		bind();
 		renderTracks();
-		// 首发默认曲：バグ（两版音源都齐、最有代表性）
-		const defIdx = Math.max(0, SONGS.findIndex((s) => s.id === 248));
-		setTrack(defIdx);
-		if (!audio.src) audio.src = SONGS[defIdx].vs;
-		els.title.textContent = SONGS[defIdx].title + '（未播放）';
-		setArtistText('');
+
+		if (!initialized) {
+			// 首次加载：只就位默认曲（バグ），不自动播放
+			initialized = true;
+			const defIdx = Math.max(0, SONGS.findIndex((s) => s.id === 248));
+			setTrack(defIdx);
+			if (!audio.src) audio.src = SONGS[defIdx].vs;
+			els.title.textContent = SONGS[defIdx].title + '（未播放）';
+			setArtistText('');
+			return;
+		}
+
+		// SPA 切页后：不重置播放，只把 UI 恢复成当前播放状态
+		if (audio.src) {
+			// audio.src 是绝对 URL，SONGS 里是相对路径，需解析后比较
+			let curIdx = SONGS.findIndex(
+				(s) => new URL(s.vs, location.href).href === audio.src || new URL(s.se, location.href).href === audio.src,
+			);
+			// 匹配不上但模块内 index 仍指向合法曲目时，按记忆恢复
+			if (curIdx < 0 && Number.isInteger(index) && SONGS[index]) curIdx = index
+			if (curIdx >= 0) {
+				index = curIdx;
+				const song = SONGS[index];
+				els.jacket.src = song.jacket;
+				els.artist.textContent = song.artist;
+				els.tracks.querySelectorAll('.trk').forEach((c, ci) => c.classList.toggle('active', ci === curIdx));
+				lrc = song.lrc ? parseLrc(song.lrc) : [];
+				zhLines = [];
+				renderLyricsList();
+				if (!song.hasSe && source === 'se') source = 'vs';
+				updateSourceButtons();
+				showSubtitle(audio.currentTime);
+				fetchZhLyrics(song.id).then((lines) => {
+					zhLines = lines;
+					renderLyricsList();
+					showSubtitle(audio.currentTime);
+				});
+			} else {
+				index = 0;
+				source = 'se';
+				setTrack(0);
+			}
+			refreshTitle();
+			// 恢复播放按钮状态（新 DOM 收不到旧的 play 事件）
+			els.play.classList.toggle('playing', !audio.paused);
+		} else {		index = 0;
+			source = 'se';
+			const defIdx = Math.max(0, SONGS.findIndex((s) => s.id === 248));
+			setTrack(defIdx);
+			els.title.textContent = SONGS[defIdx].title + '（未播放）';
+		}
 	}
 
 	function openAndPlay() {
