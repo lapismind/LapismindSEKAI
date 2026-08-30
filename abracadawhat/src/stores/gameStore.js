@@ -23,6 +23,7 @@ export const useGameStore = defineStore('game', () => {
   const myPlayerId = computed(() => lobbyStore.myPlayerId)
 
   let errorClearTimer = null
+  let previousUnsubs = []
 
   async function connect(roomCode, nickname, playerId, avatarId) {
     let token = null
@@ -77,12 +78,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function hydrate(handlers = {}) {
-    return [
+    // Clean up previous handlers to prevent duplicate messages
+    previousUnsubs.forEach(u => u())
+    previousUnsubs = []
+
+    const newUnsubs = [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
         roomState.value = data
         phase.value = data.phase
         // 进入下一轮后服务端会发 playing 的 room_state；旧结算弹窗必须关掉，
-        // 否则回合结算遮罩一直盖着界面，房主看似“无法开启下一轮”。
+        // 否则回合结算遮罩一直盖着界面，房主看似"无法开启下一轮"。
         if (data.phase !== 'round_end') roundEndSummary.value = null
       }),
       wsClient.on(Msg.RCV_YOUR_HAND, (data) => {
@@ -138,6 +143,9 @@ export const useGameStore = defineStore('game', () => {
         errorClearTimer = setTimeout(() => { error.value = null; errorClearTimer = null }, 5000)
       }),
     ]
+
+    previousUnsubs = newUnsubs
+    return newUnsubs
   }
 
   function clearRoundEnd() {
