@@ -94,6 +94,7 @@ export class AbracaRoom {
     let joinedNow = false
     const existing = state.players.find(p => p.id === playerId)
     if (!existing) {
+      // Only allow new players to join during waiting phase
       if (state.phase !== 'waiting') {
         return new Response('game in progress', { status: 409 })
       }
@@ -152,7 +153,18 @@ export class AbracaRoom {
     await this.enqueue(async () => {
       const s = await this.getState()
       const player = s.players.find(p => p.id === playerId)
-      if (player) player.connected = false
+      if (player) {
+        // Only mark as disconnected if no other connections exist for this player
+        const otherConnections = [...this.ctx.getWebSockets()]
+          .filter(ws => ws !== socket)
+          .filter(ws => {
+            const att = ws.deserializeAttachment()
+            return att && att.playerId === playerId
+          })
+        if (otherConnections.length === 0) {
+          player.connected = false
+        }
+      }
       await this.saveState(s)
     })
   }
@@ -178,6 +190,11 @@ export class AbracaRoom {
         break
       case 'next_round':
         await this.startNextRound(state)
+        break
+      case 'chat':
+      case 'emoji':
+        // Broadcast chat/emoji messages to all connected clients
+        this.broadcastChat(state, msg.type, msg.data, playerId)
         break
       default:
         this.errorTo(socket, '未知消息类型')
@@ -530,6 +547,28 @@ export class AbracaRoom {
     this.sendTo(socket, { type: 'your_secrets', data: { secrets: me.secrets } })
   }
 
+  broadcastChat(state, type, data, senderId) {
+    const sender = state.players.find(p => p.id === senderId)
+    if (!sender) return
+    
+    const message = {
+      type: type,
+      data: {
+        ...data,
+        playerId: senderId,
+        nickname: sender.nickname,
+        avatarId: sender.avatarId,
+      }
+    }
+    
+    for (const ws of this.ctx.getWebSockets()) {
+      const att = ws.deserializeAttachment() ?? {}
+      if (att.playerId) {
+        this.sendTo(ws, message)
+      }
+    }
+  }
+
   broadcast(_state, msg) {
     for (const ws of this.ctx.getWebSockets()) this.sendTo(ws, msg)
   }
@@ -550,3 +589,11 @@ export class AbracaRoom {
     if (socket) this.sendTo(socket, { type: 'error', data: { message } })
   }
 }
+
+
+
+
+
+
+
+

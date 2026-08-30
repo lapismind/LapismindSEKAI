@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useChatStore } from '@lapismind/chat-kit'
 import { EmojiPicker } from '@lapismind/chat-kit/vue'
 
@@ -11,11 +12,10 @@ const props = defineProps({
 })
 
 const chatStore = useChatStore()
+const { recentMessages, isConnected } = storeToRefs(chatStore)
 const inputText = ref('')
 const showEmojiPicker = ref(false)
 const messagesContainer = ref(null)
-
-const { recentMessages, isConnected } = chatStore
 
 onMounted(() => {
   chatStore.connect(props.roomId, props.playerId, props.nickname, props.avatarId)
@@ -58,7 +58,6 @@ watch(
 
 <template>
   <div class="flex h-full flex-col bg-[#f9f9f9]">
-    <!-- Header -->
     <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2">
       <h3 class="text-sm font-bold text-[#333]">聊天室</h3>
       <span class="text-xs" :class="isConnected ? 'text-green-600' : 'text-red-500'">
@@ -66,7 +65,6 @@ watch(
       </span>
     </div>
 
-    <!-- Messages -->
     <div ref="messagesContainer" class="flex-1 overflow-y-auto p-2">
       <div v-if="recentMessages.length === 0" class="flex h-full items-center justify-center">
         <p class="text-xs text-gray-400">暂无消息，发一条吧~</p>
@@ -86,14 +84,13 @@ watch(
           <div class="text-sm text-[#444] break-words">
             <template v-if="msg.type === 'chat'">{{ msg.text }}</template>
             <template v-else-if="msg.type === 'emoji'">
-              <img :src="getEmojiUrl(msg.emojiId, msg.characterId)" class="max-h-20 max-w-[120px] object-contain" :alt="'Emoji ' + msg.emojiId" />
+              <img :src="getEmojiUrl(msg.emojiId, msg.characterId)" class="max-h-20 max-w-[120px] object-contain" />
             </template>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Input -->
     <div class="flex items-center gap-1.5 border-t border-gray-200 p-2">
       <input
         v-model="inputText"
@@ -114,7 +111,6 @@ watch(
       >😊</button>
     </div>
 
-    <!-- Emoji Picker -->
     <div v-if="showEmojiPicker" class="border-t border-gray-200">
       <EmojiPicker @select="handleEmojiSelect" @close="showEmojiPicker = false" />
     </div>
