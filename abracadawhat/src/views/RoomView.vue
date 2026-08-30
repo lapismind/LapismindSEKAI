@@ -290,14 +290,40 @@ async function copyInvite() {
     <!-- 聊天面板 -->
     <div
       v-if="chatOpen"
-      class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-[#D8D0E4] bg-white shadow-2xl transition-all duration-200"
+      class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-[#D8D0E4] bg-white shadow-2xl transition-all duration-200 overflow-hidden"
+      style="height: 400px;"
     >
       <ChatPanel
         :room-id="roomCode"
         :player-id="game.myPlayerId"
         :nickname="lobby.myNickname"
         :avatar-id="lobby.myAvatarId"
+        class="h-full"
       />
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 聊天面板样式覆盖 */
+:deep(.chat-panel) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  max-width: none;
+}
+
+:deep(.chat-messages) {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+:deep(.chat-input) {
+  padding: 12px;
+  border-top: 1px solid #eee;
+}
+</style>
