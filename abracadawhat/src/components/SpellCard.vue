@@ -5,6 +5,7 @@ const props = defineProps({
   spellId: { type: Number, default: null },
   faceDown: { type: Boolean, default: false },
   size: { type: String, default: 'md' }, // sm | md | lg
+  fluid: { type: Boolean, default: false }, // 撑满父容器宽度（手牌单行自适应时用）
 })
 
 import { SPELLS } from '../core/rules'
@@ -12,6 +13,7 @@ import { SPELLS } from '../core/rules'
 const spell = computed(() => SPELLS.find(s => s.id === props.spellId) ?? null)
 
 const dims = computed(() => {
+  if (props.fluid) return 'w-full h-16 text-xl'
   if (props.size === 'sm') return 'w-12 h-16 text-xl'
   if (props.size === 'lg') return 'w-20 h-28 text-3xl'
   return 'w-16 h-24 text-2xl'
@@ -20,8 +22,8 @@ const dims = computed(() => {
 
 <template>
   <div
-    class="flex shrink-0 items-center justify-center rounded-lg border shadow-md transition"
-    :class="[dims, faceDown ? 'border-amber-700/60 bg-gradient-to-b from-amber-800 to-amber-950' : 'border-[#D8D0E4] bg-[#FAF7FC]']"
+    class="flex items-center justify-center rounded-lg border shadow-md transition"
+    :class="[dims, faceDown ? 'border-amber-700/60 bg-gradient-to-b from-amber-800 to-amber-950' : 'border-[#D8D0E4] bg-[#FAF7FC]', props.fluid ? 'shrink min-w-0' : 'shrink-0']"
     :title="faceDown ? '' : `${spell?.name}：${spell?.desc}`"
   >
     <template v-if="!faceDown && spell">

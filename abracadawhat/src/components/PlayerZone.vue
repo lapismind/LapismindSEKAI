@@ -46,13 +46,17 @@ const sortedHand = computed(() =>
       </div>
     </div>
 
-    <!-- 手牌（横排，空间不足时换行，右对齐，限宽避免手机出框） -->
-    <div class="ml-auto flex flex-row flex-wrap justify-end gap-1.5 min-w-0 max-w-[60%] sm:max-w-none">
+    <!-- 手牌（始终单行横排，不再换行；卡片等宽自适应，手机上整体缩小而非折行） -->
+    <div class="ml-auto flex flex-nowrap justify-end gap-1.5 min-w-0">
       <template v-if="showFaceDown">
-        <SpellCard face-down size="sm" v-for="i in (player.handSize || 5)" :key="i" />
+        <div v-for="i in (player.handSize || 5)" :key="i" class="flex-1 min-w-0 max-w-[64px]">
+          <SpellCard face-down size="sm" fluid />
+        </div>
       </template>
       <template v-else>
-        <SpellCard v-for="(id, i) in sortedHand" :key="i" :spell-id="id" size="sm" />
+        <div v-for="(id, i) in sortedHand" :key="i" class="flex-1 min-w-0 max-w-[64px]">
+          <SpellCard :spell-id="id" size="sm" fluid />
+        </div>
       </template>
     </div>
   </div>
