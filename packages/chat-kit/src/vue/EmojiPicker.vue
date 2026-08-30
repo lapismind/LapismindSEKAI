@@ -1,7 +1,7 @@
 <template>
   <div class="emoji-picker">
     <div class="picker-header">
-      <h4>选择表情</h4>
+      
       <button @click="$emit('close')" class="close-button">×</button>
     </div>
     

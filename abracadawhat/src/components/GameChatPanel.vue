@@ -67,7 +67,7 @@ watch(
           <div class="text-sm text-[#444] break-words">
             <template v-if="msg.type === 'chat'">{{ msg.text }}</template>
             <template v-else-if="msg.type === 'emoji'">
-              <img :src="getEmojiUrl(msg.emojiId, msg.characterId)" class="max-h-20 max-w-[120px] object-contain" />
+              <img :src="getEmojiUrl(msg.folder, msg.emojiId)" class="max-h-20 max-w-[120px] object-contain" />
             </template>
           </div>
         </div>

@@ -127,8 +127,8 @@ export const useGameStore = defineStore('game', () => {
           playerId: data.playerId,
           nickname: data.nickname,
           avatarId: data.avatarId,
+          folder: data.folder,
           emojiId: data.emojiId,
-          characterId: data.characterId,
           timestamp: Date.now(),
         })
       }),
