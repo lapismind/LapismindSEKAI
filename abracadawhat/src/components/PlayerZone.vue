@@ -47,7 +47,7 @@ const sortedHand = computed(() =>
     </div>
 
     <!-- 手牌（始终单行横排，五张牌不换行；手牌区瓜分头像列右边全部空间） -->
-    <div class="ml-auto flex flex-nowrap items-center justify-end gap-1.5 min-w-0">
+    <div class="flex flex-1 flex-nowrap items-center gap-1.5 min-w-0">
       <template v-if="showFaceDown">
         <div v-for="i in (player.handSize || 5)" :key="i" class="flex-1 min-w-0">
           <SpellCard face-down size="sm" fluid />
