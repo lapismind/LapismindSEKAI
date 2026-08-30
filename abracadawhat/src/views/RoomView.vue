@@ -17,6 +17,7 @@ import {
   generateRoomCode,
 } from '@lapismind/lobby-kit'
 import { AuthBadge } from '@lapismind/lobby-kit/vue'
+import { ChatPanel } from '@lapismind/chat-kit/vue'
 
 const route = useRoute()
 const lobby = useLobbyStore()
@@ -25,6 +26,7 @@ const game = useGameStore()
 const roomCode = computed(() => (route.params.code ?? '').toString().toUpperCase())
 const helpOpen = ref(false)
 const copied = ref(false)
+const chatOpen = ref(false)
 let unsubs = []
 let lastIdentityPlayerId = lobby.myPlayerId
 
@@ -274,6 +276,28 @@ async function copyInvite() {
       class="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-red-600/90 px-4 py-2 text-sm text-white shadow-lg"
     >
       {{ game.error }}
+    </div>
+
+    <!-- 浮动聊天按钮 -->
+    <button
+      type="button"
+      class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-500 transition-all duration-200"
+      @click="chatOpen = !chatOpen"
+    >
+      💬
+    </button>
+
+    <!-- 聊天面板 -->
+    <div
+      v-if="chatOpen"
+      class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-[#D8D0E4] bg-white shadow-2xl transition-all duration-200"
+    >
+      <ChatPanel
+        :room-id="roomCode"
+        :player-id="game.myPlayerId"
+        :nickname="lobby.myNickname"
+        :avatar-id="lobby.myAvatarId"
+      />
     </div>
   </div>
 </template>
