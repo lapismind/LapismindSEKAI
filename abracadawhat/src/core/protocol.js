@@ -12,6 +12,8 @@ export const Msg = {
   SEND_CAST: 'cast',
   SEND_END_TURN: 'end_turn',
   SEND_NEXT_ROUND: 'next_round',
+  SEND_CHAT: 'chat',
+  SEND_EMOJI: 'emoji',
 
   // 服务端 → 客户端
   RCV_ROOM_STATE: 'room_state',
@@ -24,4 +26,6 @@ export const Msg = {
   RCV_ACHIEVEMENTS_UNLOCKED: 'achievements_unlocked',
   RCV_PLAYER_JOINED: 'player_joined',
   RCV_ERROR: 'error',
+  RCV_CHAT: 'chat',
+  RCV_EMOJI: 'emoji',
 }

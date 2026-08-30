@@ -15,6 +15,7 @@ export const useGameStore = defineStore('game', () => {
   const roundEndSummary = ref(null)
   const lastGameOver = ref(null)
   const newAchievements = ref([])
+  const chatMessages = ref([])
   const error = ref(null)
   const lobbyStore = useLobbyStore()
   // 响应式读大厅 playerId：认证身份（会话 playerId）就绪后会更新，
@@ -65,6 +66,16 @@ export const useGameStore = defineStore('game', () => {
     wsClient.send(Msg.SEND_REMATCH, {})
   }
 
+  function sendChat(text) {
+    if (text && text.trim()) {
+      wsClient.send(Msg.SEND_CHAT, { text: text.trim() })
+    }
+  }
+
+  function sendEmoji(folder, emojiId) {
+    wsClient.send(Msg.SEND_EMOJI, { folder, emojiId })
+  }
+
   function hydrate(handlers = {}) {
     return [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
@@ -100,6 +111,27 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_ACHIEVEMENTS_UNLOCKED, (data) => {
         newAchievements.value = data || []
       }),
+      wsClient.on(Msg.RCV_CHAT, (data) => {
+        chatMessages.value.push({
+          type: 'chat',
+          playerId: data.playerId,
+          nickname: data.nickname,
+          avatarId: data.avatarId,
+          text: data.text,
+          timestamp: Date.now(),
+        })
+      }),
+      wsClient.on(Msg.RCV_EMOJI, (data) => {
+        chatMessages.value.push({
+          type: 'emoji',
+          playerId: data.playerId,
+          nickname: data.nickname,
+          avatarId: data.avatarId,
+          emojiId: data.emojiId,
+          characterId: data.characterId,
+          timestamp: Date.now(),
+        })
+      }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
         if (errorClearTimer) clearTimeout(errorClearTimer)
@@ -124,7 +156,8 @@ export const useGameStore = defineStore('game', () => {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, lastGameOver, newAchievements,
-    error, myPlayerId,
+    error, myPlayerId, chatMessages,
+    sendChat, sendEmoji,
     connect, disconnect,
   startRound, cast, endTurn, nextRound, rematch,
   hydrate, clearRoundEnd, clearCastResult, clearGameOver,
