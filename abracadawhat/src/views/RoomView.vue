@@ -1,4 +1,4 @@
-<script setup>
+﻿<script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
@@ -86,24 +86,24 @@ async function copyInvite() {
 
 <template>
   <div class="mx-auto min-h-full max-w-6xl px-4 py-4">
-    <!-- 顶栏 -->
+        <!-- 顶栏 -->
     <header class="mb-3 flex items-center justify-between gap-2">
         <div class="flex items-baseline gap-3">
-        <h1 class="text-lg font-bold text-[#333333]">🧙 出包魔法师</h1>
-        <span class="text-xs text-[#8A8299]">房间号: {{ roomCode }}</span>
+        <h1 class="text-lg font-bold text-[#333333]">🧙 <span class="hidden sm:inline">出包魔法师</span></h1>
+        <span class="text-xs text-[#8A8299]"><span class="hidden sm:inline">房间号: </span>{{ roomCode }}</span>
         <span v-if="game.roomState && game.roomState.round > 0" class="text-sm text-brand-600">
           【第 {{ game.roomState.round }} 轮】
         </span>
       </div>
       <div class="flex gap-1.5">
         <button type="button" class="rounded-lg border border-[#CFCFE9] bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 hover:border-brand-300 hover:text-brand-500" @click="helpOpen = true">
-          📖 规则
+          📖 <span class="hidden sm:inline">规则</span>
         </button>
         <button type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500" @click="copyInvite">
-            {{ copied ? '✓ 已复制' : '🔗 邀请' }}
+            {{ copied ? '✓' : '🔗' }} <span class="hidden sm:inline">{{ copied ? '已复制' : '邀请' }}</span>
           </button>
           <button type="button" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-500 hover:border-red-300 hover:bg-red-50" @click="goToLobby">
-             退出
+            🚪 <span class="hidden sm:inline">退出</span>
           </button>
         </div>
         <div class="flex items-center">
