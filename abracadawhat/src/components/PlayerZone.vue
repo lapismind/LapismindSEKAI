@@ -12,6 +12,11 @@ const avatar = computed(() => avatarUrl(props.player.avatarId))
 
 // 我自己的手牌显示为背面；别人的手牌正面朝上
 const showFaceDown = computed(() => props.isMe)
+
+// 手牌按魔法序号升序排列（古代巨龙1 → 魔法药水8），便于快速找牌
+const sortedHand = computed(() =>
+  [...(props.player.hand ?? [])].sort((a, b) => a - b)
+)
 </script>
 
 <template>
@@ -41,13 +46,13 @@ const showFaceDown = computed(() => props.isMe)
       </div>
     </div>
 
-    <!-- 手牌（横排，同一行右侧） -->
-    <div class="ml-auto flex flex-row gap-1.5">
+    <!-- 手牌（横排，空间不足时换行，右对齐，限宽避免手机出框） -->
+    <div class="ml-auto flex flex-row flex-wrap justify-end gap-1.5 min-w-0 max-w-[60%] sm:max-w-none">
       <template v-if="showFaceDown">
         <SpellCard face-down size="sm" v-for="i in (player.handSize || 5)" :key="i" />
       </template>
       <template v-else>
-        <SpellCard v-for="(id, i) in player.hand" :key="i" :spell-id="id" size="sm" />
+        <SpellCard v-for="(id, i) in sortedHand" :key="i" :spell-id="id" size="sm" />
       </template>
     </div>
   </div>

@@ -8,7 +8,9 @@ import CastPanel from '../components/CastPanel.vue'
 import CastFeedback from '../components/CastFeedback.vue'
 import PublicArea from '../components/PublicArea.vue'
 import GameHelp from '../components/GameHelp.vue'
+import SpellCard from '../components/SpellCard.vue'
 import { avatarUrl } from '../game/avatars'
+import { SPELLS } from '../core/rules'
 import {
   buildInviteUrl,
   copyToClipboard,
@@ -168,9 +170,17 @@ async function copyInvite() {
       <!-- 施法结果反馈 -->
       <CastFeedback />
 
-      <!-- 我的秘密牌 -->
+      <!-- 我的秘密牌（信息差：仅自己可见的具体牌面） -->
       <div v-if="game.mySecrets.length > 0" class="mt-3 rounded-xl border border-[#B3B3DD]/50 bg-brand-100 p-3">
-        <div class="text-xs text-brand-700">🔮 你的秘密牌 ×{{ game.mySecrets.length }}（轮末存活时每张 +1 分）</div>
+        <div class="mb-2 text-xs text-brand-700">🔮 你的秘密牌（轮末存活时每张 +1 分）</div>
+        <div class="flex flex-wrap gap-1.5">
+          <SpellCard
+            v-for="(id, i) in [...game.mySecrets].sort((a, b) => a - b)"
+            :key="i"
+            :spell-id="id"
+            size="sm"
+          />
+        </div>
       </div>
 
       <!-- 回合结算弹窗 -->

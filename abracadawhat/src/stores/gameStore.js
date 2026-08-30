@@ -56,6 +56,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function nextRound() {
+    roundEndSummary.value = null
     wsClient.send(Msg.SEND_NEXT_ROUND, {})
   }
 
@@ -64,6 +65,9 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
         roomState.value = data
         phase.value = data.phase
+        // 进入下一轮后服务端会发 playing 的 room_state；旧结算弹窗必须关掉，
+        // 否则回合结算遮罩一直盖着界面，房主看似“无法开启下一轮”。
+        if (data.phase !== 'round_end') roundEndSummary.value = null
       }),
       wsClient.on(Msg.RCV_YOUR_HAND, (data) => {
         myHandSize.value = data.handSize ?? 0

@@ -18,17 +18,21 @@ const spell = computed(() => SPELLS.find((s) => s.id === result.value?.spellId))
 const isSuccess = computed(() => result.value?.type === 'cast_success')
 const isDragon = computed(() => isSuccess.value && result.value?.spellId === 1)
 
+// 按 playerId 查昵称（用最新房间状态，保证昵称实时准确）
+const nameOf = (id) =>
+  game.roomState?.players?.find((p) => p.id === id)?.nickname ?? '玩家'
+
 const bannerText = computed(() => {
   if (!result.value) return ''
   const name = spell.value?.name ?? '魔法'
   if (isSuccess.value) {
     const parts = []
-    for (const d of result.value.damaged ?? []) parts.push(`玩家 -${d.amount}❤️`)
-    for (const h of result.value.healed ?? []) parts.push(`施法者 +${h.amount}❤️`)
+    for (const d of result.value.damaged ?? []) parts.push(`${nameOf(d.playerId)} -${d.amount}❤️`)
+    for (const h of result.value.healed ?? []) parts.push(`${nameOf(h.playerId)} +${h.amount}❤️`)
     if (result.value.spellId === 4) parts.push('获得秘密牌 🔮')
     return `✨ 猜对了！${name}生效：${parts.join('，') || '无直接目标'}`
   }
-  return `💥 猜错了！${name}不在手，扣 ${result.value.damage}❤️`
+  return `💥 ${nameOf(result.value.playerId)}猜错了！${name}不在手，扣 ${result.value.damage}❤️`
 })
 
 watch(result, (val) => {
