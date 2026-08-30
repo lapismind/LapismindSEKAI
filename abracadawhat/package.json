@@ -11,6 +11,7 @@
     "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
+    "@lapismind/chat-kit": "file:../packages/chat-kit",
     "@lapismind/lobby-kit": "file:../packages/lobby-kit",
     "pinia": "^4.0.3",
     "vue": "^3.5.41",
