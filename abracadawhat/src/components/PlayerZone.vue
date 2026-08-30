@@ -32,7 +32,7 @@ const sortedHand = computed(() =>
       <img v-if="avatar" :src="avatar" :alt="player.nickname" class="h-full w-full object-cover" />
       <span v-else class="flex h-full items-center justify-center text-xs text-[#A29BB5]">{{ player.nickname.slice(0,1) }}</span>
     </div>
-    <div class="w-16 shrink-0">
+    <div class="shrink-0">
       <div class="truncate text-sm font-semibold leading-tight text-[#333333]">
         {{ player.nickname }}
         <span v-if="player.isHost">👑</span>
@@ -46,18 +46,18 @@ const sortedHand = computed(() =>
       </div>
     </div>
 
-    <!-- 手牌（始终单行横排，不再换行；卡片等宽自适应，手机上整体缩小而非折行） -->
-    <div class="ml-auto flex flex-nowrap justify-end gap-1.5 min-w-0">
+    <!-- 手牌（始终单行横排，五张牌不换行；手牌区瓜分头像列右边全部空间） -->
+    <div class="ml-auto flex flex-nowrap items-center justify-end gap-1.5 min-w-0">
       <template v-if="showFaceDown">
-        <div v-for="i in (player.handSize || 5)" :key="i" class="flex-1 min-w-0 max-w-[64px]">
+        <div v-for="i in (player.handSize || 5)" :key="i" class="flex-1 min-w-0">
           <SpellCard face-down size="sm" fluid />
         </div>
       </template>
       <template v-else>
-        <div v-for="(id, i) in sortedHand" :key="i" class="flex-1 min-w-0 max-w-[64px]">
+        <div v-for="(id, i) in sortedHand" :key="i" class="flex-1 min-w-0">
           <SpellCard :spell-id="id" size="sm" fluid />
         </div>
       </template>
-    </div>
+  </div>
   </div>
 </template>
