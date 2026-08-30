@@ -1,10 +1,5 @@
 <template>
   <div class="emoji-picker">
-    <div class="picker-header">
-      
-      <button @click="$emit('close')" class="close-button">×</button>
-    </div>
-    
     <!-- 文件夹选择 -->
     <div class="folder-tabs">
       <button 
@@ -15,6 +10,7 @@
       >
         {{ folder === 'other' ? '其他' : folder }}
       </button>
+      <button @click="$emit('close')" class="folder-tab close-tab">×</button>
     </div>
     
     <!-- 表情网格 -->
@@ -71,35 +67,6 @@ const selectEmoji = (emoji) => {
   flex-direction: column;
 }
 
-.picker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid #eee;
-  background: #f9f9f9;
-}
-
-.picker-header h4 {
-  margin: 0;
-  font-size: 14px;
-  color: #333;
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #666;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-}
-
-.close-button:hover {
-  color: #333;
-}
-
 .folder-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -130,6 +97,10 @@ const selectEmoji = (emoji) => {
   color: #007bff;
   border-color: #007bff;
   background: #e6f2ff;
+}
+
+.close-tab {
+  margin-left: auto;
 }
 
 .emoji-grid {
