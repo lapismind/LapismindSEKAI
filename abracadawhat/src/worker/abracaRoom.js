@@ -165,6 +165,9 @@ export class AbracaRoom {
       case 'start_round':
         await this.hostStart(state, playerId)
         break
+      case 'rematch':
+        await this.hostRematch(state, playerId)
+        break
       case 'cast':
         await this.doCast(state, playerId, msg.data)
         break
@@ -232,6 +235,19 @@ export class AbracaRoom {
       round: 0,
     }
     await this.beginRound(state)
+  }
+
+  /** 房主发起再来一局：重置战绩回到 start_round 初始状态，清掉 game_over 结算 */
+  async hostRematch(state, playerId) {
+    if (state.hostId !== playerId) {
+      this.errorTo(this.socketFor(playerId), '只有房主能再来一局')
+      return
+    }
+    if (state.phase !== 'game_over') {
+      this.errorTo(this.socketFor(playerId), '游戏未结束，无法再来一局')
+      return
+    }
+    await this.hostStart(state, playerId)
   }
 
   /** 一轮结算后开下一轮（保留分数）或宣布冠军 */

@@ -8,6 +8,7 @@ export const Msg = {
   // 客户端 → 服务端
   SEND_JOIN: 'join',
   SEND_START_ROUND: 'start_round',
+  SEND_REMATCH: 'rematch',
   SEND_CAST: 'cast',
   SEND_END_TURN: 'end_turn',
   SEND_NEXT_ROUND: 'next_round',

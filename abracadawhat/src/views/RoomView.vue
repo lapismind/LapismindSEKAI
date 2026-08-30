@@ -242,6 +242,14 @@ async function copyInvite() {
               </div>
             </div>
           </div>
+          <button
+            v-if="isHost"
+            type="button"
+            class="mt-6 w-full rounded-xl bg-brand-600 py-3 font-bold text-white hover:bg-brand-500"
+            @click="game.rematch()"
+          >
+            再来一局
+          </button>
         </div>
       </div>
     </template>

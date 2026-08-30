@@ -60,6 +60,11 @@ export const useGameStore = defineStore('game', () => {
     wsClient.send(Msg.SEND_NEXT_ROUND, {})
   }
 
+  function rematch() {
+    lastGameOver.value = null
+    wsClient.send(Msg.SEND_REMATCH, {})
+  }
+
   function hydrate(handlers = {}) {
     return [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
@@ -117,7 +122,7 @@ export const useGameStore = defineStore('game', () => {
     lastCastResult, roundEndSummary, lastGameOver, newAchievements,
     error, myPlayerId,
     connect, disconnect,
-    startRound, cast, endTurn, nextRound,
-    hydrate, clearRoundEnd, clearCastResult,
+    startRound, cast, endTurn, nextRound, rematch,
+  hydrate, clearRoundEnd, clearCastResult,
   }
 })
