@@ -14,7 +14,7 @@ const spell = computed(() => SPELLS.find(s => s.id === props.spellId) ?? null)
 
 const dims = computed(() => {
   if (props.fluid) return 'w-full h-16 text-xl'
-  if (props.size === 'sm') return 'w-12 h-16 text-xl'
+  if (props.size === 'sm') return 'w-12 min-w-[36px] h-16 text-xl'
   if (props.size === 'lg') return 'w-20 h-28 text-3xl'
   return 'w-16 h-24 text-2xl'
 })
@@ -23,7 +23,7 @@ const dims = computed(() => {
 <template>
   <div
     class="flex items-center justify-center rounded-lg border shadow-md transition"
-    :class="[dims, faceDown ? 'border-amber-700/60 bg-gradient-to-b from-amber-800 to-amber-950' : 'border-[#D8D0E4] bg-[#FAF7FC]', props.fluid ? 'shrink min-w-0' : 'shrink-0']"
+    :class="[dims, faceDown ? 'border-amber-700/60 bg-gradient-to-b from-amber-800 to-amber-950' : 'border-[#D8D0E4] bg-[#FAF7FC]', 'shrink min-w-0']"
     :title="faceDown ? '' : `${spell?.name}：${spell?.desc}`"
   >
     <template v-if="!faceDown && spell">
