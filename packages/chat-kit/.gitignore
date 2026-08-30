@@ -1,0 +1,10 @@
+# 表情包文件（太大，不提交到 git）
+emojis/
+
+# 生成的 manifest 文件（需要时重新生成）
+src/emoji-manifest.json
+
+# 临时文件
+*.log
+*.tmp
+

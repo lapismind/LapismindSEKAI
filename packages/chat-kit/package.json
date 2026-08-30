@@ -1,0 +1,32 @@
+{
+  "name": "@lapismind/chat-kit",
+  "version": "0.1.0",
+  "description": "多人游戏聊天系统通用件：WebSocket 聊天客户端、表情包选择器、Vue 组件",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./vue": "./src/vue/index.js",
+    "./emojis/*": "./emojis/*",
+    "./manifest.json": "./src/emoji-manifest.json"
+  },
+  "files": [
+    "src",
+    "emojis"
+  ],
+  "scripts": {
+    "test": "node tests/chat.test.mjs",
+    "generate-emojis": "node scripts/generate-emoji-manifest.js"
+  },
+  "keywords": [
+    "chat",
+    "emoji",
+    "game",
+    "vue",
+    "pinia"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@lapismind/lobby-kit": "file:../lobby-kit"
+  }
+}
