@@ -33,7 +33,7 @@ const sortedHand = computed(() =>
       <span v-else class="flex h-full items-center justify-center text-xs text-[#A29BB5]">{{ player.nickname.slice(0,1) }}</span>
     </div>
     <div class="shrink-0">
-      <div class="truncate text-sm font-semibold leading-tight text-[#333333]">
+    <div class="truncate text-sm font-semibold leading-tight text-[#333333]">
         {{ player.nickname }}
         <span v-if="player.isHost">👑</span>
         <span v-if="isMe" class="text-brand-600">我</span>
@@ -58,6 +58,6 @@ const sortedHand = computed(() =>
           <SpellCard :spell-id="id" size="sm" fluid />
         </div>
       </template>
-  </div>
+    </div>
   </div>
 </template>
