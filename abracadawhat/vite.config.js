@@ -21,10 +21,10 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       // Deduplicate pinia/vue for file: linked sub-packages
-      pinia: path.resolve(__dirname, 'node_modules/pinia'),
-      vue: path.resolve(__dirname, 'node_modules/vue'),
-      'pinia/': path.resolve(__dirname, 'node_modules/pinia/'),
-      'vue/': path.resolve(__dirname, 'node_modules/vue/'),
+      pinia: path.resolve(import.meta.dirname, 'node_modules/pinia'),
+      vue: path.resolve(import.meta.dirname, 'node_modules/vue'),
+      'pinia/': path.resolve(import.meta.dirname, 'node_modules/pinia/'),
+      'vue/': path.resolve(import.meta.dirname, 'node_modules/vue/'),
     },
   },
   build: { outDir: 'dist' },
