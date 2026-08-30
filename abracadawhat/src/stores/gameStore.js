@@ -116,13 +116,17 @@ export const useGameStore = defineStore('game', () => {
     lastCastResult.value = null
   }
 
+  function clearGameOver() {
+    lastGameOver.value = null
+  }
+
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, lastGameOver, newAchievements,
     error, myPlayerId,
     connect, disconnect,
-    startRound, cast, endTurn, nextRound, rematch,
-  hydrate, clearRoundEnd, clearCastResult,
+  startRound, cast, endTurn, nextRound, rematch,
+  hydrate, clearRoundEnd, clearCastResult, clearGameOver,
   }
 })

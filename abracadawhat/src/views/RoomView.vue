@@ -131,6 +131,8 @@ async function copyInvite() {
       <!-- 公共区 -->
       <PublicArea
         :cast-counts="game.roomState.castCounts ?? {}"
+        :players="game.roomState.players ?? []"
+        :match-history="game.roomState.matchHistory ?? []"
         :deck-remaining="game.roomState.deckRemaining ?? 0"
         :secret-pile-remaining="game.roomState.secretPileRemaining ?? 0"
       />
@@ -211,8 +213,17 @@ async function copyInvite() {
 
       <!-- 整场结束 -->
       <div v-if="game.lastGameOver" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div class="w-full max-w-md rounded-2xl bg-gradient-to-b from-brand-100 to-white p-8 text-center shadow-2xl">
-          <div class="text-5xl">🏆</div>
+        <div class="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-brand-100 to-white p-8 text-center shadow-2xl">
+         <!-- 手动关闭：房主点击后仍可在聊天栏/区域重新开局；非房主可自行关闭胜利结算 -->
+         <button
+           type="button"
+           @click="game.clearGameOver()"
+           class="absolute top-3 right-3 text-xs text-[#8A8299] hover:text-[#333333]"
+           title="关闭，继续准备再来一局"
+         >
+           ✕
+         </button>
+         <div class="text-5xl">🏆</div>
           <h3 class="mt-3 text-2xl font-bold text-[#333333]">
             {{ game.lastGameOver.standings[0]?.nickname }} 获胜！
           </h3>
@@ -250,6 +261,7 @@ async function copyInvite() {
           >
             再来一局
           </button>
+          <p v-else class="mt-6 text-center text-xs text-[#8A8299]">等待房主再来一局…</p>
         </div>
       </div>
     </template>

@@ -57,6 +57,8 @@ export class AbracaRoom {
         summary: null,
         // 战绩累积：从 hostStart 到 game_over 之间的事件流水
         matchStats: null,
+        // 本局历史战绩：每局 game_over 时存入一条快照
+        matchHistory: [],
       }
     )
   }
@@ -247,6 +249,7 @@ export class AbracaRoom {
       this.errorTo(this.socketFor(playerId), '游戏未结束，无法再来一局')
       return
     }
+    state.round = 0          // 每局轮次独立计数：再来一局后从第 1 轮开始
     await this.hostStart(state, playerId)
   }
 
@@ -256,6 +259,17 @@ export class AbracaRoom {
     const champion = [...state.players].sort((a, b) => b.score - a.score)[0]
     if (champion && champion.score >= state.targetScore) {
       state.phase = 'game_over'
+      // 记录本局战绩快照到房间历史
+      if (!state.matchHistory) state.matchHistory = []
+      state.matchHistory.push({
+        startedAt: state.matchStats?.startAt ?? new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        rounds: state.round,
+        winnerId: champion.id,
+        standings: [...state.players].map(p => ({
+          id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score,
+        })).sort((a, b) => b.score - a.score),
+      })
       // 上报战绩到 auth Worker（异步，不阻塞广播）
       const reportPayload = this.buildMatchReport(state, champion)
       await this.saveState(state)
@@ -489,6 +503,7 @@ export class AbracaRoom {
       castCounts: state.castCounts,
       deckRemaining: state.deck?.length ?? 0,
       secretPileRemaining: state.secretPile?.length ?? 0,
+      matchHistory: state.matchHistory ?? [],
       summary: state.summary,
       players: state.players.map(p => ({
         id: p.id,
