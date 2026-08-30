@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
 import PlayerZone from '../components/PlayerZone.vue'
@@ -20,6 +20,7 @@ import {
 import { AuthBadge } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
+const router = useRouter()
 const lobby = useLobbyStore()
 const game = useGameStore()
 
@@ -44,6 +45,12 @@ onUnmounted(() => {
   unsubs.forEach(u => u())
   game.disconnect()
 })
+
+function goToLobby() {
+  unsubs.forEach(u => u())
+  game.disconnect()
+  router.push('/')
+}
 
 function onIdentityChange(user) {
   const prev = lastIdentityPlayerId
@@ -94,6 +101,9 @@ async function copyInvite() {
         </button>
         <button type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500" @click="copyInvite">
             {{ copied ? '✓ 已复制' : '🔗 邀请' }}
+          </button>
+          <button type="button" class="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-500 hover:border-red-300 hover:bg-red-50" @click="goToLobby">
+             退出
           </button>
         </div>
         <div class="flex items-center">
