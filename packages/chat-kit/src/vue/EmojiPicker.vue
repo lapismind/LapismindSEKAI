@@ -2,15 +2,16 @@
   <div class="emoji-picker">
     <!-- 文件夹选择 -->
     <div class="folder-tabs">
-      <button 
-        v-for="folder in folderList" 
-        :key="folder"
-        :class="['folder-tab', { active: activeFolder === folder }]"
-        @click="activeFolder = folder"
-      >
-        {{ folder === 'other' ? '其他' : folder }}
-      </button>
-      <button @click="$emit('close')" class="folder-tab close-tab">×</button>
+      <template v-for="folder in folderList" :key="folder">
+        <button 
+          :class="['folder-tab', { active: activeFolder === folder }]"
+          @click="activeFolder = folder"
+        >
+          {{ folder === 'other' ? '其他' : folder }}
+        </button>
+        <!-- 在"其他"文件夹后添加关闭按钮 -->
+        <button v-if="folder === 'other'" @click="$emit('close')" class="folder-tab close-tab">×</button>
+      </template>
     </div>
     
     <!-- 表情网格 -->
