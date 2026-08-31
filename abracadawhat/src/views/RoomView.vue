@@ -172,6 +172,8 @@ async function copyInvite() {
         :is-my-turn="isMyTurn"
         :has-successful-cast="!!game.roomState.castSucceeded?.[game.myPlayerId]"
         :has-failed-cast="!!game.roomState.castFailed?.[game.myPlayerId]"
+        :has-declared="game.declared"
+        :cast-locked="game.castLocked"
         @cast="game.cast($event)"
         @end-turn="game.endTurn()"
       />

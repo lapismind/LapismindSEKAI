@@ -54,25 +54,24 @@ const tableOpen = ref(false)
         <span class="rounded-full bg-[#F7EFF8] px-2.5 py-1 text-[#8A8299]">🔮 秘密牌 {{ secretPileRemaining }}</span>
       </span>
     </div>
+    <!-- 已出牌展示：每种魔法已用/总数（常显，不用点开战绩） -->
+    <div class="mb-2 flex flex-wrap justify-center gap-2">
+      <div
+        v-for="spell in SPELLS"
+        :key="spell.id"
+        class="flex flex-col items-center rounded-lg bg-[#F7EFF8] px-2 py-1"
+        :title="spell.desc"
+      >
+        <span class="text-base leading-none">{{ spell.emoji }}</span>
+        <span class="mt-0.5 text-[8px] leading-none text-[#8A8299]">{{ spell.name }}</span>
+        <span class="text-[10px] font-bold text-brand-600">
+          {{ castCounts[spell.id] ?? 0 }}/{{ spell.count }}
+        </span>
+      </div>
+    </div>
     <!-- 战绩榜：点击展开/收起 -->
     <transition name="slide">
       <div v-if="tableOpen" class="mt-2 space-y-3 overflow-hidden">
-        <!-- 已出牌展示：每种魔法已用/总数 -->
-        <div class="mb-2 flex flex-wrap justify-center gap-2">
-          <div
-            v-for="spell in SPELLS"
-            :key="spell.id"
-            class="flex flex-col items-center rounded-lg bg-[#F7EFF8] px-2 py-1"
-            :title="spell.desc"
-          >
-            <span class="text-base leading-none">{{ spell.emoji }}</span>
-            <span class="mt-0.5 text-[8px] leading-none text-[#8A8299]">{{ spell.name }}</span>
-            <span class="text-[10px] font-bold text-brand-600">
-              {{ castCounts[spell.id] ?? 0 }}/{{ spell.count }}
-            </span>
-          </div>
-        </div>
-
         <!-- 本轮实时战绩 -->
         <div>
           <div class="mb-1.5 text-[9px] font-medium text-[#8A8299] uppercase">本轮实时</div>

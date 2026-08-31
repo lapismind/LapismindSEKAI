@@ -8,6 +8,10 @@ const props = defineProps({
   isMyTurn: { type: Boolean, default: false },
   hasSuccessfulCast: { type: Boolean, default: false },
   hasFailedCast: { type: Boolean, default: false },
+  // 本回合是否已宣告过一次魔法（客户端本地标记，不等服务端回包）
+  hasDeclared: { type: Boolean, default: false },
+  // 施法请求发出后到结果回来前的提交锁，防止连点重复发送
+  castLocked: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['cast', 'end-turn'])
@@ -24,10 +28,14 @@ const declareOptions = computed(() =>
 // 猜错后本回合不能再施法，只能结束回合。
 const lockedByFailure = computed(() => props.hasFailedCast)
 
-const endTurnEnabled = computed(() => props.hasSuccessfulCast || props.hasFailedCast)
+// 宣告过一次魔法（无论成败）结束回合按钮就必须可用：
+// 服务端规则“至少宣告一次才能结束”，客户端用 hasDeclared 兜住回包延迟。
+const endTurnEnabled = computed(
+  () => props.hasSuccessfulCast || props.hasFailedCast || props.hasDeclared
+)
 
 function clickSpell(spell) {
-  if (props.isMyTurn && spell.levelOk && !lockedByFailure.value) {
+  if (props.isMyTurn && spell.levelOk && !lockedByFailure.value && !props.castLocked) {
     emit('cast', spell.id)
   }
 }
@@ -55,7 +63,7 @@ function clickSpell(spell) {
         v-for="spell in declareOptions"
         :key="spell.id"
         type="button"
-        :disabled="!isMyTurn || !spell.levelOk || lockedByFailure"
+        :disabled="!isMyTurn || !spell.levelOk || lockedByFailure || castLocked"
         class="flex flex-row items-center gap-1 rounded-full border px-3 py-1.5 transition"
         :class="[
           isMyTurn && spell.levelOk
@@ -69,5 +77,12 @@ function clickSpell(spell) {
         <span class="text-xs">{{ spell.name }}</span>
       </button>
     </div>
+
+    <p v-if="lockedByFailure" class="mt-2 text-xs font-medium text-red-500">
+      本回合已猜错，只能点结束回合
+    </p>
+    <p v-else-if="castLocked && isMyTurn" class="mt-2 text-xs font-medium text-brand-600">
+      施法判定中…
+    </p>
   </div>
 </template>

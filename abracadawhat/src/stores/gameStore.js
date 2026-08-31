@@ -17,6 +17,12 @@ export const useGameStore = defineStore('game', () => {
   const newAchievements = ref([])
   const chatMessages = ref([])
   const error = ref(null)
+  // 施法提交锁：发出 cast 后立刻禁用施法按钮，收到 cast_result 或超时后释放，
+  // 防止手机/手快连点把同一张牌发出去两次（第二次必然判“猜错”自伤）。
+  const castLocked = ref(false)
+  // 本回合是否已宣告过魔法：宣告后结束回合按钮立刻可用，
+  // 即使 cast_result / room_state 还没回来也不会出现“点了结束没反应”。
+  const declared = ref(false)
   const lobbyStore = useLobbyStore()
   // 响应式读大厅 playerId：认证身份（会话 playerId）就绪后会更新，
   // 房间内登录/换号后 me/回合判断等跟着最新身份走
@@ -50,7 +56,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function cast(spellId) {
+    if (castLocked.value) return
+    castLocked.value = true
+    declared.value = true
     wsClient.send(Msg.SEND_CAST, { spellId })
+    // 兜底：即使 cast_result 丢失，固定时间后也要放开锁，避免永久卡死
+    setTimeout(() => { castLocked.value = false }, 800)
   }
 
   function endTurn() {
@@ -86,6 +97,10 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
         roomState.value = data
         phase.value = data.phase
+        // 不在游戏中或回合已不在我身上时，清掉本回合的宣告标记，避免跨回合残留
+        if (data.phase !== 'playing' || (data.currentPlayerId && data.currentPlayerId !== myPlayerId.value)) {
+          declared.value = false
+        }
         // 进入下一轮后服务端会发 playing 的 room_state；旧结算弹窗必须关掉，
         // 否则回合结算遮罩一直盖着界面，房主看似"无法开启下一轮"。
         if (data.phase !== 'round_end') roundEndSummary.value = null
@@ -97,6 +112,10 @@ export const useGameStore = defineStore('game', () => {
         mySecrets.value = data.secrets ?? []
       }),
       wsClient.on(Msg.RCV_TURN_TO, (data) => {
+        const roundChanged =
+          data.round != null && roomState.value && data.round !== roomState.value.round
+        // 回合交到别人手上，或开启了新的一轮（轮到我也算），宣告标记都要复位
+        if (data.playerId !== myPlayerId.value || roundChanged) declared.value = false
         if (roomState.value) {
           roomState.value = { ...roomState.value, currentPlayerId: data.playerId, round: data.round ?? roomState.value.round }
         }
@@ -104,6 +123,7 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_CAST_RESULT, (data) => {
         lastCastResult.value = data
+        castLocked.value = false
         handlers.onCastResult?.(data)
       }),
       wsClient.on(Msg.RCV_ROUND_END, (data) => {
@@ -164,7 +184,7 @@ export const useGameStore = defineStore('game', () => {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, lastGameOver, newAchievements,
-    error, myPlayerId, chatMessages,
+    error, myPlayerId, chatMessages, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect,
   startRound, cast, endTurn, nextRound, rematch,

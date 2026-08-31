@@ -40,3 +40,15 @@
 - 测试 fake 工厂的闭包陷阱：在工厂函数外部（测试块里）给返回对象挂的属性（如 fake.achievementsPayload），工厂内部的 fetch 闭包根本看不见，一访问就 ReferenceError；若该错误又被业务代码的 .catch(() => ({})) 吞掉，会伪装成"bad response"之类的业务错误，极难定位。做法：payload 用工厂内的闭包变量 + setter 暴露。
 - Node 环境无 location 全局，lobby-kit loginWithGithub 不会拼 redirect_to；auth.test.mjs 里那条断言在本环境必然失败（属于原有测试的过时预期），已改为按 typeof location 分支断言。
 - lobby-kit 的 src/auth.js 与 tests/ 目录不在 git 跟踪内（packages/.gitignore 忽略了 lobby-kit/），改动不会出现在 git status；交付/部署请留意该包是工作区直跑，换机器需连同目录一起复制。
+## 2026-08-31 出包魔法师 0831 真机反馈排查（本地实证）
+
+- "要看到出的牌必须先点开战绩" = PublicArea.vue 把已出牌展示区（每种魔法已用/总数）放在了 tableOpen 折叠块内（e76767e 引入），应移到"战绩"按钮下方、折叠区外常显。
+- "猜药水猜对后会卡 / 点了药水下一个只能点药水 / 直接🐔"根因：药水(id8)成功 → lastCastLevel=8 → canCast(8,·) 只放行药水（规则上合理），但玩家看不到自己手牌，唯一亮着的"魔法药水"按钮在手里没药水时一点 = 判定猜错扣 1❤；复现脚本实测"1 张药水成功后再点 = 猜错扣血"，"2 张药水快速连点 = 第三次点击变成无谓失败"。客户端施法完全无防抖（CastPanel.clickSpell 直接 emit → wsClient.send），连点/延迟判定会多发 cast 造成自伤。
+- "猜错后选项仍亮"：当前代码 CastPanel 有 lockedByFailure（:disabled），本地 Playwright 复现 4/4 全灰 + 结束回合可用 + 回合正常移交；线上 index.html 资源名与本地 dist 完全一致（index-Dicpb_ve.js，00:05 构建），属最新代码。玩家若仍看到亮点，先排查浏览器/边缘缓存（Ctrl+Shift+R 强刷，同 08-29 教训），再查身份切换导致 game.myPlayerId 与房间 playerId 不一致（castFailed[me] 取不到）。
+- E2E 技巧：自己的手牌别人可见——用第二个浏览器上下文（对手视角）读本方玩家区的手牌 title 即可设计"必中"施法测试；div.rounded-xl.border 索引注意第 0 个是 PublicArea，玩家区从 1 开始。
+## 2026-08-31 出包魔法师 0831 反馈修复落地（三处）
+
+- 已出牌展示（每种魔法已用/总数）从 PublicArea 的 tableOpen 折叠块移到顶部常显，玩家不再需要点开"战绩"才能看到出的牌。
+- 施法防抖/提交锁：gameStore.cast 增加 castLocked（发出即锁，cast_result 回来或 800ms 超时释放），CastPanel 按钮在锁期间禁用；store 内的同步守卫是真正的防连点护栏（组件的 props 守卫在同一 tick 内读旧值拦不住双发）。效果：单张药水快速连点只成功一次，不再出现第二次"猜错"自伤。
+- 结束回合保障：gameStore 增加 declared 标记，宣告一次魔法后（不等服务端回包）结束回合按钮立即可用；turn_to 换人或开新轮、room_state 回合不在我身上时复位。服务端规则本就允许宣告后结束。
+- Playwright 验证脚本：临时资源/verify-fixes.py（已出牌常显、单张牌连点不自伤、宣告后结束回合可用、猜错 4/4 变灰+结束回合+移交，pageerrors 为空）；结束回合按钮断言要用 get_by_role("button", name=...)，否则会被我新加的"本回合已猜错，只能点结束回合"提示文案命中两次报 strict mode。
