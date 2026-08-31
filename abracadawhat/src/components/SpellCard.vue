@@ -5,7 +5,6 @@ const props = defineProps({
   spellId: { type: Number, default: null },
   faceDown: { type: Boolean, default: false },
   size: { type: String, default: 'md' }, // sm | md | lg
-  fluid: { type: Boolean, default: false }, // 撑满父容器宽度（手牌单行自适应时用）
 })
 
 import { SPELLS } from '../core/rules'
@@ -13,7 +12,6 @@ import { SPELLS } from '../core/rules'
 const spell = computed(() => SPELLS.find(s => s.id === props.spellId) ?? null)
 
 const dims = computed(() => {
-  if (props.fluid) return 'w-full h-16 text-xl'
   if (props.size === 'sm') return 'w-12 min-w-[36px] h-16 text-xl'
   if (props.size === 'lg') return 'w-20 h-28 text-3xl'
   return 'w-16 h-24 text-2xl'

@@ -66,7 +66,7 @@ function clickSpell(spell) {
         :disabled="!isMyTurn || !spell.levelOk || lockedByFailure || castLocked"
         class="flex flex-row items-center gap-1 rounded-full border px-3 py-1.5 transition"
         :class="[
-          isMyTurn && spell.levelOk
+          isMyTurn && spell.levelOk && !lockedByFailure && !castLocked
             ? 'border-brand-400 bg-brand-100 text-brand-800 hover:border-brand-500 hover:bg-brand-200/70 cursor-pointer'
             : 'border-[#E4DEEC] bg-[#FAF7FC] text-[#A29BB5] opacity-80',
         ]"

@@ -54,8 +54,8 @@ export const useChatStore = defineStore('chat', () => {
         playerId: data.playerId,
         nickname: data.nickname,
         avatarId: data.avatarId,
+        folder: data.folder,
         emojiId: data.emojiId,
-        characterId: data.characterId,
         timestamp: Date.now(),
       })
     })
@@ -102,5 +102,3 @@ export const useChatStore = defineStore('chat', () => {
     clearMessages,
   }
 })
-
-

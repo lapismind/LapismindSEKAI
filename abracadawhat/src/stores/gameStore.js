@@ -29,6 +29,7 @@ export const useGameStore = defineStore('game', () => {
   const myPlayerId = computed(() => lobbyStore.myPlayerId)
 
   let errorClearTimer = null
+  let castLockTimer = null
   let previousUnsubs = []
 
   async function connect(roomCode, nickname, playerId, avatarId) {
@@ -47,6 +48,10 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function disconnect() {
+    // 离开房间/切换身份前清空聊天记录，避免旧房间消息泄漏进新房间
+    chatMessages.value = []
+    declared.value = false
+    releaseCastLock()
     wsClient.disconnect()
     inRoom.value = false
   }
@@ -60,8 +65,22 @@ export const useGameStore = defineStore('game', () => {
     castLocked.value = true
     declared.value = true
     wsClient.send(Msg.SEND_CAST, { spellId })
-    // 兜底：即使 cast_result 丢失，固定时间后也要放开锁，避免永久卡死
-    setTimeout(() => { castLocked.value = false }, 800)
+    // 兜底：即使 cast_result 丢失，固定时间后也要放开锁，避免永久卡死。
+    // 句柄保存在 castLockTimer：新一次施法或结果回来时先清掉旧 timer，
+    // 避免旧 timer 在本轮锁定期内误开锁（残留连点窗口）。
+    if (castLockTimer) clearTimeout(castLockTimer)
+    castLockTimer = setTimeout(() => {
+      castLocked.value = false
+      castLockTimer = null
+    }, 800)
+  }
+
+  function releaseCastLock() {
+    if (castLockTimer) {
+      clearTimeout(castLockTimer)
+      castLockTimer = null
+    }
+    castLocked.value = false
   }
 
   function endTurn() {
@@ -88,6 +107,13 @@ export const useGameStore = defineStore('game', () => {
     wsClient.send(Msg.SEND_EMOJI, { folder, emojiId })
   }
 
+  // 聊天记录设上限，避免长房间会话内存无界增长
+  function trimChatMessages() {
+    if (chatMessages.value.length > 200) {
+      chatMessages.value.splice(0, chatMessages.value.length - 200)
+    }
+  }
+
   function hydrate(handlers = {}) {
     // Clean up previous handlers to prevent duplicate messages
     previousUnsubs.forEach(u => u())
@@ -101,6 +127,8 @@ export const useGameStore = defineStore('game', () => {
         if (data.phase !== 'playing' || (data.currentPlayerId && data.currentPlayerId !== myPlayerId.value)) {
           declared.value = false
         }
+        // 离开游戏中状态时，施法锁一并释放（回合结算/换轮后旧锁无意义）
+        if (data.phase !== 'playing') releaseCastLock()
         // 进入下一轮后服务端会发 playing 的 room_state；旧结算弹窗必须关掉，
         // 否则回合结算遮罩一直盖着界面，房主看似"无法开启下一轮"。
         if (data.phase !== 'round_end') roundEndSummary.value = null
@@ -116,6 +144,8 @@ export const useGameStore = defineStore('game', () => {
           data.round != null && roomState.value && data.round !== roomState.value.round
         // 回合交到别人手上，或开启了新的一轮（轮到我也算），宣告标记都要复位
         if (data.playerId !== myPlayerId.value || roundChanged) declared.value = false
+        // 回合交到我手上时，上一次施法的锁已无意义（服务端已处理完并移交回合），直接释放
+        if (data.playerId === myPlayerId.value) releaseCastLock()
         if (roomState.value) {
           roomState.value = { ...roomState.value, currentPlayerId: data.playerId, round: data.round ?? roomState.value.round }
         }
@@ -123,7 +153,7 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_CAST_RESULT, (data) => {
         lastCastResult.value = data
-        castLocked.value = false
+        releaseCastLock()
         handlers.onCastResult?.(data)
       }),
       wsClient.on(Msg.RCV_ROUND_END, (data) => {
@@ -145,6 +175,7 @@ export const useGameStore = defineStore('game', () => {
           text: data.text,
           timestamp: Date.now(),
         })
+        trimChatMessages()
       }),
       wsClient.on(Msg.RCV_EMOJI, (data) => {
         chatMessages.value.push({
@@ -156,9 +187,14 @@ export const useGameStore = defineStore('game', () => {
           emojiId: data.emojiId,
           timestamp: Date.now(),
         })
+        trimChatMessages()
       }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
+        // 服务端拒绝了上一步操作（如施法无效）：宣告标记/施法锁都要复位，
+        // 否则结束回合按钮会在未宣告的情况下可用，点了又被服务端拒绝
+        declared.value = false
+        releaseCastLock()
         if (errorClearTimer) clearTimeout(errorClearTimer)
         errorClearTimer = setTimeout(() => { error.value = null; errorClearTimer = null }, 5000)
       }),
@@ -187,7 +223,7 @@ export const useGameStore = defineStore('game', () => {
     error, myPlayerId, chatMessages, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect,
-  startRound, cast, endTurn, nextRound, rematch,
-  hydrate, clearRoundEnd, clearCastResult, clearGameOver,
+    startRound, cast, endTurn, nextRound, rematch,
+    hydrate, clearRoundEnd, clearCastResult, clearGameOver,
   }
 })

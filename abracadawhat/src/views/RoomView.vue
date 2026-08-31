@@ -1,4 +1,4 @@
-﻿<script setup>
+<script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
@@ -284,12 +284,7 @@ async function copyInvite() {
       class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#D8D0E4] bg-white shadow-2xl"
       style="height: 420px;"
     >
-      <GameChatPanel
-        :room-id="roomCode"
-        :player-id="game.myPlayerId"
-        :nickname="lobby.myNickname"
-        :avatar-id="lobby.myAvatarId"
-      />
+      <GameChatPanel />
     </div>
   </div>
 </template>

@@ -4,11 +4,10 @@
  * 排除 cb 文件夹
  */
 import { readdirSync, writeFileSync, existsSync } from 'fs'
-import { join, relative } from 'path'
-import { fileURLToPath } from 'url'
+import { join } from 'path'
 
-const __dirname = new URL('.', import.meta.url).pathname.replace(/^\/(.):\//, '$1:/')
-const rootDir = join(__dirname, '..')
+// 与 copy-emojis.mjs 保持一致，统一用 import.meta.dirname 定位（Node 20.11+）
+const rootDir = join(import.meta.dirname, '..')
 const emojisDir = join(rootDir, 'emojis')
 const outputPath = join(rootDir, 'src', 'emoji-manifest.json')
 

@@ -52,3 +52,15 @@
 - 施法防抖/提交锁：gameStore.cast 增加 castLocked（发出即锁，cast_result 回来或 800ms 超时释放），CastPanel 按钮在锁期间禁用；store 内的同步守卫是真正的防连点护栏（组件的 props 守卫在同一 tick 内读旧值拦不住双发）。效果：单张药水快速连点只成功一次，不再出现第二次"猜错"自伤。
 - 结束回合保障：gameStore 增加 declared 标记，宣告一次魔法后（不等服务端回包）结束回合按钮立即可用；turn_to 换人或开新轮、room_state 回合不在我身上时复位。服务端规则本就允许宣告后结束。
 - Playwright 验证脚本：临时资源/verify-fixes.py（已出牌常显、单张牌连点不自伤、宣告后结束回合可用、猜错 4/4 变灰+结束回合+移交，pageerrors 为空）；结束回合按钮断言要用 get_by_role("button", name=...)，否则会被我新加的"本回合已猜错，只能点结束回合"提示文案命中两次报 strict mode。
+
+## 2026-08-31 0831 反馈修复代码审阅（Standards/Spec 两轴 + 落地修复）
+
+- 审阅工具链：code-review skill 并行双轴（Standards=规范+坏味道基线 / Spec=需求还原），结论与自读 diff 交叉验证；写文件工具不可用时就改用 multi_agent spawn 并行子代理复现同一审查。
+- RoomView.vue 里有 UTF-8 BOM（EF BB BF，PowerShell 写入残留）：本地 Get-Content 读会吞掉 BOM 看不出，必须用 git show HEAD:<file> | Format-Hex 或 ReadAllBytes 验证 blob 原始字节才能在 diff 里发现。
+- gameStore.cast 的 800ms 兜底 setTimeout 若不存句柄：cast_result 提前回来解锁后，旧 timer 会在下一次施法锁定期内误开锁——防抖定时器必须句柄化（新 cast/result/错误路径先 clearTimeout 再 set/unset）。
+- castLocked/declared 除了 result 路径，还要在 turn_to 移交、room_state 离开 playing、RCV_ERROR（服务端拒绝）时复位；尤其 RCV_ERROR 不复位 declared 会导致"未宣告就点亮结束回合，按了又被服务端拒绝"。
+- chatMessages 断开/换房间必须清空，且设上限（splice 截断），否则旧房间消息随 re-hydrate 泄漏进新房间、长会话内存无界增长。
+- Vue setup 里从 pinia store 直接解构（const { x } = useStore()）会丢响应性，必须 storeToRefs；chat-kit ChatPanel 曾因此收不到新消息。
+- 跨包协议信封一次定死：表情消息字段是 {folder, emojiId}，写过一次 characterId 就会在 URL 拼接处出现 /stamp0530/undefined.png 这类错位；改协议字段的两个消费方必须一起改（Shotgun）。
+- 一次性 patch 脚本（_patch-emoji-close.mjs）含机器绝对路径且目标结构已变：要么当天删，要么留着就会被 git 跟踪进"remove temp files"之外，变成劣化源。Scripts 目录只保留可再生成的工具。
+- apply_patch 内容若包含正则转义（/ 等），用 String.raw 包补丁串，否则 JS 模板字符串会先吃掉反斜杠导致 Failed to find expected lines。

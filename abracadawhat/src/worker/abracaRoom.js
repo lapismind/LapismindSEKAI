@@ -589,11 +589,3 @@ export class AbracaRoom {
     if (socket) this.sendTo(socket, { type: 'error', data: { message } })
   }
 }
-
-
-
-
-
-
-
-

@@ -5,7 +5,7 @@
       <span v-if="!isConnected" class="connection-status disconnected">未连接</span>
       <span v-else class="connection-status connected">已连接</span>
     </div>
-    
+
     <div class="chat-messages" ref="messagesContainer">
       <div 
         v-for="(msg, index) in recentMessages" 
@@ -27,16 +27,16 @@
             </template>
             <template v-else-if="msg.type === 'emoji'">
               <img 
-                :src="getEmojiUrl(msg.emojiId, msg.characterId)" 
+                :src="getEmojiUrl(msg.folder, msg.emojiId)" 
                 class="emoji-image"
-                :alt="'Emoji ' + msg.emojiId"
+                :alt="'Emoji ' + msg.folder + '/' + msg.emojiId"
               />
             </template>
           </div>
         </div>
       </div>
     </div>
-    
+
     <div class="chat-input">
       <input 
         v-model="inputText"
@@ -58,7 +58,7 @@
         😊
       </button>
     </div>
-    
+
     <EmojiPicker 
       v-if="showEmojiPicker"
       @select="handleEmojiSelect"
@@ -69,6 +69,7 @@
 
 <script setup>
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useChatStore } from '../chat-store'
 import EmojiPicker from './EmojiPicker.vue'
 
@@ -96,8 +97,8 @@ const inputText = ref('')
 const showEmojiPicker = ref(false)
 const messagesContainer = ref(null)
 
-// 从 store 获取状态
-const { recentMessages, isConnected } = chatStore
+// 从 store 获取状态（storeToRefs 保持响应式，直接解构会丢失响应性导致列表不更新）
+const { recentMessages, isConnected } = storeToRefs(chatStore)
 
 // 连接到房间
 onMounted(() => {
@@ -279,7 +280,3 @@ watch(
   background: #28a745;
 }
 </style>
-
-
-
-

@@ -55,7 +55,6 @@ const selectEmoji = (emoji) => {
 <style scoped>
 .emoji-picker {
   position: relative;
-  width: 100%;
   width: 380px;
   max-height: 500px;
   background: white;
