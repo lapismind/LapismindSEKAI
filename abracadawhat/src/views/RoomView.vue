@@ -91,7 +91,7 @@ async function copyInvite() {
         <div class="flex items-baseline gap-3">
         <h1 class="text-lg font-bold text-[#333333]">🧙 <span class="hidden sm:inline">出包魔法师</span></h1>
         <span class="text-xs text-[#8A8299]"><span class="hidden sm:inline">房间号: </span>{{ roomCode }}</span>
-        <span v-if="game.roomState && game.roomState.round > 0" class="text-sm text-brand-600">
+        <span v-if="game.roomState && game.roomState.round > 0" class="hidden sm:inline text-sm text-brand-600">
           【第 {{ game.roomState.round }} 轮】
         </span>
       </div>
