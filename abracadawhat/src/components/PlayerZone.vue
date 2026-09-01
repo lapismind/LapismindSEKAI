@@ -6,12 +6,15 @@ const props = defineProps({
   player: { type: Object, required: true },
   isMe: { type: Boolean, default: false },
   isCurrent: { type: Boolean, default: false },
+  scoreDelta: { type: Number, default: 0 },
+  reveal: { type: Boolean, default: false },
+  revealedSecrets: { type: Array, default: () => [] },
 })
 
 const avatar = computed(() => avatarUrl(props.player.avatarId))
 
 // 我自己的手牌显示为背面；别人的手牌正面朝上
-const showFaceDown = computed(() => props.isMe)
+const showFaceDown = computed(() => props.isMe && !props.reveal)
 
 // 手牌按魔法序号升序排列（古代巨龙1 → 魔法药水8），便于快速找牌
 const sortedHand = computed(() =>
@@ -39,10 +42,15 @@ const sortedHand = computed(() =>
         <span v-if="isMe" class="text-brand-600">我</span>
       </div>
       <div class="text-xs text-[#8A8299]">{{ player.score }} 分</div>
+      <div v-if="scoreDelta > 0" class="text-xs font-bold text-green-600 animate-pulse">+{{ scoreDelta }}</div>
       <!-- 生命 + 秘密牌：数字呈现，收进头像列下方，收紧横向空间适配手机 -->
       <div class="mt-0.5 flex items-center gap-2 text-xs leading-none">
         <span :title="'生命 ' + player.health + '/6'">♥ {{ player.health }}</span>
-        <span class="text-purple-500">🔮×{{ player.secretsCount }}</span>
+        <span class="text-purple-500">🔮×{{ reveal ? revealedSecrets.length : player.secretsCount }}</span>
+      </div>
+      <!-- 轮结束时揭晓秘密牌 -->
+      <div v-if="reveal && revealedSecrets.length > 0" class="mt-1 flex flex-wrap gap-0.5">
+        <SpellCard v-for="(id, i) in [...revealedSecrets].sort((a,b)=>a-b)" :key="i" :spell-id="id" size="sm" />
       </div>
     </div>
 

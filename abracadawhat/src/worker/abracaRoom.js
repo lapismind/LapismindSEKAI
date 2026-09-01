@@ -533,8 +533,10 @@ export class AbracaRoom {
         isHost: p.isHost,
         connected: p.connected,
         handSize: p.hand.length,
-        // 游戏核心：你能看到别人的牌；自己的牌永远是暗的（连自己也不知道）
-        hand: isSelf(p) ? p.hand.map(() => null) : [...p.hand],
+        // 轮结束时所有牌公开（含自己），方便复盘
+        hand: state.phase === 'round_end' ? [...p.hand] : (isSelf(p) ? p.hand.map(() => null) : [...p.hand]),
+        // 轮结束时秘密牌也公开
+        ...(state.phase === 'round_end' ? { secrets: [...p.secrets] } : {}),
       })),
     }
   }

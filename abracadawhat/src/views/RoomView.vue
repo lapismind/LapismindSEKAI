@@ -71,6 +71,7 @@ function onIdentityChange(user) {
 const isHost = computed(() => game.roomState?.hostId === game.myPlayerId)
 const me = computed(() => game.roomState?.players.find(p => p.id === game.myPlayerId))
 const isMyTurn = computed(() => game.roomState?.currentPlayerId === game.myPlayerId)
+const isRoundEnd = computed(() => game.roomState?.phase === 'round_end')
 
 async function copyInvite() {
   const url = buildInviteUrl(window.location.origin, roomCode.value)
@@ -148,7 +149,8 @@ async function copyInvite() {
       />
 
       <div class="my-3 text-center text-sm">
-        <span v-if="isMyTurn" class="font-bold text-brand-600">轮到你施法了！</span>
+        <span v-if="isRoundEnd" class="text-brand-600 font-bold">🔮 本轮结束 — 查看所有牌面进行复盘</span>
+        <span v-else-if="isMyTurn" class="font-bold text-brand-600">轮到你施法了！</span>
         <span v-else class="text-[#8A8299]">
           等待 {{ game.roomState.players.find(p => p.id === game.roomState.currentPlayerId)?.nickname ?? '…' }} 施法…
         </span>
@@ -158,9 +160,12 @@ async function copyInvite() {
         <PlayerZone
           v-for="(p, i) in game.roomState?.players ?? []"
           :key="p.id"
-          :player="p.id === game.myPlayerId ? { ...p, hand: [] } : p"
+          :player="p"
           :is-me="p.id === game.myPlayerId"
           :is-current="game.roomState.currentPlayerId === p.id"
+          :score-delta="game.roundScoreDeltas[p.id] ?? 0"
+          :reveal="isRoundEnd"
+          :revealed-secrets="p.secrets ?? []"
         />
       </div>
 
@@ -192,28 +197,17 @@ async function copyInvite() {
         </div>
       </div>
 
-      <!-- 回合结算弹窗 -->
-      <div v-if="game.roundEndSummary" class="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
-        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-          <h3 class="mb-3 text-center text-xl font-bold text-[#333333]">本轮结束</h3>
-          <div class="space-y-2">
-            <div
-              v-for="(row, i) in game.roomState.summary?.standings ?? []"
-              :key="row.id"
-              class="flex items-center justify-between rounded-lg bg-[#F7EFF8] px-3 py-2"
-            >
-              <span class="text-sm text-[#333333]">{{ row.nickname }}</span>
-              <span class="font-bold" :class="i === 0 ? 'text-amber-500' : 'text-[#444444]'">{{ row.score }} 分</span>
-            </div>
-          </div>
-          <button
-            v-if="isHost"
-            type="button"
-            class="mt-4 w-full rounded-xl bg-brand-600 py-3 font-bold text-white hover:bg-brand-500"
-            @click="game.nextRound()"
-          >下一轮</button>
-          <p v-else class="mt-3 text-center text-xs text-[#8A8299]">等待房主开启下一轮…</p>
-        </div>
+
+      <!-- 轮结束：内联操作栏（不再弹窗） -->
+      <div v-if="isRoundEnd" class="mt-4 rounded-xl border border-brand-300 bg-brand-100 p-4 text-center">
+        <p class="mb-3 text-sm font-bold text-brand-700">本轮结束 — 所有手牌与秘密牌已公开</p>
+        <button
+          v-if="isHost"
+          type="button"
+          class="rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500"
+          @click="game.nextRound()"
+        >开启下一轮</button>
+        <p v-else class="text-xs text-[#8A8299]">等待房主开启下一轮…</p>
       </div>
 
       <!-- 整场结束 -->

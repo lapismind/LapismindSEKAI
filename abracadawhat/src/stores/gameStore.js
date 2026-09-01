@@ -13,6 +13,8 @@ export const useGameStore = defineStore('game', () => {
   const mySecrets = ref([])
   const lastCastResult = ref(null)
   const roundEndSummary = ref(null)
+  const roundScoreDeltas = ref({})
+  let preRoundScores = {}
   const lastGameOver = ref(null)
   const newAchievements = ref([])
   const chatMessages = ref([])
@@ -89,6 +91,8 @@ export const useGameStore = defineStore('game', () => {
 
   function nextRound() {
     roundEndSummary.value = null
+    roundScoreDeltas.value = {}
+    preRoundScores = {}
     wsClient.send(Msg.SEND_NEXT_ROUND, {})
   }
 
@@ -121,6 +125,13 @@ export const useGameStore = defineStore('game', () => {
 
     const newUnsubs = [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
+        // 新轮开始时快照各玩家分数，用于结算时算 delta
+        if (data.phase === 'playing' && roomState.value?.phase !== 'playing') {
+          preRoundScores = {}
+          for (const p of (data.players ?? [])) {
+            preRoundScores[p.id] = p.score
+          }
+        }
         roomState.value = data
         phase.value = data.phase
         // 不在游戏中或回合已不在我身上时，清掉本回合的宣告标记，避免跨回合残留
@@ -158,6 +169,12 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_ROUND_END, (data) => {
         roundEndSummary.value = data
+        // 计算每人本轮得分变化：结算后分数 - 轮开始时快照
+        const deltas = {}
+        for (const row of (data.standings ?? [])) {
+          deltas[row.id] = row.score - (preRoundScores[row.id] ?? 0)
+        }
+        roundScoreDeltas.value = deltas
         handlers.onRoundEnd?.(data)
       }),
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
@@ -219,7 +236,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
-    lastCastResult, roundEndSummary, lastGameOver, newAchievements,
+    lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, newAchievements,
     error, myPlayerId, chatMessages, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect,
