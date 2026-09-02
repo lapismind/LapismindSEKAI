@@ -101,8 +101,10 @@ const messagesContainer = ref(null)
 const { recentMessages, isConnected } = storeToRefs(chatStore)
 
 // 连接到房间
-onMounted(() => {
+onMounted(async () => {
   chatStore.connect(props.roomId, props.playerId, props.nickname, props.avatarId)
+  await nextTick()
+  scrollToBottom()
 })
 
 // 断开连接
@@ -141,13 +143,17 @@ const formatTime = (timestamp) => {
 }
 
 // 自动滚动到底部
+const scrollToBottom = () => {
+  if (messagesContainer.value) {
+    messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
 watch(
   () => recentMessages.value.length,
   async () => {
     await nextTick()
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
+    scrollToBottom()
   }
 )
 </script>
