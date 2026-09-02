@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
@@ -28,6 +28,7 @@ const roomCode = computed(() => (route.params.code ?? '').toString().toUpperCase
 const helpOpen = ref(false)
 const copied = ref(false)
 const chatOpen = ref(false)
+const hasUnread = ref(false)
 let unsubs = []
 let lastIdentityPlayerId = lobby.myPlayerId
 
@@ -39,6 +40,16 @@ onMounted(() => {
       onRoundEnd: () => {},
     })
   }
+})
+
+// 聊天面板关闭时收到新消息 → 亮红点；打开面板 → 消掉
+watch(() => game.chatMessages.length, () => {
+  if (!chatOpen.value) {
+    hasUnread.value = true
+  }
+})
+watch(chatOpen, (open) => {
+  if (open) hasUnread.value = false
 })
 
 onUnmounted(() => {
@@ -268,9 +279,15 @@ async function copyInvite() {
     <!-- 浮动聊天按钮 -->
     <button
       type="button"
-      class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-500 transition-all duration-200"
+      class="relative fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-500 transition-all duration-200"
       @click="chatOpen = !chatOpen"
-    >💬</button>
+    >
+      💬
+      <span v-if="hasUnread" class="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+        <span class="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+      </span>
+    </button>
 
     <!-- 聊天面板 -->
     <div
