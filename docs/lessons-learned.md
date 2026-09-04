@@ -73,3 +73,14 @@
 - `packages/chat-kit/package.json` 虽声明 `pinia`，但子包当前安装树里只有 Vue，新增 Store 测试会报 `Cannot find package 'pinia'`；运行子包测试前必须在该子包执行依赖安装并核对 lockfile。
 - 独立代码复审子代理可能因 `stream disconnected before completion` 无结果退出；不能把“已调用代理”等同于“已完成复审”，需重开新会话并由主代理继续检查 diff。
 - Tailwind 同一元素同时写 `relative fixed` 会生成互斥的 `position` 声明，最终位置取决于 CSS 生成顺序；浮动按钮本身使用 `fixed` 已能作为绝对定位子元素的包含块，不要再叠加 `relative`。定位修复需用 Playwright 同时断言桌面和手机视口的实际坐标。
+
+## 2026-09-04 游客重新进入资料重置
+
+- `lobbyStore.setNickname/setAvatar` 只改 Pinia 内存时，游客退出或刷新后认证客户端虽然会回读 `guestNickname/guestAvatarId`，但这两个键从未由大厅编辑器写入，最终只能恢复默认值；游客资料 setter 必须同步写 localStorage。
+- Vue setup 中用 `ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })` 创建的是一次性初始快照；异步身份到达并更新 Store 后，还需在 `identity-change` 中同步表单草稿，否则输入框仍显示挂载时的默认资料。
+- `ProfileEditor` 的“昵称”文字目前不是带 `for` 的真实 label，Playwright `get_by_label('昵称')` 会超时；现状下浏览器回归用 placeholder 定位。若后续做可访问性修复，应补 `for/id` 后再改回语义选择器。
+- 游客资料 Playwright 用 Vite dev 跑到 WebSocket 代理失败后，服务进程可能提前退出，刷新时报 `net::ERR_CONNECTION_REFUSED`；已构建页面的纯前端持久化回归改用 `vite preview`，避免后端代理状态干扰测试结论。
+- 改源码后直接跑 `vite preview` 会继续使用旧 `dist`，可能出现 localStorage 已是新值但页面仍按旧逻辑渲染的假失败；preview 回归前必须重新 `npm run build`。
+- PowerShell 不能把 `$env:NAME='value'` 赋值语句直接放在原生命令的 `&&` 右侧，会报 `Unexpected token`；需要拆成两次工具调用，或放进 PowerShell 脚本块。
+- 本地游客资料 E2E 的 `page.reload()` 会受房间 WebSocket/页面资源状态影响而等待超时；验证持久化更稳的方式是在同一 browser context 中关闭页面再新开首页，localStorage 保留且更贴近“退出后重新进入”。路由拦截要挂在 context 上，确保新页面继续生效。
+- 本轮 `vite preview` 在 with_server 探活成功后仍出现 `ERR_EMPTY_RESPONSE`/进程提前退出，继续重试无法证明业务正确；本地由单元测试和构建兜底，最终同一 Playwright 路径改在部署后的稳定生产域验收，失败则回滚。

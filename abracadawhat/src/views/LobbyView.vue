@@ -12,6 +12,7 @@ const router = useRouter()
 const roomCode = ref('')
 const invited = ref('')
 const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
+const profileEdited = ref(false)
 
 const roomFromUrl = readRoomCodeFromUrl()
 if (roomFromUrl) {
@@ -34,9 +35,17 @@ function enterRoom(code) {
   router.push({ path: `/room/${code}` })
 }
 
+function updateProfileDraft(value) {
+  profileDraft.value = value
+  profileEdited.value = true
+}
+
 // 身份变化（登录/注册/游客自动登录就绪）→ 同步大厅，入房时以会话身份为准
 function onIdentityChange(user) {
   lobby.syncIdentity(user)
+  if (!profileEdited.value) {
+    profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
+  }
 }
 </script>
 
@@ -57,7 +66,11 @@ function onIdentityChange(user) {
       </p>
     </div>
 
-    <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
+    <ProfileEditor
+      :model-value="profileDraft"
+      :avatar-choices="avatarChoices"
+      @update:model-value="updateProfileDraft"
+    />
 
     <!-- 统一身份：博客登录用户自动携带账号；游客可在此登录/注册 -->
     <AuthBadge @identity-change="onIdentityChange" />

@@ -19,3 +19,9 @@ test('聊天未读和滚动监听消息版本，不依赖达到上限后不再�
   assert.match(roomView, /watch\(\(\) => game\.chatMessageVersion/)
   assert.match(chatPanel, /\(\) => chatMessageVersion\.value/)
 })
+
+test('迟到的身份事件不会覆盖游客已经编辑的资料草稿', async () => {
+  const lobbyView = await readFile(new URL('../src/views/LobbyView.vue', import.meta.url), 'utf8')
+  assert.match(lobbyView, /profileEdited/)
+  assert.match(lobbyView, /if \(!profileEdited\.value\)/)
+})
