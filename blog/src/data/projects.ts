@@ -31,7 +31,7 @@ export const games: Project[] = [
 	{
 		slug: 'abracadawhat',
 		name: '出包魔法师',
-		subtitle: '2–5 人联机魔法对决，施法、抢先生到 8 分',
+		subtitle: '2–5 人联机魔法对决，施法、抢先到 8 分',
 		description:
 			'每人 5 张暗手牌、6 点生命值。你能看到别人的牌但看不到自己的，轮到你时喊出魔法名施法——攻击、回复、侦察各有妙用。率先拿到 8 分即胜出。服务端持全部暗牌做唯一仲裁，杜绝作弊。',
 		status: 'online',

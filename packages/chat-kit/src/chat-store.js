@@ -13,6 +13,8 @@ export const useChatStore = defineStore('chat', () => {
   const isConnected = ref(false)
   const chatClient = ref(null)
   const currentRoomId = ref(null)
+  const messageVersion = ref(0)
+  let connectionVersion = 0
 
   // 最近消息（用于显示最新几条）
   const recentMessages = computed(() => {
@@ -21,6 +23,11 @@ export const useChatStore = defineStore('chat', () => {
 
   // 连接到房间聊天
   function connect(roomId, playerId, nickname, avatarId) {
+    connectionVersion += 1
+    const version = connectionVersion
+    if (currentRoomId.value !== roomId) {
+      messages.value = []
+    }
     if (chatClient.value) {
       chatClient.value.disconnect()
     }
@@ -37,6 +44,7 @@ export const useChatStore = defineStore('chat', () => {
 
     // 监听聊天消息
     chatClient.value.onChat((data) => {
+      if (version !== connectionVersion) return
       messages.value.push({
         type: 'chat',
         playerId: data.playerId,
@@ -45,10 +53,12 @@ export const useChatStore = defineStore('chat', () => {
         text: data.text,
         timestamp: Date.now(),
       })
+      messageVersion.value += 1
     })
 
     // 监听表情包消息
     chatClient.value.onEmoji((data) => {
+      if (version !== connectionVersion) return
       messages.value.push({
         type: 'emoji',
         playerId: data.playerId,
@@ -58,11 +68,13 @@ export const useChatStore = defineStore('chat', () => {
         emojiId: data.emojiId,
         timestamp: Date.now(),
       })
+      messageVersion.value += 1
     })
   }
 
   // 断开连接
   function disconnect() {
+    connectionVersion += 1
     if (chatClient.value) {
       chatClient.value.disconnect()
       chatClient.value = null
@@ -94,6 +106,7 @@ export const useChatStore = defineStore('chat', () => {
     messages,
     isConnected,
     currentRoomId,
+    messageVersion,
     recentMessages,
     connect,
     disconnect,

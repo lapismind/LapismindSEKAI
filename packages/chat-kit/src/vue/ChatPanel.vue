@@ -98,7 +98,7 @@ const showEmojiPicker = ref(false)
 const messagesContainer = ref(null)
 
 // 从 store 获取状态（storeToRefs 保持响应式，直接解构会丢失响应性导致列表不更新）
-const { recentMessages, isConnected } = storeToRefs(chatStore)
+const { recentMessages, isConnected, messageVersion } = storeToRefs(chatStore)
 
 // 连接到房间
 onMounted(async () => {
@@ -150,7 +150,7 @@ const scrollToBottom = () => {
 }
 
 watch(
-  () => recentMessages.value.length,
+  () => messageVersion.value,
   async () => {
     await nextTick()
     scrollToBottom()
@@ -251,8 +251,9 @@ watch(
 }
 
 .emoji-image {
-  max-width: 100px;
-  max-height: 100px;
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
 }
 
 .chat-input {

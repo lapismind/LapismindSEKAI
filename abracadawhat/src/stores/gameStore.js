@@ -14,10 +14,10 @@ export const useGameStore = defineStore('game', () => {
   const lastCastResult = ref(null)
   const roundEndSummary = ref(null)
   const roundScoreDeltas = ref({})
-  let preRoundScores = {}
   const lastGameOver = ref(null)
   const newAchievements = ref([])
   const chatMessages = ref([])
+  const chatMessageVersion = ref(0)
   const error = ref(null)
   // 施法提交锁：发出 cast 后立刻禁用施法按钮，收到 cast_result 或超时后释放，
   // 防止手机/手快连点把同一张牌发出去两次（第二次必然判“猜错”自伤）。
@@ -92,7 +92,6 @@ export const useGameStore = defineStore('game', () => {
   function nextRound() {
     roundEndSummary.value = null
     roundScoreDeltas.value = {}
-    preRoundScores = {}
     wsClient.send(Msg.SEND_NEXT_ROUND, {})
   }
 
@@ -125,15 +124,11 @@ export const useGameStore = defineStore('game', () => {
 
     const newUnsubs = [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
-        // 新轮开始时快照各玩家分数，用于结算时算 delta
-        if (data.phase === 'playing' && roomState.value?.phase !== 'playing') {
-          preRoundScores = {}
-          for (const p of (data.players ?? [])) {
-            preRoundScores[p.id] = p.score
-          }
-        }
         roomState.value = data
         phase.value = data.phase
+        roundScoreDeltas.value = data.phase === 'round_end'
+          ? Object.fromEntries((data.summary?.standings ?? []).map((row) => [row.id, row.gained ?? 0]))
+          : {}
         // 不在游戏中或回合已不在我身上时，清掉本回合的宣告标记，避免跨回合残留
         if (data.phase !== 'playing' || (data.currentPlayerId && data.currentPlayerId !== myPlayerId.value)) {
           declared.value = false
@@ -169,12 +164,9 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_ROUND_END, (data) => {
         roundEndSummary.value = data
-        // 计算每人本轮得分变化：结算后分数 - 轮开始时快照
-        const deltas = {}
-        for (const row of (data.standings ?? [])) {
-          deltas[row.id] = row.score - (preRoundScores[row.id] ?? 0)
-        }
-        roundScoreDeltas.value = deltas
+        roundScoreDeltas.value = Object.fromEntries(
+          (data.standings ?? []).map((row) => [row.id, row.gained ?? 0]),
+        )
         handlers.onRoundEnd?.(data)
       }),
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
@@ -193,6 +185,7 @@ export const useGameStore = defineStore('game', () => {
           timestamp: Date.now(),
         })
         trimChatMessages()
+        chatMessageVersion.value += 1
       }),
       wsClient.on(Msg.RCV_EMOJI, (data) => {
         chatMessages.value.push({
@@ -205,6 +198,7 @@ export const useGameStore = defineStore('game', () => {
           timestamp: Date.now(),
         })
         trimChatMessages()
+        chatMessageVersion.value += 1
       }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
@@ -237,7 +231,7 @@ export const useGameStore = defineStore('game', () => {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, newAchievements,
-    error, myPlayerId, chatMessages, castLocked, declared,
+    error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect,
     startRound, cast, endTurn, nextRound, rematch,

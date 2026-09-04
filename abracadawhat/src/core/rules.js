@@ -107,6 +107,7 @@ function aliveOthers(state, playerId) {
 function finishRound(state, reason, winnerId = null) {
   if (state.phase === 'round_end') return
 
+  const roundGains = {}
   for (const player of state.players) {
     let gained = 0
     // 规则：清空手牌者获胜时，其余玩家按死亡处理。
@@ -123,6 +124,7 @@ function finishRound(state, reason, winnerId = null) {
     // 秘密牌只在存活到本轮结束时才有加分。
     if (player.alive) gained += player.secrets.length
     player.score += gained
+    roundGains[player.id] = gained
   }
 
   state.phase = 'round_end'
@@ -133,7 +135,13 @@ function finishRound(state, reason, winnerId = null) {
     winnerId,
     standings: [...state.players]
       .sort((a, b) => b.score - a.score)
-      .map((p) => ({ id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score })),
+      .map((p) => ({
+        id: p.id,
+        nickname: p.nickname,
+        avatarId: p.avatarId,
+        score: p.score,
+        gained: roundGains[p.id],
+      })),
   }
 }
 
@@ -232,8 +240,9 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
       if (state.secretPile.length > 0) caster.secrets.push(state.secretPile.shift())
       break
     case 5:
-      damagePlayer(up, 1)
-      damagePlayer(down, 1)
+      for (const target of new Map([up, down].filter(Boolean).map((player) => [player.id, player])).values()) {
+        damagePlayer(target, 1)
+      }
       break
     case 6:
       damagePlayer(up, 1)

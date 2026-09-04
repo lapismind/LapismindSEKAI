@@ -64,3 +64,12 @@
 - 跨包协议信封一次定死：表情消息字段是 {folder, emojiId}，写过一次 characterId 就会在 URL 拼接处出现 /stamp0530/undefined.png 这类错位；改协议字段的两个消费方必须一起改（Shotgun）。
 - 一次性 patch 脚本（_patch-emoji-close.mjs）含机器绝对路径且目标结构已变：要么当天删，要么留着就会被 git 跟踪进"remove temp files"之外，变成劣化源。Scripts 目录只保留可再生成的工具。
 - apply_patch 内容若包含正则转义（/ 等），用 String.raw 包补丁串，否则 JS 模板字符串会先吃掉反斜杠导致 Failed to find expected lines。
+
+## 2026-09-04 9.1/9.2 提交代码审阅
+
+- `packages/chat-kit/package.json` 的 `npm test` 指向不存在的 `tests/chat.test.mjs`，当前无法验证 ChatPanel 的滚动、跨房间消息隔离和消息上限行为；审阅共享包改动时必须先确认测试入口文件真实存在，不能把脚本存在等同于有测试门禁。
+- Node 直接导入 `abracadawhat/src/stores/gameStore.js` 会因源码使用无扩展名 ESM 导入而报 `ERR_MODULE_NOT_FOUND`；Store 测试也要先加载现有 `tests/helpers/workerLoader.mjs` 解析钩子。
+- ESM 静态 import 会在模块执行前完成依赖链接，因此把 resolver hook 写在静态 import 上一行仍然来不及；先静态导入 hook，再用顶层 `await import()` 动态加载被测源码。
+- `packages/chat-kit/package.json` 虽声明 `pinia`，但子包当前安装树里只有 Vue，新增 Store 测试会报 `Cannot find package 'pinia'`；运行子包测试前必须在该子包执行依赖安装并核对 lockfile。
+- 独立代码复审子代理可能因 `stream disconnected before completion` 无结果退出；不能把“已调用代理”等同于“已完成复审”，需重开新会话并由主代理继续检查 diff。
+- Tailwind 同一元素同时写 `relative fixed` 会生成互斥的 `position` 声明，最终位置取决于 CSS 生成顺序；浮动按钮本身使用 `fixed` 已能作为绝对定位子元素的包含块，不要再叠加 `relative`。定位修复需用 Playwright 同时断言桌面和手机视口的实际坐标。

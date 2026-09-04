@@ -6,7 +6,7 @@ import { EmojiPicker } from '@lapismind/chat-kit/vue'
 import { avatarUrl } from '../game/avatars'
 
 const game = useGameStore()
-const { chatMessages } = storeToRefs(game)
+const { chatMessages, chatMessageVersion } = storeToRefs(game)
 const inputText = ref('')
 const showEmojiPicker = ref(false)
 const messagesContainer = ref(null)
@@ -43,7 +43,7 @@ onMounted(async () => {
 })
 
 watch(
-  () => chatMessages.value.length,
+  () => chatMessageVersion.value,
   async () => {
     await nextTick()
     scrollToBottom()
@@ -77,7 +77,7 @@ watch(
           <div class="text-sm text-[#444] break-words">
             <template v-if="msg.type === 'chat'">{{ msg.text }}</template>
             <template v-else-if="msg.type === 'emoji'">
-              <img :src="getEmojiUrl(msg.folder, msg.emojiId)" class="max-h-20 max-w-[120px] object-contain" />
+              <img :src="getEmojiUrl(msg.folder, msg.emojiId)" class="h-20 w-[120px] object-contain" />
             </template>
           </div>
         </div>

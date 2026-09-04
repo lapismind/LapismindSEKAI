@@ -117,6 +117,23 @@ test('火球击败下家立即结算：施法者三分、存活者一分', () =>
   // 被击败的下家得 0 分，存活的另一名玩家得 1 分。
   assert.equal(state.players[1].score, 0)
   assert.equal(state.players[2].score, 1)
+  assert.deepEqual(
+    Object.fromEntries(state.summary.standings.map((row) => [row.id, row.gained])),
+    { caster: 3, next: 0, prev: 1 },
+  )
+})
+
+test('双人局闪电暴风雨只对唯一对手造成一点伤害', () => {
+  const state = prepareRound([{ id: 'caster' }, { id: 'opponent' }], fixedRng)
+  state.currentPlayerId = 'caster'
+  state.players[0].hand = [5, 8]
+  state.players[1].health = 6
+
+  const result = applyCast(state, 'caster', 5, fixedRng)
+
+  assert.equal(result.ok, true)
+  assert.equal(state.players[1].health, 5)
+  assert.deepEqual(result.damaged, [{ playerId: 'opponent', amount: 1 }])
 })
 
 test('普通施法失败扣一心并锁定回合；古龙失败掷骰扣 1 到 3 心', () => {

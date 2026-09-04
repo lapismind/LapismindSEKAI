@@ -43,7 +43,7 @@ onMounted(() => {
 })
 
 // 聊天面板关闭时收到新消息 → 亮红点；打开面板 → 消掉
-watch(() => game.chatMessages.length, () => {
+watch(() => game.chatMessageVersion, () => {
   if (!chatOpen.value) {
     hasUnread.value = true
   }
@@ -279,7 +279,8 @@ async function copyInvite() {
     <!-- 浮动聊天按钮 -->
     <button
       type="button"
-      class="relative fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg hover:bg-brand-500 transition-all duration-200"
+      aria-label="打开聊天室"
+      class="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-brand-600 text-white shadow-lg transition-all duration-200 hover:bg-brand-500"
       @click="chatOpen = !chatOpen"
     >
       💬
