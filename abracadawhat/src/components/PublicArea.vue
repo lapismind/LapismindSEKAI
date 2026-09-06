@@ -34,6 +34,7 @@ const globalTotals = computed(() => {
 })
 
 const tableOpen = ref(false)
+const openSpellId = ref(null)
 </script>
 
 <template>
@@ -56,18 +57,32 @@ const tableOpen = ref(false)
     </div>
     <!-- 已出牌展示：每种魔法已用/总数（常显，不用点开战绩） -->
     <div class="mb-2 flex flex-wrap justify-center gap-2">
-      <div
+      <button
         v-for="spell in SPELLS"
         :key="spell.id"
-        class="flex flex-col items-center rounded-lg bg-[#F7EFF8] px-2 py-1"
+        type="button"
+        class="flex min-h-[44px] min-w-[44px] flex-col items-center rounded-lg bg-[#F7EFF8] px-2 py-1 transition hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         :title="spell.desc"
+        :aria-label="`${spell.name}效果说明`"
+        :aria-expanded="openSpellId === spell.id"
+        :aria-controls="`public-spell-effect-${spell.id}`"
+        @click="openSpellId = openSpellId === spell.id ? null : spell.id"
       >
         <span class="text-base leading-none">{{ spell.emoji }}</span>
         <span class="mt-0.5 text-[8px] leading-none text-[#8A8299]">{{ spell.name }}</span>
         <span class="text-[10px] font-bold text-brand-600">
           {{ castCounts[spell.id] ?? 0 }}/{{ spell.count }}
         </span>
-      </div>
+      </button>
+    </div>
+    <div
+      v-for="spell in SPELLS"
+      v-show="openSpellId === spell.id"
+      :key="`effect-${spell.id}`"
+      :id="`public-spell-effect-${spell.id}`"
+      class="mb-2 rounded-lg border border-[#E6E1F0] bg-[#FAF7FC] px-3 py-2 text-xs leading-relaxed text-[#55506B]"
+    >
+      <strong class="text-[#333333]">{{ spell.name }}</strong>：{{ spell.desc }}
     </div>
     <!-- 战绩榜：点击展开/收起 -->
     <transition name="slide">

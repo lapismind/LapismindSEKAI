@@ -29,7 +29,7 @@ const bannerText = computed(() => {
     const parts = []
     for (const d of result.value.damaged ?? []) parts.push(`${nameOf(d.playerId)} -${d.amount}❤️`)
     for (const h of result.value.healed ?? []) parts.push(`${nameOf(h.playerId)} +${h.amount}❤️`)
-    if (result.value.spellId === 4) parts.push('获得秘密牌 🔮')
+    if (result.value.secretTaken != null) parts.push('获得秘密牌 🔮')
     return `✨ 猜对了！${name}生效：${parts.join('，') || '无直接目标'}`
   }
   return `💥 ${nameOf(result.value.playerId)}猜错了！${name}不在手，扣 ${result.value.damage}❤️`

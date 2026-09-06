@@ -177,7 +177,8 @@ test('猫头鹰获取秘密牌，轮末存活时每张加一分', () => {
   const state = makeStartedState()
   state.secretPile = [3, 6]
   state.players[0].hand = [4, 8]
-  applyCast(state, 'caster', 4, fixedRng)
+  const result = applyCast(state, 'caster', 4, fixedRng)
+  assert.equal(result.secretTaken, 3)
   assert.deepEqual(state.players[0].secrets, [3])
   assert.equal(state.secretPile.length, 1)
 
@@ -187,6 +188,18 @@ test('猫头鹰获取秘密牌，轮末存活时每张加一分', () => {
   assert.equal(state.currentPlayerId, 'next')
   assert.equal(state.players[0].hand.length, 5)
   for (const player of state.players) assert.equal(player.score, 0)
+})
+
+test('秘密牌堆为空时猫头鹰成功但不获取秘密牌', () => {
+  const state = makeStartedState()
+  state.secretPile = []
+  state.players[0].hand = [4, 8]
+
+  const result = applyCast(state, 'caster', 4, fixedRng)
+
+  assert.equal(result.ok, true)
+  assert.equal(result.secretTaken, null)
+  assert.deepEqual(state.players[0].secrets, [])
 })
 
 test('死亡玩家的秘密牌不加分', () => {
