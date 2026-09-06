@@ -157,6 +157,7 @@ async function copyInvite() {
         :match-history="game.roomState.matchHistory ?? []"
         :deck-remaining="game.roomState.deckRemaining ?? 0"
         :secret-pile-remaining="game.roomState.secretPileRemaining ?? 0"
+        :target-score="game.roomState.targetScore ?? 8"
       />
 
       <div class="my-3 text-center text-sm">
@@ -222,12 +223,13 @@ async function copyInvite() {
       </div>
 
       <!-- 整场结束 -->
-      <div v-if="game.lastGameOver" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div v-if="game.lastGameOver && game.gameOverOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
         <div class="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-brand-100 to-white p-8 text-center shadow-2xl">
          <button
            type="button"
            @click="game.clearGameOver()"
-           class="absolute top-3 right-3 text-xs text-[#8A8299] hover:text-[#333333]"
+           aria-label="关闭比赛结算详情"
+           class="absolute top-2 right-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm text-[#8A8299] hover:bg-white/70 hover:text-[#333333] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
            title="关闭，继续准备再来一局"
          >✕</button>
          <div class="text-5xl">🏆</div>
@@ -257,13 +259,28 @@ async function copyInvite() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div
+        v-if="game.lastGameOver"
+        data-testid="post-game-actions"
+        class="mt-4 rounded-xl border border-brand-300 bg-brand-100 p-4 text-center"
+      >
+        <p class="mb-3 text-sm font-bold text-brand-700">本场已结束</p>
+        <div class="flex flex-col justify-center gap-2 sm:flex-row">
           <button
             v-if="isHost"
             type="button"
-            class="mt-6 w-full rounded-xl bg-brand-600 py-3 font-bold text-white hover:bg-brand-500"
+            class="min-h-[44px] rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             @click="game.rematch()"
           >再来一局</button>
-          <p v-else class="mt-6 text-center text-xs text-[#8A8299]">等待房主再来一局…</p>
+          <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-[#8A8299]">等待房主再来一局…</p>
+          <button
+            type="button"
+            class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            @click="goToLobby"
+          >返回大厅</button>
         </div>
       </div>
     </template>

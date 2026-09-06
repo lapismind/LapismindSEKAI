@@ -68,3 +68,23 @@ test('公共区魔法效果通过独立可访问按钮展开且适合手机触�
   assert.match(source, /min-w-\[44px\]/)
   assert.match(source, /spell\.desc/)
 })
+
+test('公共区常驻显示目标分和每名玩家距离目标的分数', async () => {
+  const source = await readFile(new URL('../src/components/PublicArea.vue', import.meta.url), 'utf8')
+  assert.match(source, /targetScore/)
+  assert.match(source, /data-testid="target-score"/)
+  assert.match(source, /targetStandings/)
+  assert.match(source, /v-for="row in targetStandings"/)
+  assert.match(source, /Math\.max\(0, targetScore - row\.score\)/)
+  assert.match(source, /还差/)
+})
+
+test('比赛结算详情关闭后仍保留房主重赛和返回大厅操作条且没有投票', async () => {
+  const source = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  assert.match(source, /game\.lastGameOver && game\.gameOverOpen/)
+  assert.match(source, /data-testid="post-game-actions"/)
+  assert.match(source, /@click="game\.rematch\(\)"/)
+  assert.match(source, /等待房主再来一局/)
+  assert.match(source, /@click="goToLobby"/)
+  assert.doesNotMatch(source, /投票|vote/i)
+})

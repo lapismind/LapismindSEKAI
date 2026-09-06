@@ -27,6 +27,18 @@ function seedCompletedMatch(store) {
   assert.ok(store.lastGameOver)
 }
 
+test('关闭比赛结算详情只隐藏详情并保留重赛数据', () => {
+  const { store, cleanup } = createStore()
+  seedCompletedMatch(store)
+
+  assert.equal(store.gameOverOpen, true)
+  store.clearGameOver()
+
+  assert.equal(store.gameOverOpen, false)
+  assert.ok(store.lastGameOver)
+  cleanup()
+})
+
 function assertNewMatchTransientStateCleared(store) {
   assert.deepEqual(store.newAchievements, [])
   assert.equal(store.roundEndSummary, null)
@@ -123,6 +135,7 @@ test('收到第 1 轮 playing 确认后幂等清空旧比赛结束状态和临�
   wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
   assertNewMatchTransientStateCleared(store)
   assert.equal(store.lastGameOver, null)
+  assert.equal(store.gameOverOpen, false)
 
   wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
   assertNewMatchTransientStateCleared(store)

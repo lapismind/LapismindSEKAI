@@ -15,6 +15,7 @@ export const useGameStore = defineStore('game', () => {
   const roundEndSummary = ref(null)
   const roundScoreDeltas = ref({})
   const lastGameOver = ref(null)
+  const gameOverOpen = ref(false)
   const newAchievements = ref([])
   const chatMessages = ref([])
   const chatMessageVersion = ref(0)
@@ -110,6 +111,7 @@ export const useGameStore = defineStore('game', () => {
   function confirmNewMatch() {
     clearNewMatchTransientState()
     lastGameOver.value = null
+    gameOverOpen.value = false
   }
 
   function sendChat(text) {
@@ -184,6 +186,7 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
         lastGameOver.value = data
+        gameOverOpen.value = true
       }),
       wsClient.on(Msg.RCV_ACHIEVEMENTS_UNLOCKED, (data) => {
         newAchievements.value = data || []
@@ -237,13 +240,13 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function clearGameOver() {
-    lastGameOver.value = null
+    gameOverOpen.value = false
   }
 
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
-    lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, newAchievements,
+    lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, newAchievements,
     error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect,
