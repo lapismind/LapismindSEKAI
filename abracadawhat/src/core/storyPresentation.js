@@ -1,9 +1,9 @@
-const STARS_BY_TIER = {
+const STARS_BY_TIER = Object.assign(Object.create(null), {
   S: '★★★★',
   A: '★★★',
   B: '★★',
   C: '★',
-}
+})
 
 const TIER_BY_KEY = {
   comeback_win: 'S',
@@ -17,7 +17,9 @@ const TIER_BY_KEY = {
 }
 
 export function storyStars(tier) {
-  return STARS_BY_TIER[tier] ?? null
+  return typeof tier === 'string' && Object.hasOwn(STARS_BY_TIER, tier)
+    ? STARS_BY_TIER[tier]
+    : null
 }
 
 function findPlayer(context, playerId) {

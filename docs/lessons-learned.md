@@ -5,6 +5,9 @@
 - Vue may render adjacent interpolations and text into one accessibility text node; an achievement card containing stars plus a title will not satisfy `get_by_text(title, exact=True)` even though the title is visibly present. Browser assertions for highlighted-vs-collapsed items should target the card/container boundary and then inspect its content or visibility, rather than assuming each interpolation becomes an independent text node.
 - Substring text locators inside collapsed details can match both a title and its description, causing Playwright strict-mode failure. To verify progressive disclosure, assert the details element is closed and its content container is not visible, rather than selecting a non-unique substring.
 - A presentation fixture that invents a friendlier enum alias can make browser tests pass while production payloads still fall through to generic copy. Round-end fixtures must use the exact rules-engine reason values (`kill`, `all_spells`, `self_destruct`) before UI mapping is accepted.
+- Changing host identity while an already-open dialog remains open does not retrigger the dialog-open watcher, so a test must not expect initial focus to reset. For later Escape assertions after dynamic role changes, focus the intended in-dialog control explicitly; initial-open focus is a separate behavior.
+- When a modal gains required in-dialog actions, an older browser test that expected immediate Tab wrap from the close button is no longer a valid accessibility contract. Update it to assert the complete new focus sequence and both wrap boundaries while retaining the original close/reopen and persistent-bar checks.
+- Source-regression regexes for computed-style checks must include the actual variable qualifier (`style.visibility`), otherwise a correct implementation produces a false RED. Keep source assertions aligned to the exact expression and rely on Playwright for behavioral visibility proof.
 
 ## 2026-09-07 B4 plan restore
 

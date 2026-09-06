@@ -104,6 +104,10 @@ window.__b5Sent = []
 window.__b5SetRound = async reason => { setRound(reason); await nextTick() }
 window.__b5SetMatch = async () => { setMatch(); await nextTick() }
 window.__b5SetLegacy = async () => { setMatch({ legacy: true }); await nextTick() }
+window.__b5SetHost = async isHost => {
+  game.roomState = { ...game.roomState, hostId: isHost ? 'p1' : 'p2' }
+  await nextTick()
+}
 setRound()
 </script>
 

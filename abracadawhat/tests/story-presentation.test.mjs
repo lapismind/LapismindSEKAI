@@ -23,6 +23,12 @@ test('内部故事级别只映射为四种精确星串', () => {
   assert.equal(storyStars(null), null)
 })
 
+test('原型属性和非字符串级别始终返回 null', () => {
+  for (const tier of ['toString', 'constructor', '__proto__', 'hasOwnProperty', {}, [], 1, Symbol('S')]) {
+    assert.equal(storyStars(tier), null)
+  }
+})
+
 test('固定故事使用服务端事实生成中文展示且不泄露内部级别', () => {
   const cases = [
     {

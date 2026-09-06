@@ -56,3 +56,40 @@ Final full-suite result before report staging: 119/119 passed. Build and emoji p
 - Story star levels are product-defined worldbuilding labels, not measured global rarity.
 - Achievement display still consumes the existing pre-C payload fields (`stars`, `name`, `desc`). B5 does not define or migrate the Stage C catalog.
 - Legacy matches cannot show detailed statistics or stories that were never present in their payload; they intentionally fall back to basic ranking and score.
+
+## Reviewer Fixes v2
+
+All reported B5 High/Medium findings were addressed in a separate TDD pass.
+
+### Focus Trap
+
+- The dialog focus selector now includes links, form controls, media controls, contenteditable nodes, explicit tabindex nodes, and native `summary` controls.
+- Disabled controls, negative-tabindex controls, hidden/aria-hidden/inert ancestors, CSS-hidden controls, and zero-geometry controls are excluded.
+- The focusable list is recalculated on every Tab event, so opening or closing a disclosure cannot leave stale focus boundaries.
+- Browser coverage proves forward order from close through achievement summary, full-statistics summary, contextual rematch, and contextual return; the last control wraps to close and Shift+Tab from close wraps to the last control.
+- Enter and Space both toggle the achievement and full-statistics summaries.
+
+### Open-Dialog Actions
+
+- The open recap now contains a host-only primary rematch button, nonhost waiting text, and return-lobby button after the save-failure notice and full-statistics disclosure.
+- Contextual `aria-label` values distinguish open-dialog actions from the persistent closed-dialog action bar.
+- The persistent A4 bar is rendered only after the dialog closes, avoiding duplicate accessible action names while preserving close/reopen behavior.
+- Rematch keeps the dialog open and can be retried; the compiled fixture proves two consecutive sends with empty payloads while return remains available.
+- Nonhost state removes the in-dialog rematch control but retains waiting text and return availability.
+
+### Tier Lookup Hardening
+
+- The tier-to-stars table now has a null prototype and uses an own-property check.
+- Adversarial tests cover `toString`, `constructor`, `__proto__`, `hasOwnProperty`, objects, arrays, numbers, and symbols; all return `null`.
+
+### Reviewer Verification
+
+Fresh serial results:
+
+```text
+focused story/UI tests: 21/21 passed
+production build and emoji postbuild: passed
+Abracadawhat full suite: 120/120 passed
+A4 compiled Playwright fixture: passed
+B5 compiled desktop/mobile Playwright fixture: passed
+```

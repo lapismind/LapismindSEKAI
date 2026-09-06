@@ -93,8 +93,22 @@ function onGameOverKeydown(event) {
     return
   }
   if (event.key !== 'Tab') return
-  const focusable = [...gameOverDialog.value.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
-    .filter(element => !element.disabled)
+  const focusableSelector = [
+    'a[href]', 'area[href]', 'button', 'input', 'select', 'textarea', 'summary',
+    'iframe', 'object', 'embed', 'audio[controls]', 'video[controls]',
+    '[contenteditable="true"]', '[tabindex]',
+  ].join(', ')
+  const focusable = [...gameOverDialog.value.querySelectorAll(focusableSelector)]
+    .filter(element => {
+      const style = getComputedStyle(element)
+      return !element.matches(':disabled')
+        && element.tabIndex >= 0
+        && !element.closest('[hidden], [aria-hidden="true"]')
+        && !element.closest('[inert]')
+        && style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && element.getClientRects().length > 0
+    })
   if (!focusable.length) return
   const first = focusable[0]
   const last = focusable[focusable.length - 1]
@@ -434,11 +448,28 @@ async function copyInvite() {
                </div>
              </div>
            </details>
+
+           <div data-testid="game-over-dialog-actions" class="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+             <button
+               v-if="isHost"
+               type="button"
+               aria-label="结算详情内再来一局"
+               class="min-h-[44px] rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+               @click="game.rematch()"
+             >再来一局</button>
+             <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-[#8A8299]">等待房主再来一局…</p>
+             <button
+               type="button"
+               aria-label="结算详情内返回大厅"
+               class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+               @click="goToLobby"
+             >返回大厅</button>
+           </div>
          </div>
       </div>
 
       <div
-        v-if="game.lastGameOver"
+        v-if="game.lastGameOver && !game.gameOverOpen"
         ref="postGameActions"
         tabindex="-1"
         data-testid="post-game-actions"

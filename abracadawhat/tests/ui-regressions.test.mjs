@@ -102,6 +102,13 @@ test('比赛结算详情具备对话框语义和键盘焦点管理', async () =>
   assert.match(source, /event\.key !== 'Tab'/)
   assert.match(source, /gameOverCloseButton/)
   assert.match(source, /gameOverReopenButton/)
+  assert.match(source, /summary/)
+  assert.match(source, /getClientRects\(\)\.length/)
+  assert.match(source, /aria-hidden/)
+  assert.match(source, /getComputedStyle/)
+  assert.match(source, /style\.visibility !== 'hidden'/)
+  assert.match(source, /closest\('\[hidden\], \[aria-hidden="true"\]'\)/)
+  assert.match(source, /closest\('\[inert\]'\)/)
 })
 
 test('返回大厅和跨房间连接使用显式房间清理且同房重连仍只断开传输', async () => {
@@ -160,6 +167,10 @@ test('比赛复盘展示排名统计、最多三条故事、成就折叠和保�
   assert.match(source, /战报暂未保存/)
   assert.match(source, /matchReportStatus\?\.saved === false/)
   assert.match(source, /查看完整统计/)
+  assert.match(source, /data-testid="game-over-dialog-actions"/)
+  assert.match(source, /game\.lastGameOver && !game\.gameOverOpen/)
+  assert.match(source, /@click="game\.rematch\(\)"/)
+  assert.match(source, /@click="goToLobby"/)
 })
 
 test('故事展示只调用固定 presentation 且不把内部级别插入模板或可访问属性', async () => {
