@@ -61,7 +61,80 @@ export async function persistV2MatchReport(db, report) {
     return projected ? [{ playerId: entry.playerId, ...projected }] : []
   })
 
-  return { matchId: match.id, reportId: report.reportId, savedReports: [], newAchievements }
+  const savedReports = await persistPlayerMatchReports(db, report, match.id)
+
+  return { matchId: match.id, reportId: report.reportId, savedReports, newAchievements }
+}
+
+async function persistPlayerMatchReports(db, report, matchId) {
+  const playerIds = report.standings.map((row) => row.playerId)
+  let persistentPlayerIds
+  let unlockedRows
+  try {
+    const placeholders = playerIds.map(() => '?').join(', ')
+    const [users, achievements] = await Promise.all([
+      db.prepare(`SELECT player_id FROM users WHERE player_id IN (${placeholders})`).bind(...playerIds).all(),
+      db.prepare('SELECT player_id, achievement_key FROM achievements WHERE match_id = ? ORDER BY id').bind(matchId).all(),
+    ])
+    persistentPlayerIds = new Set(users.results.map((row) => row.player_id))
+    unlockedRows = achievements.results
+  } catch (error) {
+    console.error('personal report lookup failed:', error)
+    return []
+  }
+
+  const standingsJson = JSON.stringify(report.standings.map(({ playerId, nickname, rank, score }) => ({
+    playerId, nickname, rank, score,
+  })))
+  const savedReports = []
+  for (const standing of report.standings) {
+    if (!persistentPlayerIds.has(standing.playerId)) continue
+    const storiesJson = JSON.stringify(report.stories.filter((story) => story.playerId === standing.playerId).slice(0, 3))
+    const unlockedKeysJson = JSON.stringify(unlockedRows
+      .filter((row) => row.player_id === standing.playerId)
+      .map((row) => row.achievement_key))
+    try {
+      await db.batch([
+        db.prepare(
+          `INSERT INTO player_match_reports
+            (match_id, player_id, game, rank, score, rounds, player_count,
+             standings_json, stories_json, unlocked_keys_json, finished_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(match_id, player_id) DO UPDATE SET
+             game = excluded.game, rank = excluded.rank, score = excluded.score,
+             rounds = excluded.rounds, player_count = excluded.player_count,
+             standings_json = excluded.standings_json, stories_json = excluded.stories_json,
+             unlocked_keys_json = CASE
+               WHEN json_valid(player_match_reports.unlocked_keys_json)
+                AND json_type(player_match_reports.unlocked_keys_json) = 'array'
+                AND json_array_length(player_match_reports.unlocked_keys_json) > 0
+               THEN player_match_reports.unlocked_keys_json
+               ELSE excluded.unlocked_keys_json
+             END,
+             finished_at = excluded.finished_at`
+        ).bind(
+          matchId, standing.playerId, report.game, standing.rank, standing.score,
+          report.rounds, report.standings.length, standingsJson, storiesJson,
+          unlockedKeysJson, report.finishedAt,
+        ),
+        db.prepare(
+          `DELETE FROM player_match_reports
+           WHERE player_id = ? AND game = ? AND id NOT IN (
+             SELECT id FROM player_match_reports
+             WHERE player_id = ? AND game = ?
+             ORDER BY finished_at DESC, id DESC LIMIT 10
+           )`
+        ).bind(standing.playerId, report.game, standing.playerId, report.game),
+      ])
+      const stored = await db.prepare(
+        'SELECT id FROM player_match_reports WHERE match_id = ? AND player_id = ?'
+      ).bind(matchId, standing.playerId).first()
+      if (stored) savedReports.push(standing.playerId)
+    } catch (error) {
+      console.error(`personal report storage failed for ${standing.playerId}:`, error)
+    }
+  }
+  return savedReports
 }
 
 function playerUpsert(db, matchId, row) {

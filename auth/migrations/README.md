@@ -20,4 +20,8 @@ Migration `001` expects the original base schema to exist, so the migration dire
 
 Migration `006_legendary_achievement_aliases.sql` is additive and idempotent. It copies only the six approved, provably equivalent legacy unlocks with `INSERT OR IGNORE`; it does not delete old keys or infer any other achievement.
 
+Migration `007_player_match_reports.sql` is additive and locally repeatable through `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS`. It creates only the private per-player report storage and recent-order index; it does not add a query endpoint or migrate historical matches.
+
 Production remains a Task D4 operation, not a C3 action. D4 must first confirm a backup/recovery point, run the 005 duplicate preflight read-only, establish and review the migration baseline, then explicitly execute 005, 006, and 007 in order against the approved target. C3 performs no remote database command.
+
+Task D1 validates 007 only against isolated local D1 state. It does not run `wrangler d1 migrations apply`, `wrangler d1 execute --remote`, or otherwise change migration tracking or data on a remote database.

@@ -83,6 +83,26 @@ CREATE TABLE IF NOT EXISTS achievements (
 
 CREATE INDEX IF NOT EXISTS idx_achievements_pid ON achievements(player_id);
 
+-- 持久账号的个人战报快照；游客不写入，按玩家和游戏只保留最近 10 场
+CREATE TABLE IF NOT EXISTS player_match_reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  match_id INTEGER NOT NULL REFERENCES matches(id),
+  player_id TEXT NOT NULL,
+  game TEXT NOT NULL,
+  rank INTEGER NOT NULL,
+  score INTEGER NOT NULL,
+  rounds INTEGER NOT NULL,
+  player_count INTEGER NOT NULL,
+  standings_json TEXT NOT NULL,
+  stories_json TEXT NOT NULL,
+  unlocked_keys_json TEXT NOT NULL,
+  finished_at TEXT NOT NULL,
+  UNIQUE(match_id, player_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_player_match_reports_recent
+  ON player_match_reports(player_id, game, finished_at DESC, id DESC);
+
 -- 密码登录失败计数（限频用；登录成功即清空该用户名记录）
 CREATE TABLE IF NOT EXISTS login_attempts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

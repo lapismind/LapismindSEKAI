@@ -1,3 +1,16 @@
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT NOT NULL DEFAULT 'github',
+  github_id TEXT UNIQUE,
+  password_hash TEXT,
+  player_id TEXT UNIQUE,
+  nickname TEXT NOT NULL,
+  display_name TEXT,
+  avatar_url TEXT,
+  avatar_id TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   game TEXT NOT NULL,
@@ -34,3 +47,4 @@ CREATE TABLE achievements (
 INSERT INTO matches (game, room_id, rounds) VALUES ('abracadawhat', 'OLD', 1);
 INSERT INTO match_players (match_id, player_id) VALUES (1, 'p1');
 INSERT INTO match_players (match_id, player_id) VALUES (1, 'p2');
+INSERT INTO users (provider, github_id, player_id, nickname) VALUES ('github', 'd1-user', 'p1', '持久一号');

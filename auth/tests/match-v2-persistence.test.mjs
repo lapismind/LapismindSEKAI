@@ -80,6 +80,7 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
   }
 
   function first(stmt) {
+    if (stmt.sql.startsWith('SELECT id FROM player_match_reports')) return null
     if (stmt.sql.startsWith('SELECT id, report_hash, report_status, expected_players FROM matches')) {
       return matches.find((row) => row.report_id === stmt.args[0]) ?? null
     }
@@ -90,6 +91,10 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
   }
 
   function all(stmt) {
+    if (stmt.sql.startsWith('SELECT player_id FROM users')) return { results: [] }
+    if (stmt.sql.startsWith('SELECT player_id, achievement_key FROM achievements')) {
+      return { results: achievements.filter((row) => row.match_id === stmt.args[0]) }
+    }
     if (stmt.sql.startsWith('SELECT player_id, nickname')) {
       return {
         results: players

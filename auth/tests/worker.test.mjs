@@ -674,6 +674,7 @@ console.log('worker match-report tests passed')
   const matches = []
   const matchPlayers = []
   const achievementInserts = []
+  const personalReports = []
   let nextMatchId = 1
   env.DB = {
     matches,
@@ -684,6 +685,9 @@ console.log('worker match-report tests passed')
         args: [],
         bind(...args) { statement.args = args; return statement },
         async first() {
+          if (sql.startsWith('SELECT id FROM player_match_reports')) {
+            return personalReports.find((row) => row.match_id === statement.args[0] && row.player_id === statement.args[1]) ?? null
+          }
           if (sql.includes('FROM matches WHERE report_id = ?')) {
             const row = matches.find((match) => match.report_id === statement.args[0])
             return row ? { id: row.id, report_hash: row.report_hash, report_status: row.report_status, expected_players: row.expected_players } : null
@@ -726,9 +730,20 @@ console.log('worker match-report tests passed')
             achievementInserts.push([...statement.args])
             return { meta: { changes: 0 } }
           }
+          if (sql.startsWith('INSERT INTO player_match_reports')) {
+            const [matchId, playerId] = statement.args
+            const existing = personalReports.findIndex((row) => row.match_id === matchId && row.player_id === playerId)
+            const row = { match_id: matchId, player_id: playerId, args: [...statement.args] }
+            if (existing >= 0) personalReports[existing] = row
+            else personalReports.push(row)
+            return { meta: { changes: 1 } }
+          }
+          if (sql.startsWith('DELETE FROM player_match_reports')) return { meta: { changes: 0 } }
           throw new Error('v2 match report fake db: unsupported run: ' + sql)
         },
         async all() {
+          if (sql.startsWith('SELECT player_id FROM users')) return { results: [{ player_id: 'p1' }] }
+          if (sql.startsWith('SELECT player_id, achievement_key FROM achievements')) return { results: [] }
           if (sql.startsWith('SELECT player_id, nickname')) {
             return { results: matchPlayers.filter((row) => row.match_id === statement.args[0]).map((row) => ({
               player_id: row.args[1], nickname: row.args[2], score: row.args[3], is_champion: row.args[4],
@@ -783,9 +798,11 @@ console.log('worker match-report tests passed')
   assert.equal(secondBody.matchId, firstBody.matchId, '同一 reportId 必须返回同一内部 matchId')
   assert.equal(firstBody.reportId, payload.reportId)
   assert.equal(secondBody.reportId, payload.reportId)
-  assert.deepEqual(firstBody.savedReports, [])
+  assert.deepEqual(firstBody.savedReports, ['p1'])
+  assert.deepEqual(secondBody.savedReports, ['p1'])
   assert.equal(matches.length, 1, '只创建一个 matches 行')
   assert.equal(matchPlayers.length, 2, '每名玩家只创建一个 career 行')
+  assert.equal(personalReports.length, 1, '只有 users 中存在的 p1 保存个人战报，p2 游客跳过')
   assert.deepEqual(achievementInserts, [
     ['p1', 'different_paths', firstBody.matchId],
     ['p1', 'different_paths', firstBody.matchId],
