@@ -755,3 +755,71 @@ test('startNextRound persists comeback before reporting and repeated report buil
   assert.equal(sanitizeMatchReport(first).ok, true)
   await reported
 })
+
+test('authoritative comeback uses the later snapshot with the largest deficit', async () => {
+  const players = [player('p1', 0, { score: 15 }), player('p2', 1, { score: 10 })]
+  const state = makeState(players, { phase: 'round_end', round: 5 })
+  state.matchStats.scoreSnapshots = [{ p1: 3, p2: 7 }, { p1: 0, p2: 10 }]
+  state.matchStats.players.p1.scoreBySource = { roundWinPoints: 12, survivalPoints: 3, secretPoints: 0 }
+  state.matchStats.players.p1.roundWins = 4
+  state.matchStats.players.p1.roundWinsByReason = { kill: 4, all_spells: 0 }
+  state.matchStats.players.p2.scoreBySource = { roundWinPoints: 9, survivalPoints: 1, secretPoints: 0 }
+  state.matchStats.players.p2.roundWins = 3
+  state.matchStats.players.p2.roundWinsByReason = { kill: 3, all_spells: 0 }
+  let persisted
+  let reported
+  const room = new AbracaRoom({
+    name: 'STRONGEST-COMEBACK',
+    storage: { put: async (_key, nextState) => { persisted = structuredClone(nextState) } },
+    getWebSockets: () => [],
+    waitUntil(promise) { reported = promise },
+  }, {})
+
+  await room.startNextRound(state)
+
+  const expected = {
+    key: 'comeback_win',
+    playerId: 'p1',
+    data: { playerScoreBefore: 0, opponentScoreBefore: 10, finalScore: 15 },
+  }
+  assert.deepEqual(fact(persisted, 'comeback_win', 'p1'), [expected])
+  const beforeBuild = structuredClone(persisted)
+  assert.deepEqual(room.buildMatchReport(persisted, persisted.players[0]).facts.filter((entry) => entry.key === 'comeback_win'), [expected])
+  assert.deepEqual(persisted, beforeBuild)
+  await reported
+})
+
+test('comeback selection is deterministic across snapshot permutations and exact ties', () => {
+  const players = [player('p1', 0, { score: 15 }), player('p2', 1, { score: 10 }), player('p3', 2, { score: 7 })]
+  const snapshots = [
+    { p1: 3, p2: 10, p3: 6 },
+    { p1: 0, p2: 7, p3: 7 },
+    { p1: 0, p2: 7, p3: 5 },
+  ]
+  const orders = [snapshots, [...snapshots].reverse(), [...snapshots.slice(1), snapshots[0]]]
+  const reports = orders.map((scoreSnapshots) => {
+    const state = makeState(structuredClone(players), { round: 5 })
+    state.matchStats.scoreSnapshots = scoreSnapshots
+    state.matchStats.players.p1.scoreBySource = { roundWinPoints: 12, survivalPoints: 3, secretPoints: 0 }
+    state.matchStats.players.p1.roundWins = 4
+    state.matchStats.players.p1.roundWinsByReason = { kill: 4, all_spells: 0 }
+    state.matchStats.players.p2.scoreBySource = { roundWinPoints: 9, survivalPoints: 1, secretPoints: 0 }
+    state.matchStats.players.p2.roundWins = 3
+    state.matchStats.players.p2.roundWinsByReason = { kill: 3, all_spells: 0 }
+    state.matchStats.players.p3.scoreBySource = { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 }
+    state.matchStats.players.p3.roundWins = 2
+    state.matchStats.players.p3.roundWinsByReason = { kill: 2, all_spells: 0 }
+    const beforeBuild = structuredClone(state)
+    const report = makeRoom().buildMatchReport(state, state.players[0])
+    assert.deepEqual(state, beforeBuild)
+    return report.facts.filter((entry) => entry.key === 'comeback_win')
+  })
+
+  assert.deepEqual(reports[1], reports[0])
+  assert.deepEqual(reports[2], reports[0])
+  assert.deepEqual(reports[0], [{
+    key: 'comeback_win',
+    playerId: 'p1',
+    data: { playerScoreBefore: 0, opponentScoreBefore: 7, finalScore: 15 },
+  }])
+})

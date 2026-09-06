@@ -115,3 +115,30 @@ Final serial verification:
 Remaining concern:
 
 - Pre-B2 in-progress rooms continue to use the documented v1 report fallback because their earlier-round facts and score sources cannot be reconstructed authoritatively.
+
+## Strongest Comeback Fix Pass
+
+The final B2 review finding was fixed without implementing B3 story selection.
+
+- A pure `selectStrongestComebackFact()` helper now converts every qualifying score snapshot into the exact Auth `comeback_win` shape and selects the strongest candidate with the existing fact-strength comparison: largest deficit, then largest recovery margin, then final score, then canonical JSON order.
+- `captureComebackFact()` and `buildMatchReport()` both use that helper, preventing persistent and report-only comeback selection from drifting.
+- A later qualifying snapshot with a larger deficit now becomes the authoritative persisted fact before the final game-over save and report construction.
+- Snapshot input order and exact-data ties produce the same selected comeback fact. Repeated report builds remain pure and idempotent.
+- The unused v2 standings `wasBehind` calculation was removed. The v1 fallback keeps its required legacy boolean computation without mutating state.
+
+Strict TDD evidence:
+
+- RED: persistence selected the first `{ 3:7 }` deficit instead of the later stronger `{ 0:10 }` deficit; reversing snapshot order changed the report fact.
+- GREEN focused: `node --test tests/rules.test.mjs tests/match-facts.test.mjs` passed 44/44.
+
+Final serial verification:
+
+- Abracadawhat production build and emoji postbuild: passed.
+- Abracadawhat full: 77/77 passed.
+- Auth sanitizer focused: 19/19 passed.
+- Auth full, including isolated real D1 integration: 47/47 passed.
+- Auth full intentionally logged `forced player failure` while proving transaction rollback; the test passed.
+
+Remaining concern:
+
+- Pre-B2 in-progress rooms continue to use the documented v1 report fallback because their earlier-round facts and score sources cannot be reconstructed authoritatively.

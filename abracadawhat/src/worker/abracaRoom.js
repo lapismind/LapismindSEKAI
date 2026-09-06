@@ -107,6 +107,26 @@ function retainMatchFacts(facts) {
   return retained.sort(compareFacts)
 }
 
+function selectStrongestComebackFact(snapshots, champion) {
+  const candidates = snapshots.map((scores) => {
+    const opponentScoreBefore = Math.max(0, ...Object.entries(scores)
+      .filter(([id]) => id !== champion.id)
+      .map(([, score]) => score))
+    return {
+      key: 'comeback_win',
+      playerId: champion.id,
+      data: {
+        playerScoreBefore: scores[champion.id] || 0,
+        opponentScoreBefore,
+        finalScore: champion.score,
+      },
+    }
+  }).filter((fact) => fact.data.opponentScoreBefore >= 7
+    && fact.data.playerScoreBefore <= 3
+    && fact.data.finalScore > fact.data.opponentScoreBefore)
+  return candidates.sort(compareFactStrength)[0] ?? null
+}
+
 function validPlayerId(playerId) {
   return typeof playerId === 'string' && playerId.startsWith('p') && playerId.length <= MAX_PLAYER_ID_LENGTH
 }
@@ -447,12 +467,6 @@ export class AbracaRoom {
       .sort((a, b) => b.score - a.score)
       .map((player, index) => {
         const ms = state.matchStats?.players?.[player.id] || {}
-        const wasBehind = ms.playerId === champion.id && snapshots.some(snap => {
-          const oppMax = Math.max(0, ...Object.entries(snap)
-            .filter(([id]) => id !== ms.playerId)
-            .map(([, value]) => value))
-          return oppMax >= 7 && (snap[ms.playerId] || 0) <= 3
-        })
         return {
           playerId: player.id,
           nickname: normalizeNickname(ms.nickname ?? player.nickname),
@@ -471,24 +485,8 @@ export class AbracaRoom {
         }
       })
     const reportFactState = { matchStats: { facts: structuredClone(state.matchStats?.facts ?? []) } }
-    const championSnapshot = snapshots.find(snap => {
-      const opponentScoreBefore = Math.max(0, ...Object.entries(snap)
-        .filter(([id]) => id !== champion.id)
-        .map(([, value]) => value))
-      return opponentScoreBefore >= 7
-        && (snap[champion.id] || 0) <= 3
-        && champion.score > opponentScoreBefore
-    })
-    if (championSnapshot) {
-      const data = {
-        playerScoreBefore: championSnapshot[champion.id] || 0,
-        opponentScoreBefore: Math.max(0, ...Object.entries(championSnapshot)
-          .filter(([id]) => id !== champion.id)
-          .map(([, value]) => value)),
-        finalScore: champion.score,
-      }
-      this.addMatchFact(reportFactState, 'comeback_win', champion.id, data)
-    }
+    const comebackFact = selectStrongestComebackFact(snapshots, champion)
+    if (comebackFact) this.addMatchFact(reportFactState, comebackFact.key, comebackFact.playerId, comebackFact.data)
     return {
       schemaVersion: 2,
       reportId: state.matchStats?.reportId,
@@ -759,20 +757,8 @@ export class AbracaRoom {
 
   captureComebackFact(state, champion) {
     const snapshots = state.matchStats?.scoreSnapshots ?? []
-    const snapshot = snapshots.find((scores) => {
-      const opponentScore = Math.max(0, ...Object.entries(scores)
-        .filter(([id]) => id !== champion.id)
-        .map(([, score]) => score))
-      return opponentScore >= 7 && (scores[champion.id] || 0) <= 3 && champion.score > opponentScore
-    })
-    if (!snapshot) return
-    this.addMatchFact(state, 'comeback_win', champion.id, {
-      playerScoreBefore: snapshot[champion.id] || 0,
-      opponentScoreBefore: Math.max(0, ...Object.entries(snapshot)
-        .filter(([id]) => id !== champion.id)
-        .map(([, score]) => score)),
-      finalScore: champion.score,
-    })
+    const fact = selectStrongestComebackFact(snapshots, champion)
+    if (fact) this.addMatchFact(state, fact.key, fact.playerId, fact.data)
   }
 
   advanceActionIndex(state, playerId) {
