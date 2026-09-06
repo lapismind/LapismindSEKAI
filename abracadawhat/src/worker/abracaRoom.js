@@ -15,12 +15,22 @@ import { prepareRound, applyCast, endTurn, TARGET_SCORE } from '../core/rules'
 import { verifyIdentityToken } from '@lapismind/lobby-kit'
 
 const MAX_PLAYERS = 5
+const MAX_PLAYER_ID_LENGTH = 64
+const MAX_NICKNAME_LENGTH = 64
+
+function validPlayerId(playerId) {
+  return typeof playerId === 'string' && playerId.startsWith('p') && playerId.length <= MAX_PLAYER_ID_LENGTH
+}
+
+function normalizeNickname(nickname) {
+  return (typeof nickname === 'string' ? nickname.trim() : '').slice(0, MAX_NICKNAME_LENGTH) || '玩家'
+}
 
 export class AbracaRoom {
   constructor(ctx, env) {
     this.ctx = ctx
     this.env = env
-    this.roomId = ctx.name || 'room'
+    this.roomId = String(ctx.name || 'room').slice(0, 64)
     this.queue = Promise.resolve()
   }
 
@@ -69,7 +79,7 @@ export class AbracaRoom {
 
   async handleWebSocketUpgrade(req) {
     const url = new URL(req.url)
-    const nickname = url.searchParams.get('nickname') || '玩家'
+    const nickname = normalizeNickname(url.searchParams.get('nickname'))
     const avatarId = url.searchParams.get('avatarId') || '0'
 
     const secret = this.env?.IDENTITY_SECRET
@@ -84,6 +94,7 @@ export class AbracaRoom {
     } else {
       playerId = url.searchParams.get('playerId') || crypto.randomUUID()
     }
+    if (!validPlayerId(playerId)) return new Response('invalid playerId', { status: 400 })
 
     const state = await this.getState()
 
@@ -323,6 +334,7 @@ export class AbracaRoom {
         if (wasBehind) ms.comebackFromBehind = true
         return {
           ...ms,
+          nickname: normalizeNickname(ms.nickname),
           score: sp?.score ?? ms.score,
           isChampion: ms.playerId === champion.id,
           finalHp: sp?.health ?? null,

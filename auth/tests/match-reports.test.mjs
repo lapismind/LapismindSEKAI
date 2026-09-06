@@ -78,6 +78,79 @@ test('v1 清洗限制玩家数量、字符串长度、魔法 id 和非负整数'
   assert.equal(sanitize(body([{ ...basePlayer, kills: -1 }, { ...basePlayer, playerId: 'p2' }])).ok, false)
 })
 
+test('v1 清洗使用适合单场比赛的字段和集合上限', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const basePlayer = { playerId: 'p1', nickname: '法师', spellsCast: { 1: 1 } }
+  const pair = (first) => [first, { ...basePlayer, playerId: 'p2' }]
+  const body = (players, overrides = {}) => ({ game: 'abracadawhat', roomId: 'R', rounds: 1, players, ...overrides })
+
+  assert.equal(sanitize(body(pair(basePlayer), { roomId: 'R'.repeat(65) })).ok, false, 'roomId 最多 64 字符')
+  assert.equal(sanitize(body(pair(basePlayer), { rounds: 101 })).ok, false, '单场轮数有独立上限')
+  assert.equal(sanitize(body(pair({ ...basePlayer, finalHp: 7 }))).ok, false, '最终生命不能超过规则上限')
+  assert.equal(sanitize(body(pair({ ...basePlayer, score: 1501 }))).ok, false, '分数上限覆盖 100 轮双人局理论最大值')
+  assert.equal(sanitize(body(pair({ ...basePlayer, dragonOneCastKills: 5 }))).ok, false, '单次击杀不超过其余玩家数')
+  assert.equal(sanitize(body(pair({ ...basePlayer, roundSpellCasts: Array.from({ length: 4097 }, () => ({ round: 1, spellId: 1 })) }))).ok, false, '事件数组有保守上限')
+  assert.equal(sanitize(body(pair({ ...basePlayer, castStreaks: { 1: Array(4096).fill(true), 2: [true] } }))).ok, false, '跨魔法连续施法记录有总量上限')
+  assert.equal(sanitize(body(pair({ ...basePlayer, turnSpellSets: { 0: Array(37).fill(1) } }))).ok, false, '单回合施法集合有保守上限')
+  assert.equal(sanitize(body(pair({ ...basePlayer, spellsCast: { 1: 4096, 2: 1 } }))).ok, false, '魔法次数聚合不能绕过总量上限')
+
+  const maximumValid = sanitize(body(pair({
+    ...basePlayer,
+    score: 1500,
+    finalHp: 6,
+    roundsSurvived: 100,
+    roundEndSecrets: 12,
+    kills: 400,
+    deaths: 100,
+  }), { roomId: 'R'.repeat(64), rounds: 100 }))
+  assert.equal(maximumValid.ok, true, '规则允许的边界值保持兼容')
+})
+
+test('v1 清洗限制整份报告的遥测集合总量', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const events = Array.from({ length: 3000 }, () => ({ round: 1, spellId: 1 }))
+  const streak = Array(3000).fill(true)
+  const turns = Object.fromEntries(Array.from({ length: 100 }, (_, turn) => [turn, Array(36).fill(1)]))
+  const player = (playerId) => ({
+    playerId,
+    nickname: '法师',
+    spellsCast: { 1: 3000 },
+    roundSpellCasts: events,
+    castStreaks: { 1: streak },
+    turnSpellSets: turns,
+  })
+
+  assert.equal(sanitize({
+    game: 'abracadawhat',
+    roomId: 'R',
+    rounds: 100,
+    players: [player('p1'), player('p2')],
+  }).ok, false, '各集合单独合法时仍限制整份报告总元素数')
+})
+
+test('v1 清洗拒绝重复 playerId', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const player = { playerId: 'p-duplicate', nickname: '法师', spellsCast: {} }
+
+  assert.equal(sanitize({ game: 'abracadawhat', roomId: 'R', rounds: 1, players: [player, { ...player }] }).ok, false)
+})
+
+test('v1 魔法对象只接受规范键 1 到 8', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const basePlayer = { playerId: 'p1', nickname: '法师' }
+  const body = (field, value) => ({
+    game: 'abracadawhat',
+    roomId: 'R',
+    rounds: 1,
+    players: [{ ...basePlayer, [field]: value }, { ...basePlayer, playerId: 'p2' }],
+  })
+
+  for (const alias of ['01', '+1', '1.0']) {
+    assert.equal(sanitize(body('spellsCast', { [alias]: 1 })).ok, false, `spellsCast 拒绝 ${alias}`)
+    assert.equal(sanitize(body('castStreaks', { [alias]: [true] })).ok, false, `castStreaks 拒绝 ${alias}`)
+  }
+})
+
 test('A1 不接受 v2 或其他游戏形状', () => {
   assert.ok(moduleResult.module?.sanitizeMatchReport, 'sanitizeMatchReport must be implemented')
   const sanitize = moduleResult.module.sanitizeMatchReport

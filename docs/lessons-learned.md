@@ -37,6 +37,11 @@
 - `abracadawhat` 当前没有 README 或正式部署文档，只有会话交接日志；反复出现的表情漏包规则应写入 `abracadawhat/docs/deployment-v2.md`，不能继续只留在临时日志和个人记忆里。
 - 构建产物测试不能与 `npm run build` 并行：Vite 会先清空 `dist`，测试可能在 `postbuild` 复制表情之前读取，形成 `Missing built emoji` 假红。验证顺序必须是先完整 build，再运行测试。
 
+## 2026-09-06 Auth 路由 TDD 假 D1 边界
+
+- 新增参数拒绝测试若旧实现会继续访问 D1，假 D1 必须覆盖旧路径直到返回成功；否则 RED 会被 `unsupported SQL` 污染，不能证明缺失的是参数校验。正确 RED 应是业务状态断言失败，例如旧实现返回 200 而预期 400。
+- 集合限制测试必须让 fixture 精确越过被命名的边界；验证“单回合最多 36”应在同一回合放 37 项，不能用两个回合合计 37 项后把接受结果误判为实现错误。
+
 ## 2026-08-29 统一登录接入三个游戏（apply_patch 踩坑）
 
 - apply_patch 的路径参数用反斜杠（D:\\xxx\\yyy）会报 "Failed to read file"，一律用正斜杠 D:/xxx/yyy。

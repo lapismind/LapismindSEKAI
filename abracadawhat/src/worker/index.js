@@ -3,6 +3,13 @@ import { createIdentityToken, verifyIdentityToken } from '@lapismind/lobby-kit'
 
 export { AbracaRoom }
 
+const MAX_PLAYER_ID_LENGTH = 64
+const MAX_ROOM_ID_LENGTH = 64
+
+function validPlayerId(playerId) {
+  return typeof playerId === 'string' && playerId.startsWith('p') && playerId.length <= MAX_PLAYER_ID_LENGTH
+}
+
 // 读取跨子域会话 cookie（与 sekai-auth 共用同一 SESSION_SECRET 值）。
 // 博客登录用户 / 游客自动登录都会种下这个 HttpOnly 会话，跨子域携带。
 async function getSessionIdentity(request, env) {
@@ -25,6 +32,12 @@ export default {
       if (!secret) return new Response(JSON.stringify({ error: 'server not configured' }), { status: 500 })
       const session = await getSessionIdentity(request, env)
       const mintedPid = session?.playerId ?? pid
+      if (!validPlayerId(mintedPid)) {
+        return new Response(JSON.stringify({ error: 'invalid playerId' }), {
+          status: 400,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
       const token = await createIdentityToken(mintedPid, secret)
       return new Response(JSON.stringify({ token, playerId: mintedPid }), {
         headers: { 'content-type': 'application/json' },
@@ -42,7 +55,7 @@ export default {
         if (!identity) return new Response('invalid token', { status: 401 })
       }
       const roomId = url.searchParams.get('roomId')
-      if (!roomId) return new Response('missing roomId', { status: 400 })
+      if (!roomId || roomId.length > MAX_ROOM_ID_LENGTH) return new Response('invalid roomId', { status: 400 })
       const id = env.ROOM.idFromName(roomId)
       const stub = env.ROOM.get(id)
       return stub.fetch(request)
