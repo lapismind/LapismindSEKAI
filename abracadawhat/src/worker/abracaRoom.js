@@ -12,6 +12,7 @@
  */
 
 import { prepareRound, applyCast, endTurn, TARGET_SCORE } from '../core/rules'
+import { selectMatchStories } from '../core/story'
 import { verifyIdentityToken } from '@lapismind/lobby-kit'
 
 const MAX_PLAYERS = 5
@@ -420,16 +421,26 @@ export class AbracaRoom {
       })
       // 上报战绩到 auth Worker（异步，不阻塞广播）
       const reportPayload = this.buildMatchReport(state, champion)
+      const stories = selectMatchStories(state.matchStats?.facts)
+      if (reportPayload.reportId) reportPayload.stories = stories
       const matchStartedAt = state.matchStats?.startAt
       await this.saveState(state)
+      const gameOverData = {
+        winnerId: champion.id,
+        standings: [...state.players]
+          .map(p => ({ id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score }))
+          .sort((a, b) => b.score - a.score),
+      }
+      if (reportPayload.reportId) {
+        Object.assign(gameOverData, {
+          reportId: reportPayload.reportId,
+          stories,
+          reportStatus: 'saving',
+        })
+      }
       this.broadcast(state, {
         type: 'game_over',
-        data: {
-          winnerId: champion.id,
-          standings: [...state.players]
-            .map(p => ({ id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score }))
-            .sort((a, b) => b.score - a.score),
-        },
+        data: gameOverData,
       })
       this.ctx.waitUntil(this.reportMatch(reportPayload, matchStartedAt))
       return
@@ -497,13 +508,14 @@ export class AbracaRoom {
       rounds: state.round,
       standings,
       facts: reportFactState.matchStats.facts,
-      stories: [],
+      stories: selectMatchStories(reportFactState.matchStats.facts),
     }
   }
 
   async reportMatch(payload, matchStartedAt) {
     const secret = this.env?.MATCH_REPORT_SECRET
     if (!secret) return
+    const reportId = payload?.reportId
     try {
       // 本地开发可通过 MATCH_REPORT_URL 指向本地 auth，线上默认生产地址
       const reportUrl = this.env?.MATCH_REPORT_URL || 'https://auth.qmzhj.top/api/matches'
@@ -512,15 +524,31 @@ export class AbracaRoom {
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + secret },
         body: JSON.stringify(payload),
       })
+      if (!res.ok) throw new Error(`match report HTTP ${res.status}`)
       const data = await res.json()
-      if (res.ok && Array.isArray(data.newAchievements) && data.newAchievements.length > 0) {
-        // 把新成就广播回房间（结算画面展示）
-        const state = await this.getState()
-        if (state.phase !== 'game_over' || state.matchStats?.startAt !== matchStartedAt) return
-        this.broadcast(state, { type: 'achievements_unlocked', data: data.newAchievements })
+      const state = await this.getState()
+      const isCurrentMatch = state.phase === 'game_over' && (
+        reportId
+          ? state.matchStats?.reportId === reportId
+          : state.matchStats?.startAt === matchStartedAt
+      )
+      if (!isCurrentMatch) return
+      const achievements = Array.isArray(data?.newAchievements) ? data.newAchievements : []
+      if (reportId) {
+        this.broadcast(state, { type: 'achievements_unlocked', data: { reportId, achievements } })
+        this.broadcast(state, { type: 'match_report_status', data: { reportId, saved: true } })
+      } else if (achievements.length > 0) {
+        this.broadcast(state, { type: 'achievements_unlocked', data: achievements })
       }
     } catch (err) {
       console.error('report match failed:', err)
+      if (!reportId) return
+      const state = await this.getState()
+      if (state.phase !== 'game_over' || state.matchStats?.reportId !== reportId) return
+      this.broadcast(state, {
+        type: 'match_report_status',
+        data: { reportId, saved: false, message: '战报暂未保存' },
+      })
     }
   }
 

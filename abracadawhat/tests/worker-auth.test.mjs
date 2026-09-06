@@ -7,6 +7,7 @@
  *   /ws：token 校验后原样转发；身份判定交给 DO。
  */
 import assert from 'node:assert/strict'
+import { test } from 'node:test'
 import './helpers/workerLoader.mjs'
 
 const { default: worker } = await import('../src/worker/index.js')
@@ -423,5 +424,188 @@ const env = {
   }
   assert.equal(sent.filter((message) => message.type === 'achievements_unlocked').length, 1)
 }
+
+function makeFinishedV2State(reportId = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000') {
+  const players = [
+    { id: 'p1', nickname: '一号', avatarId: '1', score: 8, health: 1, isHost: true },
+    { id: 'p2', nickname: '二号', avatarId: '2', score: 7, health: 3, isHost: false },
+  ]
+  return {
+    hostId: 'p1', phase: 'round_end', round: 3, targetScore: 8, players, matchHistory: [],
+    matchStats: {
+      reportId,
+      factsVersion: 2,
+      startAt: '2026-09-07T02:00:00.000Z',
+      facts: [{
+        key: 'low_hp_kill', playerId: 'p1',
+        data: { round: 3, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' },
+      }],
+      players: Object.fromEntries(players.map((player) => [player.id, {
+        playerId: player.id,
+        nickname: player.nickname,
+        spellsCast: {}, kills: 0, dragonKills: 0, deaths: 0, suicides: 0,
+        scoreBySource: player.id === 'p1'
+          ? { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 }
+          : { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 },
+        roundWins: 2,
+        roundWinsByReason: { kill: 1, all_spells: 1 },
+        maxTurnCastCount: 4,
+        maxTurnDistinctSpells: 3,
+      }])),
+    },
+  }
+}
+
+function makeReportRoom({ state }) {
+  const sent = []
+  const waits = []
+  const socket = { send: message => sent.push(JSON.parse(message)) }
+  const ctx = {
+    name: 'ROOM-B4',
+    storage: {
+      get: async () => state,
+      put: async (_key, nextState) => { state = nextState },
+    },
+    getWebSockets: () => [socket],
+    waitUntil(promise) { waits.push(promise) },
+  }
+  const room = new AbracaRoom(ctx, { MATCH_REPORT_SECRET: 'test-secret' })
+  return { room, sent, waits }
+}
+
+async function withFetch(fetchImpl, run) {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = fetchImpl
+  try {
+    await run()
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+}
+
+test('game_over broadcasts reportId, standings, stories and saving before Auth resolves', async () => {
+  const pending = deferredResponse()
+  const state = makeFinishedV2State()
+  const harness = makeReportRoom({ state })
+
+  await withFetch(() => pending.promise, async () => {
+    await harness.room.startNextRound(state)
+    assert.equal(harness.waits.length, 1)
+    assert.deepEqual(harness.sent[0], {
+      type: 'game_over',
+      data: {
+        reportId: state.matchStats.reportId,
+        winnerId: 'p1',
+        standings: [
+          { id: 'p1', nickname: '一号', avatarId: '1', score: 8 },
+          { id: 'p2', nickname: '二号', avatarId: '2', score: 7 },
+        ],
+        stories: [{
+          key: 'low_hp_kill', playerId: 'p1', tier: 'A',
+          data: { round: 3, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' },
+        }],
+        reportStatus: 'saving',
+      },
+    })
+    assert.equal(harness.sent.length, 1, 'Auth 尚未返回时只应有立即 game_over')
+    pending.resolve(new Response(JSON.stringify({ savedReports: [], newAchievements: [] }), { status: 200 }))
+    await harness.waits[0]
+  })
+})
+
+function deferredResponse() {
+  let resolve
+  const promise = new Promise(resolvePromise => { resolve = resolvePromise })
+  return { promise, resolve }
+}
+
+test('reportMatch 200 broadcasts report-scoped achievements and saved true even with empty savedReports', async () => {
+  const state = makeFinishedV2State()
+  state.phase = 'game_over'
+  const harness = makeReportRoom({ state })
+  await withFetch(async () => new Response(JSON.stringify({
+    savedReports: [],
+    newAchievements: [{ playerId: 'p1', key: 'spell_ladder' }],
+  }), { status: 200 }), async () => {
+    await harness.room.reportMatch({ reportId: state.matchStats.reportId })
+  })
+
+  assert.deepEqual(harness.sent, [
+    { type: 'achievements_unlocked', data: { reportId: state.matchStats.reportId, achievements: [{ playerId: 'p1', key: 'spell_ladder' }] } },
+    { type: 'match_report_status', data: { reportId: state.matchStats.reportId, saved: true } },
+  ])
+})
+
+for (const failure of [
+  { name: 'HTTP 500', fetchImpl: async () => new Response('server failed', { status: 500 }) },
+  { name: 'invalid JSON', fetchImpl: async () => new Response('{', { status: 200 }) },
+  { name: 'network error', fetchImpl: async () => { throw new Error('offline') } },
+]) {
+  test(`reportMatch ${failure.name} logs and broadcasts report-scoped saved false without rejecting`, async () => {
+    const state = makeFinishedV2State()
+    state.phase = 'game_over'
+    const harness = makeReportRoom({ state })
+    const originalError = console.error
+    const errors = []
+    console.error = (...args) => errors.push(args)
+    try {
+      await withFetch(failure.fetchImpl, async () => {
+        await assert.doesNotReject(() => harness.room.reportMatch({ reportId: state.matchStats.reportId }))
+      })
+    } finally {
+      console.error = originalError
+    }
+
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0][0], 'report match failed:')
+    assert.deepEqual(harness.sent, [{
+      type: 'match_report_status',
+      data: { reportId: state.matchStats.reportId, saved: false, message: '战报暂未保存' },
+    }])
+  })
+}
+
+test('report A completion does not broadcast after report B becomes current', async () => {
+  const reportA = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000'
+  const reportB = 'abracadawhat:223e4567-e89b-42d3-a456-426614174000'
+  const state = makeFinishedV2State(reportA)
+  state.phase = 'game_over'
+  const pending = deferredResponse()
+  const harness = makeReportRoom({ state })
+
+  await withFetch(() => pending.promise, async () => {
+    const reporting = harness.room.reportMatch({ reportId: reportA })
+    state.matchStats.reportId = reportB
+    pending.resolve(new Response(JSON.stringify({
+      savedReports: [], newAchievements: [{ playerId: 'p1', key: 'spell_ladder' }],
+    }), { status: 200 }))
+    await reporting
+  })
+
+  assert.deepEqual(harness.sent, [])
+})
+
+test('report A failure does not broadcast saved false after report B becomes current', async () => {
+  const reportA = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000'
+  const reportB = 'abracadawhat:223e4567-e89b-42d3-a456-426614174000'
+  const state = makeFinishedV2State(reportA)
+  state.phase = 'game_over'
+  const pending = deferredResponse()
+  const harness = makeReportRoom({ state })
+  const originalError = console.error
+  console.error = () => {}
+  try {
+    await withFetch(() => pending.promise, async () => {
+      const reporting = harness.room.reportMatch({ reportId: reportA })
+      state.matchStats.reportId = reportB
+      pending.resolve(new Response('server failed', { status: 500 }))
+      await reporting
+    })
+  } finally {
+    console.error = originalError
+  }
+
+  assert.deepEqual(harness.sent, [])
+})
 
 console.log('abraca worker auth tests passed')

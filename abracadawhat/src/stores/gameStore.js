@@ -16,6 +16,7 @@ export const useGameStore = defineStore('game', () => {
   const roundScoreDeltas = ref({})
   const lastGameOver = ref(null)
   const gameOverOpen = ref(false)
+  const matchReportStatus = ref(null)
   const newAchievements = ref([])
   const chatMessages = ref([])
   const chatMessageVersion = ref(0)
@@ -78,6 +79,7 @@ export const useGameStore = defineStore('game', () => {
     roundScoreDeltas.value = {}
     lastGameOver.value = null
     gameOverOpen.value = false
+    matchReportStatus.value = null
     newAchievements.value = []
     error.value = null
   }
@@ -127,6 +129,7 @@ export const useGameStore = defineStore('game', () => {
 
   function clearNewMatchTransientState() {
     newAchievements.value = []
+    matchReportStatus.value = null
     roundEndSummary.value = null
     roundScoreDeltas.value = {}
   }
@@ -210,9 +213,23 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_GAME_OVER, (data) => {
         lastGameOver.value = data
         gameOverOpen.value = true
+        matchReportStatus.value = data.reportId && data.reportStatus === 'saving'
+          ? { reportId: data.reportId, saved: null }
+          : null
       }),
       wsClient.on(Msg.RCV_ACHIEVEMENTS_UNLOCKED, (data) => {
-        newAchievements.value = data || []
+        if (Array.isArray(data)) {
+          if (lastGameOver.value && !lastGameOver.value.reportId) {
+            newAchievements.value = [...newAchievements.value, ...data]
+          }
+          return
+        }
+        if (!data || data.reportId !== lastGameOver.value?.reportId || !Array.isArray(data.achievements)) return
+        newAchievements.value = [...newAchievements.value, ...data.achievements]
+      }),
+      wsClient.on(Msg.RCV_MATCH_REPORT_STATUS, (data) => {
+        if (!data || data.reportId !== lastGameOver.value?.reportId) return
+        matchReportStatus.value = data
       }),
       wsClient.on(Msg.RCV_CHAT, (data) => {
         chatMessages.value.push({
@@ -273,7 +290,7 @@ export const useGameStore = defineStore('game', () => {
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
-    lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, newAchievements,
+    lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, matchReportStatus, newAchievements,
     error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared,
     sendChat, sendEmoji,
     connect, disconnect, leaveRoom,

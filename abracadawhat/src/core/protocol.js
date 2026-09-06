@@ -24,6 +24,7 @@ export const Msg = {
   RCV_ROUND_END: 'round_end',
   RCV_GAME_OVER: 'game_over',
   RCV_ACHIEVEMENTS_UNLOCKED: 'achievements_unlocked',
+  RCV_MATCH_REPORT_STATUS: 'match_report_status',
   RCV_PLAYER_JOINED: 'player_joined',
   RCV_ERROR: 'error',
   RCV_CHAT: 'chat',

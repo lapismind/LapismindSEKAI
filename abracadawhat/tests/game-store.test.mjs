@@ -56,6 +56,16 @@ function seedCompletedMatch(store) {
   assert.ok(store.lastGameOver)
 }
 
+function emitV2GameOver(reportId) {
+  wsClient._emit(Msg.RCV_GAME_OVER, {
+    reportId,
+    winnerId: 'a',
+    standings: [{ id: 'a', nickname: 'A', score: 8 }],
+    stories: [],
+    reportStatus: 'saving',
+  })
+}
+
 test('关闭比赛结算详情只隐藏详情并保留重赛数据', () => {
   const { store, cleanup } = createStore()
   seedCompletedMatch(store)
@@ -287,5 +297,97 @@ test('收到第 1 轮 playing 确认后幂等清空旧比赛结束状态和临�
   wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
   assertNewMatchTransientStateCleared(store)
   assert.equal(store.lastGameOver, null)
+  cleanup()
+})
+
+test('v2 game_over initializes saving status and merges only same-report achievements', () => {
+  const { store, cleanup } = createStore()
+  emitV2GameOver('report-a')
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, {
+    reportId: 'report-a',
+    achievements: [{ playerId: 'a', key: 'first' }],
+  })
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, {
+    reportId: 'report-a',
+    achievements: [{ playerId: 'a', key: 'second' }],
+  })
+
+  assert.deepEqual(store.matchReportStatus, { reportId: 'report-a', saved: null })
+  assert.deepEqual(store.newAchievements.map(item => item.key), ['first', 'second'])
+  cleanup()
+})
+
+test('report B achievements and status cannot pollute current report A', () => {
+  const { store, cleanup } = createStore()
+  emitV2GameOver('report-a')
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, {
+    reportId: 'report-b', achievements: [{ playerId: 'a', key: 'stale' }],
+  })
+  wsClient._emit(Msg.RCV_MATCH_REPORT_STATUS, {
+    reportId: 'report-b', saved: false, message: '战报暂未保存',
+  })
+
+  assert.deepEqual(store.newAchievements, [])
+  assert.deepEqual(store.matchReportStatus, { reportId: 'report-a', saved: null })
+  cleanup()
+})
+
+test('same-report saved and failed statuses update matchReportStatus', () => {
+  const { store, cleanup } = createStore()
+  emitV2GameOver('report-a')
+  wsClient._emit(Msg.RCV_MATCH_REPORT_STATUS, { reportId: 'report-a', saved: true })
+  assert.deepEqual(store.matchReportStatus, { reportId: 'report-a', saved: true })
+
+  wsClient._emit(Msg.RCV_MATCH_REPORT_STATUS, {
+    reportId: 'report-a', saved: false, message: '战报暂未保存',
+  })
+  assert.deepEqual(store.matchReportStatus, {
+    reportId: 'report-a', saved: false, message: '战报暂未保存',
+  })
+  cleanup()
+})
+
+test('legacy v1 game_over and achievements array remain compatible but reject scoped v2 results', () => {
+  const { store, cleanup } = createStore()
+  wsClient._emit(Msg.RCV_GAME_OVER, {
+    winnerId: 'legacy', standings: [{ id: 'legacy', nickname: '旧法师', score: 8 }],
+  })
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, [{ playerId: 'legacy', key: 'legacy-first' }])
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, {
+    reportId: 'report-new', achievements: [{ playerId: 'legacy', key: 'wrong-match' }],
+  })
+  wsClient._emit(Msg.RCV_MATCH_REPORT_STATUS, { reportId: 'report-new', saved: true })
+
+  assert.equal(store.lastGameOver.reportId, undefined)
+  assert.equal(store.matchReportStatus, null)
+  assert.deepEqual(store.newAchievements, [{ playerId: 'legacy', key: 'legacy-first' }])
+  cleanup()
+})
+
+test('legacy achievements arriving after new-match confirmation are ignored', () => {
+  const { store, cleanup } = createStore()
+  wsClient._emit(Msg.RCV_GAME_OVER, {
+    winnerId: 'legacy', standings: [{ id: 'legacy', nickname: '旧法师', score: 8 }],
+  })
+  wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
+  wsClient._emit(Msg.RCV_ACHIEVEMENTS_UNLOCKED, [{ playerId: 'legacy', key: 'late' }])
+
+  assert.equal(store.lastGameOver, null)
+  assert.deepEqual(store.newAchievements, [])
+  cleanup()
+})
+
+test('new match transient clearing includes report status while A4 retains lastGameOver until confirmation', () => {
+  const { store, cleanup } = createStore()
+  emitV2GameOver('report-a')
+  wsClient._emit(Msg.RCV_MATCH_REPORT_STATUS, { reportId: 'report-a', saved: true })
+
+  store.rematch()
+  assert.equal(store.matchReportStatus, null)
+  assert.equal(store.lastGameOver.reportId, 'report-a')
+
+  wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
+  assert.equal(store.lastGameOver, null)
+  assert.equal(store.matchReportStatus, null)
   cleanup()
 })
