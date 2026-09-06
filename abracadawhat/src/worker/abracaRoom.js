@@ -300,6 +300,7 @@ export class AbracaRoom {
       })
       // 上报战绩到 auth Worker（异步，不阻塞广播）
       const reportPayload = this.buildMatchReport(state, champion)
+      const matchStartedAt = state.matchStats?.startAt
       await this.saveState(state)
       this.broadcast(state, {
         type: 'game_over',
@@ -310,7 +311,7 @@ export class AbracaRoom {
             .sort((a, b) => b.score - a.score),
         },
       })
-      this.ctx.waitUntil(this.reportMatch(reportPayload))
+      this.ctx.waitUntil(this.reportMatch(reportPayload, matchStartedAt))
       return
     }
     await this.beginRound(state)
@@ -343,7 +344,7 @@ export class AbracaRoom {
     }
   }
 
-  async reportMatch(payload) {
+  async reportMatch(payload, matchStartedAt) {
     const secret = this.env?.MATCH_REPORT_SECRET
     if (!secret) return
     try {
@@ -358,6 +359,7 @@ export class AbracaRoom {
       if (res.ok && Array.isArray(data.newAchievements) && data.newAchievements.length > 0) {
         // 把新成就广播回房间（结算画面展示）
         const state = await this.getState()
+        if (state.phase !== 'game_over' || state.matchStats?.startAt !== matchStartedAt) return
         this.broadcast(state, { type: 'achievements_unlocked', data: data.newAchievements })
       }
     } catch (err) {

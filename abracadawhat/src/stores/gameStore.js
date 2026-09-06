@@ -59,7 +59,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function startRound() {
-    clearNewMatchState()
+    clearNewMatchTransientState()
     wsClient.send(Msg.SEND_START_ROUND, {})
   }
 
@@ -97,14 +97,18 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function rematch() {
-    clearNewMatchState()
+    clearNewMatchTransientState()
     wsClient.send(Msg.SEND_REMATCH, {})
   }
 
-  function clearNewMatchState() {
+  function clearNewMatchTransientState() {
     newAchievements.value = []
     roundEndSummary.value = null
     roundScoreDeltas.value = {}
+  }
+
+  function confirmNewMatch() {
+    clearNewMatchTransientState()
     lastGameOver.value = null
   }
 
@@ -143,7 +147,7 @@ export const useGameStore = defineStore('game', () => {
         }
         // 离开游戏中状态时，施法锁一并释放（回合结算/换轮后旧锁无意义）
         if (data.phase !== 'playing') releaseCastLock()
-        if (data.phase === 'playing' && data.round === 1) clearNewMatchState()
+        if (data.phase === 'playing' && data.round === 1) confirmNewMatch()
         // 进入下一轮后服务端会发 playing 的 room_state；旧结算弹窗必须关掉，
         // 否则回合结算遮罩一直盖着界面，房主看似"无法开启下一轮"。
         if (data.phase !== 'round_end') roundEndSummary.value = null

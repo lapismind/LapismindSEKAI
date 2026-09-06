@@ -225,4 +225,60 @@ const env = {
   assert.equal(sanitized.ok, true, '实际 buildMatchReport v1 payload 可由 Auth 接收')
 }
 
+{
+  // A 局上报尚未返回时开始 B 局，A 局成就不得串进 B 局。
+  let resolveReport
+  const reportResponse = new Promise((resolve) => { resolveReport = resolve })
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => reportResponse
+
+  const sent = []
+  const socket = {
+    send(message) { sent.push(JSON.parse(message)) },
+    deserializeAttachment() { return { playerId: 'p1' } },
+  }
+  let state = {
+    hostId: 'p1',
+    phase: 'game_over',
+    round: 3,
+    targetScore: 8,
+    players: [
+      { id: 'p1', nickname: '一号', avatarId: '1', score: 8, isHost: true },
+      { id: 'p2', nickname: '二号', avatarId: '2', score: 3, isHost: false },
+    ],
+    matchStats: { startAt: '2026-09-07T00:00:00.000Z', players: {} },
+    matchHistory: [],
+  }
+  const ctx = {
+    name: 'ROOM-STALE-REPORT',
+    storage: {
+      get: async () => state,
+      put: async (_key, nextState) => { state = nextState },
+    },
+    getWebSockets: () => [socket],
+  }
+  const room = new AbracaRoom(ctx, { MATCH_REPORT_SECRET: 'test-secret' })
+  const pendingReport = room.reportMatch({ game: 'abracadawhat', players: [] }, state.matchStats.startAt)
+
+  await room.hostRematch(state, 'p1')
+  assert.equal(state.phase, 'playing')
+  assert.equal(state.round, 1)
+  assert.notEqual(state.matchStats.startAt, '2026-09-07T00:00:00.000Z')
+
+  resolveReport(new Response(JSON.stringify({
+    newAchievements: [{ playerId: 'p1', key: 'first_cast' }],
+  }), { status: 200, headers: { 'content-type': 'application/json' } }))
+  try {
+    await pendingReport
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+
+  assert.equal(
+    sent.some(message => message.type === 'achievements_unlocked'),
+    false,
+    '旧比赛延迟返回的成就不得广播到新比赛',
+  )
+}
+
 console.log('abraca worker auth tests passed')

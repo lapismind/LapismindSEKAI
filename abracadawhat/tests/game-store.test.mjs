@@ -27,18 +27,18 @@ function seedCompletedMatch(store) {
   assert.ok(store.lastGameOver)
 }
 
-function assertNewMatchStateCleared(store) {
+function assertNewMatchTransientStateCleared(store) {
   assert.deepEqual(store.newAchievements, [])
   assert.equal(store.roundEndSummary, null)
   assert.deepEqual(store.roundScoreDeltas, {})
-  assert.equal(store.lastGameOver, null)
 }
 
-function assertClearedBeforeSend(store, action) {
+function assertTransientStateClearedBeforeSend(store, action) {
   const originalSend = wsClient.send
   let sent = false
   wsClient.send = () => {
-    assertNewMatchStateCleared(store)
+    assertNewMatchTransientStateCleared(store)
+    assert.ok(store.lastGameOver)
     sent = true
   }
   try {
@@ -84,30 +84,48 @@ test('新消息版本在消息上限后仍递增，清空消息不会伪造新�
   cleanup()
 })
 
-test('startRound 发送新比赛动作前清空旧结算和新成就', () => {
+test('startRound 发送被丢弃时清空临时结算但保留可重试的比赛结束状态', () => {
   const { store, cleanup } = createStore()
   seedCompletedMatch(store)
 
-  assertClearedBeforeSend(store, () => store.startRound())
+  store.startRound()
+
+  assertNewMatchTransientStateCleared(store)
+  assert.ok(store.lastGameOver)
   cleanup()
 })
 
-test('rematch 发送新比赛动作前清空旧结算和新成就', () => {
+test('rematch 发送新比赛动作前仅清空临时状态并保留可重试的比赛结束状态', () => {
   const { store, cleanup } = createStore()
   seedCompletedMatch(store)
 
-  assertClearedBeforeSend(store, () => store.rematch())
+  assertTransientStateClearedBeforeSend(store, () => store.rematch())
+  assert.ok(store.lastGameOver)
   cleanup()
 })
 
-test('收到第 1 轮 playing 状态时幂等清空旧结算和新成就', () => {
+test('rematch 被服务端拒绝后仍保留可重试的比赛结束状态', () => {
+  const { store, cleanup } = createStore()
+  seedCompletedMatch(store)
+
+  store.rematch()
+  wsClient._emit(Msg.RCV_ERROR, { message: '游戏未结束，无法再来一局' })
+
+  assertNewMatchTransientStateCleared(store)
+  assert.ok(store.lastGameOver)
+  cleanup()
+})
+
+test('收到第 1 轮 playing 确认后幂等清空旧比赛结束状态和临时状态', () => {
   const { store, cleanup } = createStore()
   seedCompletedMatch(store)
 
   wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
-  assertNewMatchStateCleared(store)
+  assertNewMatchTransientStateCleared(store)
+  assert.equal(store.lastGameOver, null)
 
   wsClient._emit(Msg.RCV_ROOM_STATE, { phase: 'playing', round: 1, players: [] })
-  assertNewMatchStateCleared(store)
+  assertNewMatchTransientStateCleared(store)
+  assert.equal(store.lastGameOver, null)
   cleanup()
 })
