@@ -207,6 +207,7 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
   const damaged = []
   const healed = []
   let dice = null
+  let secretTaken = null
 
   const damagePlayer = (target, amount) => {
     if (!target?.alive || amount <= 0) return
@@ -237,7 +238,8 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
       healCaster(dice)
       break
     case 4:
-      if (state.secretPile.length > 0) caster.secrets.push(state.secretPile.shift())
+      secretTaken = state.secretPile.shift() ?? null
+      if (secretTaken != null) caster.secrets.push(secretTaken)
       break
     case 5:
       for (const target of new Map([up, down].filter(Boolean).map((player) => [player.id, player])).values()) {
@@ -264,7 +266,7 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
     dice,
     damaged,
     healed,
-    secretTaken: spell.id === 4 ? caster.secrets[caster.secrets.length - 1] ?? null : null,
+    secretTaken,
     handEmpty: caster.hand.length === 0,
   }
 

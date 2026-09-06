@@ -34,8 +34,11 @@ test('猫头鹰只有实际取得秘密牌时才显示获得提示', async () =>
 test('帮助说明准确描述猜错后的锁定和补牌流程', async () => {
   const source = await readFile(new URL('../src/components/GameHelp.vue', import.meta.url), 'utf8')
   assert.doesNotMatch(source, /没有这张牌则失败扣血，回合结束/)
-  assert.match(source, /失败扣血后仍留在当前行动/)
-  assert.match(source, /不能继续施法，只能结束行动并补牌/)
+  assert.doesNotMatch(source, /必须先成功施法一次/)
+  assert.match(source, /至少宣告一次魔法/)
+  assert.match(source, /成功后可以继续施法，也可以结束行动并补牌/)
+  assert.match(source, /失败会扣血，并阻止本次行动继续施法/)
+  assert.match(source, /必须结束行动并补牌/)
 })
 
 test('手牌魔法效果通过可访问按钮展开，不只依赖 title', async () => {
@@ -45,6 +48,10 @@ test('手牌魔法效果通过可访问按钮展开，不只依赖 title', async
   assert.match(source, /:aria-expanded="effectOpen"/)
   assert.match(source, /:aria-controls="effectId"/)
   assert.match(source, /:id="effectId"/)
+  assert.match(source, /watch\(\(\) => props\.faceDown/)
+  assert.match(source, /v-show="!faceDown && effectOpen && spell"/)
+  assert.match(source, /v-if="!faceDown && spell"/)
+  assert.doesNotMatch(source, /class="fixed /)
   assert.match(source, /min-h-\[44px\]/)
   assert.match(source, /min-w-\[44px\]/)
   assert.match(source, /spell\?\.desc/)

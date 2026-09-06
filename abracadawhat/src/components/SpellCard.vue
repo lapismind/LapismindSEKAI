@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, useId } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useId, watch } from 'vue'
 
 const props = defineProps({
   spellId: { type: Number, default: null },
@@ -12,6 +12,25 @@ import { SPELLS } from '../core/rules'
 const spell = computed(() => SPELLS.find(s => s.id === props.spellId) ?? null)
 const effectOpen = ref(false)
 const effectId = `spell-effect-${useId()}`
+
+watch(() => props.faceDown, (faceDown) => {
+  if (faceDown) effectOpen.value = false
+})
+
+function toggleEffect() {
+  const willOpen = !effectOpen.value
+  if (willOpen) {
+    window.dispatchEvent(new CustomEvent('abracadawhat:spell-effect-open', { detail: effectId }))
+  }
+  effectOpen.value = willOpen
+}
+
+function closeOtherEffect(event) {
+  if (event.detail !== effectId) effectOpen.value = false
+}
+
+onMounted(() => window.addEventListener('abracadawhat:spell-effect-open', closeOtherEffect))
+onUnmounted(() => window.removeEventListener('abracadawhat:spell-effect-open', closeOtherEffect))
 
 const dims = computed(() => {
   if (props.size === 'sm') return 'w-12 min-w-[36px] h-16 text-xl'
@@ -31,7 +50,7 @@ const dims = computed(() => {
       :aria-label="`${spell.name}效果说明`"
       :aria-expanded="effectOpen"
       :aria-controls="effectId"
-      @click="effectOpen = !effectOpen"
+      @click="toggleEffect"
     >
       <div class="text-center leading-tight">
         <div>{{ spell.emoji }}</div>
@@ -45,12 +64,10 @@ const dims = computed(() => {
     >
       <span class="opacity-50">🧙</span>
     </div>
-    <div
-      v-if="effectOpen && spell"
-      :id="effectId"
-      class="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-[#D8D0E4] bg-white p-3 text-left text-xs leading-relaxed text-[#55506B] shadow-xl sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-56"
-    >
-      <strong class="text-[#333333]">{{ spell.name }}</strong>：{{ spell?.desc }}
+    <div :id="effectId" v-show="!faceDown && effectOpen && spell" class="mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-[#E6E1F0] bg-white p-2 text-left text-xs leading-relaxed text-[#55506B] shadow-sm">
+      <template v-if="!faceDown && spell">
+        <strong class="text-[#333333]">{{ spell.name }}</strong>：{{ spell?.desc }}
+      </template>
     </div>
   </div>
 </template>

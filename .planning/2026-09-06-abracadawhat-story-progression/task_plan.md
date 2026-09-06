@@ -29,3 +29,7 @@
 | 读取实施计划时 offset 1001 超出 767 行范围 | 1 | 前两次读取已覆盖完整文件；确认总行数后不再请求越界片段。 |
 | A1 路由 RED 首次被假 D1 不支持 matches INSERT 污染 | 1 | 为该测试提供覆盖完整旧上报路径的专用假 D1，重新运行直到得到纯业务断言 RED。 |
 | A1 review 修复的 turnSpellSets 上限测试把 36+1 个跨回合事件误写成单回合超限 | 1 | 改为同一回合 37 个事件，准确验证每回合 36 上限；保留总事件独立上限。 |
+| A3 Playwright 测试夹具首次运行未挂载，定位按钮超时 | 1 | 该结果不算行为 RED；先采集 browser console/pageerror 和入口响应，修复夹具后再验证目标断言。 |
+| A3 夹具诊断发现 Vue runtime-only 不支持 JS 内联 template | 2 | 改用 test-only `.vue` SFC，由项目已有 Vite Vue 插件编译，不修改生产 Vue alias。 |
+| A3 夹具同时存在两个“猫头鹰效果说明”导致 Playwright strict mode | 3 | 将 SpellCard 定位限定到对应 `data-testid` 容器，公共区定位限定到自身 section。 |
+| A3 Playwright `page.on` 直接传 `list.append` 抛 AttributeError | 4 | 改用 lambda 包装事件参数后追加到列表。 |

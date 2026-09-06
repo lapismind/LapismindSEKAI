@@ -1,5 +1,12 @@
 # Lessons Learned
 
+## 2026-09-07 Vite 测试夹具必须先验证实际挂载
+
+- 新增 test-only Vite HTML/module harness 后，Playwright 找不到首个组件不能直接视为业务 RED；先检查页面错误、console 和入口模块响应，确认 Vue 已挂载，再让测试进入目标行为断言。测试基础设施错误与功能缺失必须分开记录。
+- 项目使用 Vue runtime-only 构建时，测试入口不能在 JavaScript 对象里写 `template` 字符串；应使用由现有 `@vitejs/plugin-vue` 编译的 test-only `.vue` SFC，避免运行时编译警告和空白挂载。
+- 同一夹具同时渲染组件级和公共区同名 `aria-label` 按钮时，Playwright role locator 会触发 strict mode；行为测试应先限定到语义 section 或 `data-testid` 容器，再按 role/name 定位，避免选择器歧义掩盖目标断言。
+- Python Playwright 的 `page.on()` 会给 handler 挂内部属性，不能直接传 `list.append` 这类无 `__dict__` 的 built-in method；用 `lambda error: errors.append(error)` 或普通函数包装。
+
 ## 2026-09-04 空补丁调用
 
 - `apply_patch` 不能传空对象或缺少 `patchText`；即使只是准备进入下一步，也不要预调用编辑工具。调用前先形成实际 diff，再提交完整补丁。

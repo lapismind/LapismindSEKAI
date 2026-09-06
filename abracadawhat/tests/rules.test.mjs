@@ -202,6 +202,19 @@ test('秘密牌堆为空时猫头鹰成功但不获取秘密牌', () => {
   assert.deepEqual(state.players[0].secrets, [])
 })
 
+test('已有秘密牌时对空牌堆施放猫头鹰不会重复报告旧秘密牌', () => {
+  const state = makeStartedState()
+  state.secretPile = []
+  state.players[0].hand = [4, 8]
+  state.players[0].secrets = [2]
+
+  const result = applyCast(state, 'caster', 4, fixedRng)
+
+  assert.equal(result.ok, true)
+  assert.equal(result.secretTaken, null)
+  assert.deepEqual(state.players[0].secrets, [2])
+})
+
 test('死亡玩家的秘密牌不加分', () => {
   const state = makeStartedState()
   // caster 有 1 张秘密牌但被打死；next 也活着但没有秘密牌。
