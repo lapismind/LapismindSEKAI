@@ -236,6 +236,49 @@ test('ignores unknown, incomplete, malformed, or semantically invalid facts', ()
   assert.deepEqual(storyModule.selectMatchStories(null), [])
 })
 
+test('prototype-key unknown facts and malformed non-JSON values never throw and are ignored', () => {
+  const throwingData = new Proxy({}, {
+    get() { throw new Error('malformed getter') },
+  })
+  const throwingFact = new Proxy({}, {
+    get() { throw new Error('malformed fact getter') },
+  })
+  const malformed = [
+    throwingFact,
+    ...['constructor', '__proto__', 'toString'].map((key) => fact(key, 'p1', {})),
+    fact(Symbol('unknown'), 'p1', {}),
+    fact('all_spell_types', 'p1', { spellIds: [1, 2, 3, 4, 5, 6, 7, Symbol('spell')] }),
+    fact('round_win_routes', 'p1', { kill: 1n, allSpells: 1 }),
+    fact('comeback_win', 'p1', throwingData),
+  ]
+
+  assert.doesNotThrow(() => storyModule.selectMatchStories(malformed))
+  assert.deepEqual(storyModule.selectMatchStories(malformed), [])
+
+  const malformedList = []
+  Object.defineProperty(malformedList, Symbol.iterator, {
+    get() { throw new Error('malformed iterator') },
+  })
+  assert.doesNotThrow(() => storyModule.selectMatchStories(malformedList))
+  assert.deepEqual(storyModule.selectMatchStories(malformedList), [])
+})
+
+test('round route ties match B2 retention using total wins then canonical JSON only', () => {
+  const retainedByB2 = fact('round_win_routes', 'p1', { kill: 1, allSpells: 2 })
+  const equalTotalCandidate = fact('round_win_routes', 'p1', { kill: 2, allSpells: 1 })
+
+  const fromBoth = storyModule.selectMatchStories([equalTotalCandidate, retainedByB2])
+  const fromRetainedOnly = storyModule.selectMatchStories([retainedByB2])
+
+  assert.deepEqual(fromBoth, fromRetainedOnly)
+  assert.deepEqual(fromBoth, [{
+    key: 'round_win_routes',
+    playerId: 'p1',
+    tier: 'B',
+    data: { kill: 1, allSpells: 2 },
+  }])
+})
+
 test('whitelists output fields and never carries arbitrary text or nested extras', () => {
   const input = fact('low_hp_kill', 'p1', {
     ...validFacts.low_hp_kill.data,

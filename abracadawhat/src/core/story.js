@@ -101,7 +101,7 @@ function comebackStrength(data) {
 }
 
 function routeStrength(data) {
-  return [data.kill + data.allSpells, data.kill, data.allSpells]
+  return [data.kill + data.allSpells]
 }
 
 function voluntaryStopStrength(data) {
@@ -135,21 +135,31 @@ function compareStories(left, right) {
 }
 
 export function selectMatchStories(facts, limit = 3) {
-  if (!Array.isArray(facts)) return []
+  let entries
+  try {
+    if (!Array.isArray(facts)) return []
+    entries = Array.from(facts)
+  } catch {
+    return []
+  }
   const selected = new Map()
 
-  for (const fact of facts) {
-    if (!fact || typeof fact !== 'object' || Array.isArray(fact) || !isPlayerId(fact.playerId)) continue
-    const rule = RULES[fact.key]
-    if (!rule) continue
-    const data = rule.clean(fact.data, fact.playerId)
-    if (!data) continue
+  for (const fact of entries) {
+    try {
+      if (!fact || typeof fact !== 'object' || Array.isArray(fact) || !isPlayerId(fact.playerId)) continue
+      if (!Object.hasOwn(RULES, fact.key)) continue
+      const rule = RULES[fact.key]
+      const data = rule.clean(fact.data, fact.playerId)
+      if (!data) continue
 
-    const story = { key: rule.key, playerId: fact.playerId, tier: rule.tier, data }
-    const candidate = { story, strength: rule.strength(data) }
-    const family = `${story.key}\u0000${story.playerId}`
-    const existing = selected.get(family)
-    if (!existing || preferCandidate(candidate, existing)) selected.set(family, candidate)
+      const story = { key: rule.key, playerId: fact.playerId, tier: rule.tier, data }
+      const candidate = { story, strength: rule.strength(data) }
+      const family = `${story.key}\u0000${story.playerId}`
+      const existing = selected.get(family)
+      if (!existing || preferCandidate(candidate, existing)) selected.set(family, candidate)
+    } catch {
+      continue
+    }
   }
 
   const count = Number.isInteger(limit) ? Math.max(0, Math.min(3, limit)) : 3

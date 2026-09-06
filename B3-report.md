@@ -59,3 +59,28 @@ Final results:
 
 - The selector cannot verify that referenced player IDs belong to a particular match because its approved interface accepts only `facts`, not standings. B3 validates player ID shape and rejects a low-HP self-target; the existing Auth sanitizer remains the match-membership boundary when stories enter a v2 report.
 - Match-level priority can select several stories for one player. The approved specification defines no fairness quota, so B3 does not invent one. `playerId` is preserved for later per-player report filtering.
+
+## Reviewer Medium Fix Pass
+
+Both B3 Medium findings were fixed in a strict RED/GREEN cycle without adding exports or changing B3 scope.
+
+- Prototype-chain names `constructor`, `__proto__`, and `toString` are rejected with an own-property rule lookup. They can no longer resolve inherited `Object.prototype` members as story rules.
+- Input iteration and every individual fact are handled inside exception boundaries. Throwing iterators, throwing fact/data proxies, and malformed non-JSON values such as `Symbol` and `BigInt` are ignored; one malformed entry cannot stop selection of other facts.
+- `round_win_routes` strength now matches authoritative B2 exactly: compare total route wins only, then use canonical JSON ascending as the stable tie-break. It no longer prefers a larger `kill` count when totals are equal.
+- A pressure-equivalence regression proves B3 returns the same route story when it receives both equal-total candidates as when it receives only the candidate B2 retains.
+
+Reviewer-fix TDD evidence:
+
+- RED 1: prototype-key input threw `TypeError: rule.clean is not a function`.
+- RED 2: equal-total route input selected `{ kill: 2, allSpells: 1 }` while B2 retained canonical `{ kill: 1, allSpells: 2 }`.
+- Additional RED: a throwing proxy for the fact itself escaped the initial narrower catch boundary.
+- Additional RED: an array with a throwing iterator escaped before per-fact handling.
+- GREEN focused: 13/13 passed.
+
+Reviewer-fix final serial verification:
+
+- Abracadawhat production build and emoji postbuild: passed.
+- Abracadawhat full: 90/90 passed.
+- Auth sanitizer contract: 19/19 passed.
+
+Remaining concerns are unchanged: membership validation belongs to Auth because the selector has no standings input, and no cross-player quota is specified.
