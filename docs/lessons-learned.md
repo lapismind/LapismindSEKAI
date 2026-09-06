@@ -1,5 +1,16 @@
 # Lessons Learned
 
+## 2026-09-07 B4 plan restore
+
+- The active planning file had been condensed to 45 lines, so reading it at the canonical plan's old B4 offset failed. When a plan has both an active summary and a canonical approved document, check the active file length first and read task details from the canonical path rather than reusing historical offsets.
+- Direct `reportMatch` tests reused a `round_end` fixture intended for `startNextRound`, causing the current-match guard to suppress every broadcast; the stale A/B test also passed for the wrong reason. Async report tests must explicitly enter `game_over` before calling the reporter so identity, not phase mismatch, determines the result.
+
+## 2026-09-07 B4 reviewer fixes
+
+- Making the missing-secret v2 path observable caused an older `startNextRound` fixture with write-only storage to throw before focused assertions ran. When an async failure path starts reading current Durable Object state, every fixture that can enter that path must provide both `storage.put` and `storage.get`; otherwise the test failure is infrastructure, not the reviewed behavior.
+- A mutation from `data.ok !== true` to `!data.ok` still rejected the existing `ok: false` case, so it did not prove exact-boolean validation. To distinguish strict equality from truthiness, include a truthy non-boolean case such as `ok: 1` in the malformed contract table.
+- A combined production/report patch failed because one report sentence was recalled instead of read exactly; the patch applied nothing. Restore critical production mutations in a separate minimal patch, then read the report section before editing documentation so a prose-context mismatch cannot delay code restoration.
+
 ## 2026-09-07 B2 reviewer fix TDD
 
 - 自爆测试最初把预期失败宣告的魔法也放进手牌，导致施法成功而不是触发目标路径。状态机 RED 必须先核对夹具是否满足前置条件；业务断言前出现 `summary === null` 时，应先修正测试输入并重新确认纯行为 RED，不能据此修改生产代码。

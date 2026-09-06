@@ -514,8 +514,18 @@ export class AbracaRoom {
 
   async reportMatch(payload, matchStartedAt) {
     const secret = this.env?.MATCH_REPORT_SECRET
-    if (!secret) return
     const reportId = payload?.reportId
+    if (!secret) {
+      if (!reportId) return
+      console.error('report match configuration error: MATCH_REPORT_SECRET is missing')
+      const state = await this.getState()
+      if (state.phase !== 'game_over' || state.matchStats?.reportId !== reportId) return
+      this.broadcast(state, {
+        type: 'match_report_status',
+        data: { reportId, saved: false, message: '战报暂未保存' },
+      })
+      return
+    }
     try {
       // 本地开发可通过 MATCH_REPORT_URL 指向本地 auth，线上默认生产地址
       const reportUrl = this.env?.MATCH_REPORT_URL || 'https://auth.qmzhj.top/api/matches'
@@ -526,6 +536,16 @@ export class AbracaRoom {
       })
       if (!res.ok) throw new Error(`match report HTTP ${res.status}`)
       const data = await res.json()
+      if (reportId && (
+        !data || typeof data !== 'object' || Array.isArray(data)
+        || data.ok !== true
+        || data.reportId !== reportId
+        || !(Number.isInteger(data.matchId) || (typeof data.matchId === 'string' && data.matchId.length > 0))
+        || !Array.isArray(data.savedReports)
+        || !Array.isArray(data.newAchievements)
+      )) {
+        throw new Error('invalid match report response')
+      }
       const state = await this.getState()
       const isCurrentMatch = state.phase === 'game_over' && (
         reportId
@@ -533,7 +553,9 @@ export class AbracaRoom {
           : state.matchStats?.startAt === matchStartedAt
       )
       if (!isCurrentMatch) return
-      const achievements = Array.isArray(data?.newAchievements) ? data.newAchievements : []
+      const achievements = Array.isArray(data?.newAchievements)
+        ? data.newAchievements.filter(item => item && typeof item === 'object' && !Array.isArray(item))
+        : []
       if (reportId) {
         this.broadcast(state, { type: 'achievements_unlocked', data: { reportId, achievements } })
         this.broadcast(state, { type: 'match_report_status', data: { reportId, saved: true } })

@@ -287,11 +287,15 @@ const env = {
     maxTurnDistinctSpells: 0,
   }]))
   let savedState
+  const waits = []
   const ctx = {
     name: 'ROOM-STABLE-FINISH',
-    storage: { put: async (_key, state) => { savedState = structuredClone(state) } },
+    storage: {
+      get: async () => savedState,
+      put: async (_key, state) => { savedState = structuredClone(state) },
+    },
     getWebSockets: () => [],
-    waitUntil() {},
+    waitUntil(promise) { waits.push(promise) },
   }
   const room = new AbracaRoom(ctx, {})
   const state = {
@@ -300,7 +304,16 @@ const env = {
     matchHistory: [],
   }
 
-  await room.startNextRound(state)
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  try {
+    await room.startNextRound(state)
+    await waits[0]
+  } finally {
+    console.error = originalError
+  }
+  assert.equal(errors[0]?.[0], 'report match configuration error: MATCH_REPORT_SECRET is missing')
   const first = room.buildMatchReport(savedState, players[0])
   await new Promise((resolve) => setTimeout(resolve, 2))
   const second = room.buildMatchReport(savedState, players[0])
@@ -456,7 +469,7 @@ function makeFinishedV2State(reportId = 'abracadawhat:123e4567-e89b-42d3-a456-42
   }
 }
 
-function makeReportRoom({ state }) {
+function makeReportRoom({ state, env = { MATCH_REPORT_SECRET: 'test-secret' } }) {
   const sent = []
   const waits = []
   const socket = { send: message => sent.push(JSON.parse(message)) }
@@ -469,7 +482,7 @@ function makeReportRoom({ state }) {
     getWebSockets: () => [socket],
     waitUntil(promise) { waits.push(promise) },
   }
-  const room = new AbracaRoom(ctx, { MATCH_REPORT_SECRET: 'test-secret' })
+  const room = new AbracaRoom(ctx, env)
   return { room, sent, waits }
 }
 
@@ -508,7 +521,13 @@ test('game_over broadcasts reportId, standings, stories and saving before Auth r
       },
     })
     assert.equal(harness.sent.length, 1, 'Auth 尚未返回时只应有立即 game_over')
-    pending.resolve(new Response(JSON.stringify({ savedReports: [], newAchievements: [] }), { status: 200 }))
+    pending.resolve(new Response(JSON.stringify({
+      ok: true,
+      matchId: 41,
+      reportId: state.matchStats.reportId,
+      savedReports: [],
+      newAchievements: [],
+    }), { status: 200 }))
     await harness.waits[0]
   })
 })
@@ -524,8 +543,16 @@ test('reportMatch 200 broadcasts report-scoped achievements and saved true even 
   state.phase = 'game_over'
   const harness = makeReportRoom({ state })
   await withFetch(async () => new Response(JSON.stringify({
+    ok: true,
+    matchId: 42,
+    reportId: state.matchStats.reportId,
     savedReports: [],
-    newAchievements: [{ playerId: 'p1', key: 'spell_ladder' }],
+    newAchievements: [
+      { playerId: 'p1', key: 'spell_ladder' },
+      null,
+      'invalid',
+      [],
+    ],
   }), { status: 200 }), async () => {
     await harness.room.reportMatch({ reportId: state.matchStats.reportId })
   })
@@ -535,6 +562,111 @@ test('reportMatch 200 broadcasts report-scoped achievements and saved true even 
     { type: 'match_report_status', data: { reportId: state.matchStats.reportId, saved: true } },
   ])
 })
+
+test('reportMatch accepts a valid v2 response with string matchId', async () => {
+  const state = makeFinishedV2State()
+  state.phase = 'game_over'
+  const harness = makeReportRoom({ state })
+  await withFetch(async () => new Response(JSON.stringify({
+    ok: true,
+    matchId: 'match-42',
+    reportId: state.matchStats.reportId,
+    savedReports: [],
+    newAchievements: [],
+  }), { status: 200 }), async () => {
+    await harness.room.reportMatch({ reportId: state.matchStats.reportId })
+  })
+
+  assert.deepEqual(harness.sent, [
+    { type: 'achievements_unlocked', data: { reportId: state.matchStats.reportId, achievements: [] } },
+    { type: 'match_report_status', data: { reportId: state.matchStats.reportId, saved: true } },
+  ])
+})
+
+test('missing MATCH_REPORT_SECRET fails current v2 report without fetching and leaves legacy v1 silent', async () => {
+  const state = makeFinishedV2State()
+  state.phase = 'game_over'
+  const harness = makeReportRoom({ state, env: {} })
+  const originalFetch = globalThis.fetch
+  const originalError = console.error
+  let fetchCalls = 0
+  const errors = []
+  globalThis.fetch = async () => { fetchCalls += 1; throw new Error('must not fetch') }
+  console.error = (...args) => errors.push(args)
+  try {
+    await harness.room.reportMatch({ reportId: state.matchStats.reportId })
+    assert.deepEqual(harness.sent, [{
+      type: 'match_report_status',
+      data: { reportId: state.matchStats.reportId, saved: false, message: '战报暂未保存' },
+    }])
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0][0], 'report match configuration error: MATCH_REPORT_SECRET is missing')
+
+    harness.sent.length = 0
+    errors.length = 0
+    await harness.room.reportMatch({ game: 'abracadawhat', players: [] }, state.matchStats.startAt)
+    assert.deepEqual(harness.sent, [])
+    assert.deepEqual(errors, [])
+    assert.equal(fetchCalls, 0)
+  } finally {
+    globalThis.fetch = originalFetch
+    console.error = originalError
+  }
+})
+
+for (const malformed of [
+  { name: 'empty object', body: {} },
+  { name: 'null', body: null },
+  {
+    name: 'ok false',
+    body: { ok: false, matchId: 43, reportId: 'CURRENT', savedReports: [], newAchievements: [] },
+  },
+  {
+    name: 'truthy non-boolean ok',
+    body: { ok: 1, matchId: 43, reportId: 'CURRENT', savedReports: [], newAchievements: [] },
+  },
+  {
+    name: 'mismatched reportId',
+    body: { ok: true, matchId: 44, reportId: 'abracadawhat:wrong', savedReports: [], newAchievements: [] },
+  },
+  {
+    name: 'missing matchId',
+    body: { ok: true, reportId: 'CURRENT', savedReports: [], newAchievements: [] },
+  },
+  {
+    name: 'non-array savedReports',
+    body: { ok: true, matchId: 45, reportId: 'CURRENT', savedReports: null, newAchievements: [] },
+  },
+  {
+    name: 'non-array newAchievements',
+    body: { ok: true, matchId: 'match-46', reportId: 'CURRENT', savedReports: [], newAchievements: {} },
+  },
+]) {
+  test(`reportMatch rejects malformed 2xx contract: ${malformed.name}`, async () => {
+    const state = makeFinishedV2State()
+    state.phase = 'game_over'
+    const body = structuredClone(malformed.body)
+    if (body?.reportId === 'CURRENT') body.reportId = state.matchStats.reportId
+    const harness = makeReportRoom({ state })
+    const originalError = console.error
+    const errors = []
+    console.error = (...args) => errors.push(args)
+    try {
+      await withFetch(async () => new Response(JSON.stringify(body), { status: 200 }), async () => {
+        await harness.room.reportMatch({ reportId: state.matchStats.reportId })
+      })
+    } finally {
+      console.error = originalError
+    }
+
+    assert.equal(errors.length, 1)
+    assert.equal(errors[0][0], 'report match failed:')
+    assert.deepEqual(harness.sent, [{
+      type: 'match_report_status',
+      data: { reportId: state.matchStats.reportId, saved: false, message: '战报暂未保存' },
+    }])
+  })
+}
 
 for (const failure of [
   { name: 'HTTP 500', fetchImpl: async () => new Response('server failed', { status: 500 }) },
@@ -577,6 +709,7 @@ test('report A completion does not broadcast after report B becomes current', as
     const reporting = harness.room.reportMatch({ reportId: reportA })
     state.matchStats.reportId = reportB
     pending.resolve(new Response(JSON.stringify({
+      ok: true, matchId: 46, reportId: reportA,
       savedReports: [], newAchievements: [{ playerId: 'p1', key: 'spell_ladder' }],
     }), { status: 200 }))
     await reporting

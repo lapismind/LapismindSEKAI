@@ -733,12 +733,24 @@ test('startNextRound persists comeback before reporting and repeated report buil
   let reported
   const room = new AbracaRoom({
     name: 'COMEBACK-PERSIST',
-    storage: { put: async (_key, nextState) => { persisted = structuredClone(nextState) } },
+    storage: {
+      get: async () => persisted,
+      put: async (_key, nextState) => { persisted = structuredClone(nextState) },
+    },
     getWebSockets: () => [],
     waitUntil(promise) { reported = promise },
   }, {})
 
-  await room.startNextRound(state)
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  try {
+    await room.startNextRound(state)
+    await reported
+  } finally {
+    console.error = originalError
+  }
+  assert.equal(errors[0]?.[0], 'report match configuration error: MATCH_REPORT_SECRET is missing')
 
   assert.equal(persisted.phase, 'game_over')
   assert.deepEqual(fact(persisted, 'comeback_win', 'p1'), [{
@@ -753,7 +765,6 @@ test('startNextRound persists comeback before reporting and repeated report buil
   assert.deepEqual(persisted, beforeBuild)
   assert.equal(first.facts.filter((entry) => entry.key === 'comeback_win').length, 1)
   assert.equal(sanitizeMatchReport(first).ok, true)
-  await reported
 })
 
 test('authoritative comeback uses the later snapshot with the largest deficit', async () => {
@@ -770,12 +781,24 @@ test('authoritative comeback uses the later snapshot with the largest deficit', 
   let reported
   const room = new AbracaRoom({
     name: 'STRONGEST-COMEBACK',
-    storage: { put: async (_key, nextState) => { persisted = structuredClone(nextState) } },
+    storage: {
+      get: async () => persisted,
+      put: async (_key, nextState) => { persisted = structuredClone(nextState) },
+    },
     getWebSockets: () => [],
     waitUntil(promise) { reported = promise },
   }, {})
 
-  await room.startNextRound(state)
+  const originalError = console.error
+  const errors = []
+  console.error = (...args) => errors.push(args)
+  try {
+    await room.startNextRound(state)
+    await reported
+  } finally {
+    console.error = originalError
+  }
+  assert.equal(errors[0]?.[0], 'report match configuration error: MATCH_REPORT_SECRET is missing')
 
   const expected = {
     key: 'comeback_win',
@@ -786,7 +809,6 @@ test('authoritative comeback uses the later snapshot with the largest deficit', 
   const beforeBuild = structuredClone(persisted)
   assert.deepEqual(room.buildMatchReport(persisted, persisted.players[0]).facts.filter((entry) => entry.key === 'comeback_win'), [expected])
   assert.deepEqual(persisted, beforeBuild)
-  await reported
 })
 
 test('comeback selection is deterministic across snapshot permutations and exact ties', () => {
