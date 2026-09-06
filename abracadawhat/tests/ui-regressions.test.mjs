@@ -85,6 +85,38 @@ test('比赛结算详情关闭后仍保留房主重赛和返回大厅操作条�
   assert.match(source, /data-testid="post-game-actions"/)
   assert.match(source, /@click="game\.rematch\(\)"/)
   assert.match(source, /等待房主再来一局/)
+  assert.match(source, /查看结算详情/)
+  assert.match(source, /@click="openGameOverDetails"/)
   assert.match(source, /@click="goToLobby"/)
   assert.doesNotMatch(source, /投票|vote/i)
+})
+
+test('比赛结算详情具备对话框语义和键盘焦点管理', async () => {
+  const source = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  assert.match(source, /role="dialog"/)
+  assert.match(source, /aria-modal="true"/)
+  assert.match(source, /aria-labelledby="game-over-title"/)
+  assert.match(source, /id="game-over-title"/)
+  assert.match(source, /@keydown="onGameOverKeydown"/)
+  assert.match(source, /event\.key === 'Escape'/)
+  assert.match(source, /event\.key !== 'Tab'/)
+  assert.match(source, /gameOverCloseButton/)
+  assert.match(source, /gameOverReopenButton/)
+})
+
+test('返回大厅和跨房间连接使用显式房间清理且同房重连仍只断开传输', async () => {
+  const roomView = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  const store = await readFile(new URL('../src/stores/gameStore.js', import.meta.url), 'utf8')
+  assert.match(roomView, /game\.leaveRoom\(\)/)
+  assert.match(store, /function leaveRoom\(\)/)
+  assert.match(store, /roomId\.value !== roomCode/)
+  assert.match(roomView, /game\.disconnect\(\)[\s\S]*game\.connect\(roomCode\.value/)
+  const goToLobby = roomView.match(/function goToLobby\(\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
+  assert.doesNotMatch(goToLobby, /unsubs\.forEach/)
+})
+
+test('A4 浏览器夹具的大厅路由使用编译 SFC 而不是运行时内联模板', async () => {
+  const source = await readFile(new URL('./fixtures/a4-harness.js', import.meta.url), 'utf8')
+  assert.match(source, /A4LobbyHarness\.vue/)
+  assert.doesNotMatch(source, /component:\s*\{\s*template:/)
 })

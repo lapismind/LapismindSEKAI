@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { useGameStore } from '../stores/gameStore'
@@ -29,6 +29,11 @@ const helpOpen = ref(false)
 const copied = ref(false)
 const chatOpen = ref(false)
 const hasUnread = ref(false)
+const gameOverDialog = ref(null)
+const gameOverCloseButton = ref(null)
+const gameOverReopenButton = ref(null)
+const postGameActions = ref(null)
+let gameOverReturnFocus = null
 let unsubs = []
 let lastIdentityPlayerId = lobby.myPlayerId
 
@@ -51,6 +56,16 @@ watch(() => game.chatMessageVersion, () => {
 watch(chatOpen, (open) => {
   if (open) hasUnread.value = false
 })
+watch(() => game.gameOverOpen, async (open) => {
+  await nextTick()
+  if (open) {
+    gameOverCloseButton.value?.focus()
+  } else if (game.lastGameOver) {
+    const returnTarget = gameOverReturnFocus?.isConnected ? gameOverReturnFocus : gameOverReopenButton.value
+    ;(returnTarget || postGameActions.value)?.focus()
+    gameOverReturnFocus = null
+  }
+}, { immediate: true, flush: 'post' })
 
 onUnmounted(() => {
   unsubs.forEach(u => u())
@@ -58,9 +73,39 @@ onUnmounted(() => {
 })
 
 function goToLobby() {
-  unsubs.forEach(u => u())
-  game.disconnect()
+  unsubs = []
+  game.leaveRoom()
   router.push('/')
+}
+
+function closeGameOverDetails() {
+  game.clearGameOver()
+}
+
+function openGameOverDetails(event) {
+  gameOverReturnFocus = event.currentTarget
+  game.openGameOver()
+}
+
+function onGameOverKeydown(event) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    closeGameOverDetails()
+    return
+  }
+  if (event.key !== 'Tab') return
+  const focusable = [...gameOverDialog.value.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
+    .filter(element => !element.disabled)
+  if (!focusable.length) return
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
 }
 
 function onIdentityChange(user) {
@@ -224,16 +269,24 @@ async function copyInvite() {
 
       <!-- 整场结束 -->
       <div v-if="game.lastGameOver && game.gameOverOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div class="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-brand-100 to-white p-8 text-center shadow-2xl">
+        <div
+          ref="gameOverDialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="game-over-title"
+          class="relative w-full max-w-md rounded-2xl bg-gradient-to-b from-brand-100 to-white p-8 text-center shadow-2xl"
+          @keydown="onGameOverKeydown"
+        >
          <button
+           ref="gameOverCloseButton"
            type="button"
-           @click="game.clearGameOver()"
+           @click="closeGameOverDetails"
            aria-label="关闭比赛结算详情"
            class="absolute top-2 right-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm text-[#8A8299] hover:bg-white/70 hover:text-[#333333] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
            title="关闭，继续准备再来一局"
          >✕</button>
          <div class="text-5xl">🏆</div>
-          <h3 class="mt-3 text-2xl font-bold text-[#333333]">
+          <h3 id="game-over-title" class="mt-3 text-2xl font-bold text-[#333333]">
             {{ game.lastGameOver.standings[0]?.nickname }} 获胜！
           </h3>
           <div class="mt-4 space-y-1.5">
@@ -264,11 +317,20 @@ async function copyInvite() {
 
       <div
         v-if="game.lastGameOver"
+        ref="postGameActions"
+        tabindex="-1"
         data-testid="post-game-actions"
         class="mt-4 rounded-xl border border-brand-300 bg-brand-100 p-4 text-center"
       >
         <p class="mb-3 text-sm font-bold text-brand-700">本场已结束</p>
         <div class="flex flex-col justify-center gap-2 sm:flex-row">
+          <button
+            v-if="!game.gameOverOpen"
+            ref="gameOverReopenButton"
+            type="button"
+            class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            @click="openGameOverDetails"
+          >查看结算详情</button>
           <button
             v-if="isHost"
             type="button"

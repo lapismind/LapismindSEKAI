@@ -39,6 +39,75 @@ test('关闭比赛结算详情只隐藏详情并保留重赛数据', () => {
   cleanup()
 })
 
+test('离开房间会断开并清空全部房间与结算状态且忽略迟到消息', () => {
+  const { store } = createStore()
+  seedCompletedMatch(store)
+  store.roomState = { phase: 'game_over', players: [{ id: 'a' }] }
+  store.lastCastResult = { type: 'cast_success' }
+  store.myHandSize = 4
+  store.mySecrets = [1, 2]
+
+  store.leaveRoom()
+  wsClient._emit(Msg.RCV_GAME_OVER, {
+    standings: [{ id: 'late', nickname: '旧房间迟到消息', score: 9 }],
+  })
+
+  assert.equal(store.inRoom, false)
+  assert.equal(store.roomId, null)
+  assert.equal(store.roomState, null)
+  assert.equal(store.lastGameOver, null)
+  assert.equal(store.gameOverOpen, false)
+  assert.deepEqual(store.newAchievements, [])
+  assert.equal(store.roundEndSummary, null)
+  assert.deepEqual(store.roundScoreDeltas, {})
+  assert.equal(store.lastCastResult, null)
+  assert.equal(store.myHandSize, 0)
+  assert.deepEqual(store.mySecrets, [])
+})
+
+test('从房间 A 离开再连接房间 B 不保留旧结算或旧重赛路径', async () => {
+  const { store } = createStore()
+  store.roomId = 'ROOMA'
+  store.inRoom = true
+  seedCompletedMatch(store)
+
+  await store.connect('ROOMB', 'B', 'b', '0')
+
+  assert.equal(store.roomId, 'ROOMB')
+  assert.equal(store.inRoom, true)
+  assert.equal(store.roomState, null)
+  assert.equal(store.lastGameOver, null)
+  assert.equal(store.gameOverOpen, false)
+})
+
+test('同房间断线重连保留比赛结束数据和重赛路径', () => {
+  const { store, cleanup } = createStore()
+  store.roomId = 'ROOMA'
+  store.inRoom = true
+  seedCompletedMatch(store)
+
+  store.disconnect()
+
+  assert.equal(store.inRoom, false)
+  assert.equal(store.roomId, 'ROOMA')
+  assert.ok(store.lastGameOver)
+  assert.equal(store.gameOverOpen, true)
+  cleanup()
+})
+
+test('关闭后可以重新打开比赛结算详情而不改变结算数据', () => {
+  const { store, cleanup } = createStore()
+  seedCompletedMatch(store)
+  const retained = store.lastGameOver
+
+  store.clearGameOver()
+  store.openGameOver()
+
+  assert.equal(store.gameOverOpen, true)
+  assert.equal(store.lastGameOver, retained)
+  cleanup()
+})
+
 function assertNewMatchTransientStateCleared(store) {
   assert.deepEqual(store.newAchievements, [])
   assert.equal(store.roundEndSummary, null)

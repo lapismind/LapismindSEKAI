@@ -1,14 +1,15 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import { createMemoryHistory, createRouter } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import RoomView from '../../src/views/RoomView.vue'
 import A4Harness from './A4Harness.vue'
+import A4LobbyHarness from './A4LobbyHarness.vue'
 import '../../src/styles/global.css'
 
 const router = createRouter({
-  history: createMemoryHistory(),
+  history: createWebHashHistory(),
   routes: [
-    { path: '/', component: { template: '<div>大厅</div>' } },
+    { path: '/', component: A4LobbyHarness },
     { path: '/room/:code', component: RoomView },
   ],
 })

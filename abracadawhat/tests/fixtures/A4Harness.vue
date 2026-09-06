@@ -46,6 +46,21 @@ window.__a4SetHost = async (isHost) => {
   await nextTick()
 }
 
+window.__a4EmitLateRoomA = () => {
+  wsClient._emit(Msg.RCV_GAME_OVER, {
+    standings: [{ id: 'late', nickname: '旧房间迟到法师', score: 9 }],
+  })
+}
+
+window.__a4EmitRoomB = () => {
+  wsClient._emit(Msg.RCV_ROOM_STATE, {
+    phase: 'waiting',
+    round: 0,
+    hostId: 'host',
+    players: [{ id: 'host', nickname: '房间 B 法师', score: 0, health: 3, alive: true }],
+  })
+}
+
 window.__a4RematchType = Msg.SEND_REMATCH
 </script>
 

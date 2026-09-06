@@ -36,6 +36,7 @@ export const useGameStore = defineStore('game', () => {
   let previousUnsubs = []
 
   async function connect(roomCode, nickname, playerId, avatarId) {
+    if (roomId.value && roomId.value !== roomCode) leaveRoom()
     let token = null
     try {
       const res = await fetch('/api/identity?playerId=' + encodeURIComponent(playerId))
@@ -57,6 +58,24 @@ export const useGameStore = defineStore('game', () => {
     releaseCastLock()
     wsClient.disconnect()
     inRoom.value = false
+  }
+
+  function leaveRoom() {
+    previousUnsubs.forEach(unsubscribe => unsubscribe())
+    previousUnsubs = []
+    disconnect()
+    roomId.value = null
+    phase.value = 'waiting'
+    roomState.value = null
+    myHandSize.value = 0
+    mySecrets.value = []
+    lastCastResult.value = null
+    roundEndSummary.value = null
+    roundScoreDeltas.value = {}
+    lastGameOver.value = null
+    gameOverOpen.value = false
+    newAchievements.value = []
+    error.value = null
   }
 
   function startRound() {
@@ -243,14 +262,18 @@ export const useGameStore = defineStore('game', () => {
     gameOverOpen.value = false
   }
 
+  function openGameOver() {
+    if (lastGameOver.value) gameOverOpen.value = true
+  }
+
   return {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, newAchievements,
     error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared,
     sendChat, sendEmoji,
-    connect, disconnect,
+    connect, disconnect, leaveRoom,
     startRound, cast, endTurn, nextRound, rematch,
-    hydrate, clearRoundEnd, clearCastResult, clearGameOver,
+    hydrate, clearRoundEnd, clearCastResult, clearGameOver, openGameOver,
   }
 })
