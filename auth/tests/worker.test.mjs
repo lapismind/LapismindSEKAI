@@ -8,6 +8,8 @@ function makeFakeDB() {
   const users = new Map() // id -> row
   const comments = []
   const achievements = [] // { player_id, achievement_key, unlocked_at }
+  const matches = [] // { id, report_status }
+  const matchPlayers = [] // persisted row shape used by career tests
   const loginAttempts = [] // { key, created_at }
   let nextUserId = 1
   let nextCommentId = 1
@@ -15,6 +17,8 @@ function makeFakeDB() {
     users,
     comments,
     achievements,
+    matches,
+    matchPlayers,
     loginAttempts,
     prepare(sql) {
       const api = {
@@ -48,7 +52,7 @@ function makeFakeDB() {
             for (const [, u] of users) if (u.provider === 'account' && u.nickname === api.args[0]) return u
             return null
           }
-          if (sql.includes('COUNT(*)')) {
+          if (sql.includes('COUNT(*)') && !sql.includes('match_players')) {
             // 列表总数：按 page_path；限流计数：按 user_id + 时间窗
             const n =
               api.args.length === 1
@@ -62,8 +66,25 @@ function makeFakeDB() {
             return { n: comments.filter((c) => c.user_id === uid && c.created_at > since).length }
           }
           if (sql.includes('SUM(') && sql.includes('match_players')) {
-            // 成就 career 汇总：测试桩不造对局数据，返回全零即可
-            return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
+            const playerId = api.args[0]
+            const completeIds = new Set(matches.filter((match) => match.report_status === 'complete').map((match) => match.id))
+            const rows = matchPlayers.filter((row) => row.player_id === playerId && completeIds.has(row.match_id))
+            return {
+              matchesCompleted: rows.length,
+              championships: rows.reduce((sum, row) => sum + (row.is_champion || 0), 0),
+              roundWins: rows.reduce((sum, row) => sum + (row.round_wins || 0), 0),
+              totalCasts: rows.reduce((sum, row) => sum + Object.values(JSON.parse(row.spells_cast || '{}')).reduce((a, b) => a + b, 0), 0),
+              kills: rows.reduce((sum, row) => sum + (row.kills || 0), 0),
+              dragonKills: rows.reduce((sum, row) => sum + (row.dragon_kills || 0), 0),
+              deaths: rows.reduce((sum, row) => sum + (row.deaths || 0), 0),
+              suicides: rows.reduce((sum, row) => sum + (row.suicides || 0), 0),
+              maxTurnCastCount: rows.reduce((max, row) => Math.max(max, row.max_turn_cast_count || 0), 0),
+              killRoundWins: rows.reduce((sum, row) => sum + (JSON.parse(row.round_wins_by_reason || '{}').kill || 0), 0),
+              allSpellsRoundWins: rows.reduce((sum, row) => sum + (JSON.parse(row.round_wins_by_reason || '{}').all_spells || 0), 0),
+              totalKills: rows.reduce((sum, row) => sum + (row.kills || 0), 0),
+              totalWins: rows.reduce((sum, row) => sum + (row.is_champion || 0), 0),
+              dragonFails: rows.reduce((sum, row) => sum + (row.dragon_fails || 0), 0),
+            }
           }
           throw new Error('fake db: unsupported first: ' + sql)
         },
@@ -127,8 +148,15 @@ function makeFakeDB() {
             return { results: rows.slice(api.args[2], api.args[2] + api.args[1]) }
           }
           if (sql.includes('json_each')) {
-            // 分魔法累计：空结果即可
-            return { results: [] }
+            const playerId = api.args[0]
+            const completeIds = new Set(matches.filter((match) => match.report_status === 'complete').map((match) => match.id))
+            const counts = new Map()
+            for (const row of matchPlayers.filter((item) => item.player_id === playerId && completeIds.has(item.match_id))) {
+              for (const [spellId, count] of Object.entries(JSON.parse(row.spells_cast || '{}'))) {
+                counts.set(spellId, (counts.get(spellId) || 0) + count)
+              }
+            }
+            return { results: [...counts].map(([spellId, cnt]) => ({ spellId, cnt })) }
           }
           throw new Error('fake db: unsupported all: ' + sql)
         },
@@ -277,6 +305,21 @@ console.log('worker smoke tests passed')
   assert.equal(emptyData.total, 10, 'active 传奇总数稳定为 10')
   assert.equal(emptyData.unlockedCount, 0, '新游客零解锁')
   assert.equal(emptyData.legacyUnlockedCount, 0, '新游客零旧版纪念')
+  assert.deepEqual(emptyData.career, {
+    matchesCompleted: 0,
+    championships: 0,
+    roundWins: 0,
+    totalCasts: 0,
+    spellCounts: {},
+    kills: 0,
+    dragonKills: 0,
+    deaths: 0,
+    suicides: 0,
+    favoriteSpellId: null,
+    spellTypesUsed: 0,
+    maxTurnCastCount: 0,
+    roundWinsByReason: { kill: 0, all_spells: 0 },
+  }, '空历史返回完整稳定的 career 默认值')
   assert.deepEqual(emptyData.achievements.map((achievement) => achievement.key).sort(), activeDefs.map((definition) => definition.key).sort())
   assert.ok(emptyData.achievements.every((a) => a.unlocked === false), '未解锁标记一致')
   assert.ok(emptyData.achievements.every((a) => a.status === 'active'), 'active 状态显式返回')
@@ -355,6 +398,54 @@ console.log('worker smoke tests passed')
 }
 
 console.log('worker achievements tests passed')
+
+// ---- 法师档案：只聚合完整比赛，兼容 v1 默认，并按较小 spellId 打破最爱魔法平局 ----
+{
+  const env = makeEnv()
+  const guest = await worker.fetch(new Request('https://auth.qmzhj.top/api/guest', { method: 'POST' }), env)
+  const guestData = await guest.json()
+  const cookie = cookieOf(guest)
+  const playerId = guestData.user.playerId
+
+  env.DB.matches.push(
+    { id: 1, report_status: 'complete' },
+    { id: 2, report_status: 'complete' },
+    { id: 3, report_status: 'complete' },
+    { id: 4, report_status: 'pending' },
+  )
+  env.DB.matchPlayers.push(
+    { match_id: 1, player_id: playerId, is_champion: 1, kills: 4, dragon_kills: 3, deaths: 1, suicides: 0, spells_cast: '{"1":2,"3":3}', round_wins: 2, round_wins_by_reason: '{"kill":1,"all_spells":1}', max_turn_cast_count: 4 },
+    { match_id: 2, player_id: playerId, is_champion: 0, kills: 2, dragon_kills: 0, deaths: 2, suicides: 1, spells_cast: '{"1":2,"2":4}', round_wins: 1, round_wins_by_reason: '{"kill":1,"all_spells":0}', max_turn_cast_count: 3 },
+    { match_id: 3, player_id: playerId, is_champion: 0, kills: 1, deaths: 1, suicides: 0, spells_cast: '{"3":1,"8":0}' },
+    { match_id: 4, player_id: playerId, is_champion: 1, kills: 100, dragon_kills: 100, deaths: 100, suicides: 100, spells_cast: '{"8":100}', round_wins: 100, round_wins_by_reason: '{"kill":100,"all_spells":100}', max_turn_cast_count: 100 },
+  )
+
+  const response = await worker.fetch(new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }), env)
+  assert.equal(response.status, 200)
+  const data = await response.json()
+  assert.deepEqual(data.career, {
+    matchesCompleted: 3,
+    championships: 1,
+    roundWins: 3,
+    totalCasts: 12,
+    spellCounts: { 1: 4, 2: 4, 3: 4 },
+    kills: 7,
+    dragonKills: 3,
+    deaths: 4,
+    suicides: 1,
+    favoriteSpellId: 1,
+    spellTypesUsed: 3,
+    maxTurnCastCount: 4,
+    roundWinsByReason: { kill: 2, all_spells: 1 },
+  })
+  assert.equal(data.career.kills, 7, 'kills 已含 dragonKills，不得再次相加')
+  assert.deepEqual(Object.keys(data.career).sort(), [
+    'championships', 'deaths', 'dragonKills', 'favoriteSpellId', 'kills', 'matchesCompleted',
+    'maxTurnCastCount', 'roundWins', 'roundWinsByReason', 'spellCounts', 'spellTypesUsed', 'suicides', 'totalCasts',
+  ].sort(), 'career 只返回 C3 约定字段')
+}
+
+console.log('worker career profile tests passed')
 
 // ---- v1 postMatch 新解锁使用与 GET 相同的外部成就投影，供 B5 直接渲染 stars ----
 {

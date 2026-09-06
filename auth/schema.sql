@@ -70,6 +70,8 @@ CREATE INDEX IF NOT EXISTS idx_match_players_match ON match_players(match_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_match_players_match_player ON match_players(match_id, player_id);
 
 -- 成就达成记录（跨场次唯一：同一玩家同一成就只记一次）
+-- Migration 006 copies only six approved legacy aliases into this same structure;
+-- source rows remain for audit history and no unprovable unlock is backfilled.
 CREATE TABLE IF NOT EXISTS achievements (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id TEXT NOT NULL,

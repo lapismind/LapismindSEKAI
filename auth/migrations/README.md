@@ -14,6 +14,10 @@ Operational SQL must not be placed in `migrations/`: Wrangler discovers every to
 
 If the preflight exits with code `2`, abort the migration and review every reported historical duplicate. Never silently delete, merge, or choose one historical row automatically.
 
-This repository contains migration files `001` through `004` that were historically applied with direct `wrangler d1 execute` commands. Direct execution does not update Wrangler's `d1_migrations` table. Do not claim those databases are migration-tracked and do not run `wrangler d1 migrations apply` blindly: Wrangler currently sees all numbered files as pending on an unbaselined database.
+This repository contains migration files `001` through `004` that were historically applied with direct `wrangler d1 execute` commands. Direct execution does not update Wrangler's `d1_migrations` table. Do not claim those databases are migration-tracked and do not run `wrangler d1 migrations apply` blindly: Wrangler currently sees the numbered files as pending on an unbaselined database.
 
-Migration `001` expects the original base schema to exist, so the current `001`-`005` directory is not a standalone empty-database bootstrap. For a new database, initialize the documented base schema and then use `wrangler d1 migrations list/apply` from migration 001 onward. For an existing database, first establish an explicitly reviewed baseline outside this task, then use Wrangler migration tracking for later migrations. No baseline rows are inserted automatically by this repository.
+Migration `001` expects the original base schema to exist, so the migration directory is not a standalone empty-database bootstrap. For a new database, initialize the documented base schema and then use `wrangler d1 migrations list/apply` from migration 001 onward. For an existing database, first establish an explicitly reviewed baseline outside this task, then use Wrangler migration tracking for later migrations. No baseline rows are inserted automatically by this repository.
+
+Migration `006_legendary_achievement_aliases.sql` is additive and idempotent. It copies only the six approved, provably equivalent legacy unlocks with `INSERT OR IGNORE`; it does not delete old keys or infer any other achievement.
+
+Production remains a Task D4 operation, not a C3 action. D4 must first confirm a backup/recovery point, run the 005 duplicate preflight read-only, establish and review the migration baseline, then explicitly execute 005, 006, and 007 in order against the approved target. C3 performs no remote database command.
