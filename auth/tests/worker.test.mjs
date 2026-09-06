@@ -156,7 +156,11 @@ function makeFakeDB() {
                 counts.set(spellId, (counts.get(spellId) || 0) + count)
               }
             }
-            return { results: [...counts].map(([spellId, cnt]) => ({ spellId, cnt })) }
+            return {
+              results: [...counts]
+                .filter(([spellId, cnt]) => /^[1-8]$/.test(spellId) && Number.isInteger(cnt) && cnt > 0)
+                .map(([spellId, cnt]) => ({ spellId: Number(spellId), cnt })),
+            }
           }
           throw new Error('fake db: unsupported all: ' + sql)
         },
@@ -792,7 +796,10 @@ console.log('worker v2 idempotency tests passed')
 
 // ---- career 查询必须排除 pending v2 match，避免失败批次产生可见累计 ----
 {
-  const source = await import('node:fs/promises').then(fs => fs.readFile(new URL('../src/index.js', import.meta.url), 'utf8'))
+  const source = await import('node:fs/promises').then(async (fs) => [
+    await fs.readFile(new URL('../src/index.js', import.meta.url), 'utf8'),
+    await fs.readFile(new URL('../src/career.js', import.meta.url), 'utf8'),
+  ].join('\n'))
   const careerQueries = [...source.matchAll(/FROM match_players mp[^`]+/g)].map((match) => match[0])
   assert.ok(careerQueries.length >= 3, '找到上报和资料页 career 查询')
   assert.ok(careerQueries.every((query) => query.includes("report_status = 'complete'")), '所有 career 查询只累计 complete match')

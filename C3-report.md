@@ -2,7 +2,9 @@
 
 ## Status
 
-Task C3 is implemented locally and committed without any remote database, deployment, Blog UI, or recent-report work. Migration 006 copies only the six approved provable aliases, and `GET /api/achievements` now returns the exact C3 `career` aggregate from complete matches.
+The original Task C3 implementation was committed as `3214e43` without any remote database, deployment, Blog UI, or recent-report work. Migration 006 copies only the six approved provable aliases, and `GET /api/achievements` returns the exact C3 `career` aggregate from complete matches.
+
+Reviewer High/Medium fixes after the original C3 commit harden the production aggregate against malformed historical JSON, restrict spell/reason inputs to the canonical contract, and add a real isolated D1 route integration test.
 
 ## Migration 006
 
@@ -42,6 +44,9 @@ career: {
 - `dragonKills`, deaths, suicides, championships, match count, and round wins are summed independently.
 - `maxTurnCastCount` is the maximum across rows, not a sum.
 - `roundWinsByReason` always returns canonical `{ kill, all_spells }` totals.
+- Malformed or null JSON is replaced with a safe `'{}'` inside production SQL before `json_each`, `json_type`, or `json_extract` is evaluated, so one corrupt historical row cannot fail the endpoint.
+- Only canonical JSON keys `'1'` through `'8'` with positive integer values enter `spellCounts`, favorite selection, and `spellTypesUsed`. Aliases, unknown keys, strings, fractions, zeroes, and negatives are ignored.
+- Round reasons accept only nonnegative JSON integers at canonical `kill` and `all_spells` keys. Malformed JSON, missing keys, negative values, fractions, strings, and unrelated keys contribute zero.
 - `favoriteSpellId` chooses the smaller numeric spell ID when totals tie and returns `null` for empty history.
 - `spellTypesUsed` counts spell IDs with positive aggregate casts; persisted zero-count keys are ignored for both type count and favorite selection.
 - Rows created before migration 005 work through the 005 defaults: new numeric fields contribute zero and `round_wins_by_reason` contributes `{}` while their original matches, casts, kills, deaths, suicides, and championships remain countable.
@@ -58,15 +63,18 @@ career: {
 - Migration RED: isolated setup reached the intentionally missing `006_legendary_achievement_aliases.sql` and failed because that file did not exist.
 - Career RED: the achievements route returned `career: undefined` instead of the required empty aggregate.
 - Migration GREEN: both migration tests passed after adding only the approved additive SQL.
-- Career GREEN: the route test passed with two complete v2 rows, one v1-style complete row, one persisted zero-count spell key, and one high-value pending row. It proves exact fields, v1 defaults, pending exclusion, positive spell usage, maxima, canonical reasons, favorite tie-break, and no dragon-kill double count.
+- Initial career GREEN: the fake route test passed with two complete v2 rows, one v1-style complete row, one persisted zero-count spell key, and one high-value pending row.
+- Reviewer RED: a real isolated D1 invocation of the production Auth route returned HTTP 500 when one complete historical row contained malformed `spells_cast` and `round_wins_by_reason` JSON.
+- Reviewer GREEN: the same production route returned HTTP 200 and the exact career object after SQL hardening. Its isolated database contains migrated pre-005 valid and null rows, a canonical v2 row, a pending row, malformed JSON, aliases, unknown spell/reason keys, zeroes, negatives, fractions, and numeric strings.
+- `computeCareer` now lives in exported internal module `auth/src/career.js`; the route imports that exact function, so integration coverage cannot drift to duplicated test SQL or JavaScript aggregation.
 
 ## Verification
 
 ```text
-migration 006 focused: 2/2 passed
-worker route focused: passed
-Auth full suite: 63/63 passed
-Auth production syntax check: passed
+migration 005/006 focused: 5/5 passed
+real D1 career route + worker focused: 2/2 passed
+Auth full suite: 64/64 passed
+Auth production syntax checks: passed
 git diff --check: passed (line-ending warnings only)
 ```
 
@@ -76,3 +84,4 @@ The Auth rollback test intentionally logs `forced player failure`; it passes and
 
 - Production migration remains blocked on the explicit D4 backup, duplicate preflight, and migration-baseline review. C3 does not authorize `wrangler d1 migrations apply` on the existing unbaselined database.
 - The career endpoint currently performs two complete-history queries per request: one scalar aggregate and one spell grouping query. This is correct for C3; performance should be measured before introducing summary tables or caches.
+- The older v1 match-submission achievement lookup remains a separate compatibility path in `index.js`; this reviewer fix changes only the public C3 career aggregate requested for `GET /api/achievements`.

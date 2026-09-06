@@ -15,6 +15,7 @@
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
 import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, projectAchievement } from './achievements.js'
+import { computeCareer } from './career.js'
 import { sanitizeMatchReport } from './matchReports.js'
 import { persistV2MatchReport, ReportConflictError } from './matchPersistence.js'
 
@@ -516,62 +517,6 @@ async function handleAchievements(request, env, cors = {}) {
     total: activeDefinitions.length,
     legacyUnlockedCount: ACHIEVEMENT_DEFS.filter(definition => definition.status === 'legacy' && unlockedAt.has(definition.key)).length,
   }, 200, cors)
-}
-
-// 汇总完整比赛中的法师档案；005 默认值让旧 v1 行自然贡献可证明的字段。
-async function computeCareer(playerId, env) {
-  const agg = await env.DB.prepare(
-    `SELECT
-       COUNT(*) AS matchesCompleted,
-       SUM(mp.is_champion) AS championships,
-       SUM(mp.round_wins) AS roundWins,
-       SUM((SELECT COALESCE(SUM(value), 0) FROM json_each(mp.spells_cast))) AS totalCasts,
-       SUM(mp.kills) AS kills,
-       SUM(mp.dragon_kills) AS dragonKills,
-       SUM(mp.deaths) AS deaths,
-       SUM(mp.suicides) AS suicides,
-       MAX(mp.max_turn_cast_count) AS maxTurnCastCount,
-       SUM(COALESCE(json_extract(mp.round_wins_by_reason, '$.kill'), 0)) AS killRoundWins,
-       SUM(COALESCE(json_extract(mp.round_wins_by_reason, '$.all_spells'), 0)) AS allSpellsRoundWins
-     FROM match_players mp JOIN matches m ON m.id = mp.match_id
-     WHERE mp.player_id = ? AND m.report_status = 'complete'`
-  ).bind(playerId).first()
-  const spellRows = await env.DB.prepare(
-    `SELECT je.key AS spellId, SUM(je.value) AS cnt
-     FROM match_players mp JOIN matches m ON m.id = mp.match_id, json_each(mp.spells_cast) je
-     WHERE mp.player_id = ? AND m.report_status = 'complete' GROUP BY je.key`
-  ).bind(playerId).all()
-  const spellCounts = {}
-  let favoriteSpellId = null
-  let favoriteCount = -1
-  for (const row of spellRows.results || []) {
-    const spellId = Number(row.spellId)
-    const count = Number(row.cnt) || 0
-    if (count <= 0) continue
-    spellCounts[spellId] = count
-    if (count > favoriteCount || (count === favoriteCount && spellId < favoriteSpellId)) {
-      favoriteSpellId = spellId
-      favoriteCount = count
-    }
-  }
-  return {
-    matchesCompleted: agg?.matchesCompleted || 0,
-    championships: agg?.championships || 0,
-    roundWins: agg?.roundWins || 0,
-    totalCasts: agg?.totalCasts || 0,
-    spellCounts,
-    kills: agg?.kills || 0,
-    dragonKills: agg?.dragonKills || 0,
-    deaths: agg?.deaths || 0,
-    suicides: agg?.suicides || 0,
-    favoriteSpellId,
-    spellTypesUsed: Object.keys(spellCounts).length,
-    maxTurnCastCount: agg?.maxTurnCastCount || 0,
-    roundWinsByReason: {
-      kill: agg?.killRoundWins || 0,
-      all_spells: agg?.allSpellsRoundWins || 0,
-    },
-  }
 }
 
 function handleLogout(cors = {}) {
