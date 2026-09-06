@@ -7,6 +7,7 @@ import { Msg } from '../../src/core/protocol.js'
 
 const lobby = useLobbyStore()
 const game = useGameStore()
+let resolveIdentity
 
 lobby.myPlayerId = 'host'
 game.inRoom = true
@@ -37,8 +38,14 @@ game.lastGameOver = {
 game.gameOverOpen = true
 
 window.__a4Sent = []
+window.__a4Connections = []
+window.fetch = () => new Promise(resolve => { resolveIdentity = resolve })
+window.__a4ResolveIdentity = () => resolveIdentity?.({ ok: false })
 wsClient.send = (type, payload) => {
   window.__a4Sent.push({ type, payload })
+}
+wsClient.connect = options => {
+  window.__a4Connections.push(options.roomId)
 }
 
 window.__a4SetHost = async (isHost) => {

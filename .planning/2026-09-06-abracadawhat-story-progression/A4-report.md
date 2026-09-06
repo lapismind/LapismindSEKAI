@@ -116,3 +116,43 @@ The final browser flow verified initial dialog focus, focus containment, Escape 
 - Teardown is intentionally destructive only for leaving or switching rooms. Plain `disconnect()` remains non-destructive so same-room reconnects preserve A2 retry safety.
 - The browser harness still intercepts outbound `wsClient.send`, but it now exercises actual router navigation and production teardown/re-entry behavior. Worker protocol acceptance remains covered by the existing Worker suite.
 - No voting, story UI, later protocol/schema work, push, or deployment was added.
+
+## Reviewer Follow-up 2
+
+The remaining A4 Medium findings were addressed in another new commit. Neither `1f36a6a` nor `3c8881f` was amended.
+
+### Connection And Route-Lifecycle Fixes
+
+- `RoomView` route unmount is now the single destructive cleanup owner. Any route exit, including the explicit return action, browser Back, or external router navigation, reaches `onUnmounted()` and calls `leaveRoom()` exactly once.
+- The explicit return action now only navigates. It no longer tears down before unmount, avoiding duplicate cleanup.
+- Identity-driven reconnect while the same `RoomView` remains mounted still uses non-destructive `disconnect()` followed by `connect()`, preserving `lastGameOver` and the A2 rematch retry path.
+- Added monotonically increasing `connectGeneration`. Every connect request obtains a new generation; every `leaveRoom()` invalidates pending generations.
+- After identity fetch success or failure, a connect continuation must still own the current generation before writing the identity token, setting `roomId`/`inRoom`, or calling `wsClient.connect()`.
+- Overlapping room-A/room-B connects are last-request-wins even when identity responses resolve out of order. A stale rejected request is also ignored.
+
+### Follow-up 2 TDD Evidence
+
+RED was observed before production changes:
+
+- Focused Store/UI run: 27 tests, 22 passed and 5 failed. The failures proved pending connect-after-leave, out-of-order overlapping connects, stale fetch rejection, non-destructive route unmount, and missing generation protection.
+- The route cleanup ownership refinement was returned to RED: 13 UI tests, 12 passed and 1 failed because `goToLobby()` still called `leaveRoom()` before unmount.
+- Browser Back coverage initially stopped on the intentionally missing compiled-harness resolver (`window.__a4ResolveIdentity`); after adding the minimal harness control, the production Back/unmount assertions ran.
+
+Final serial verification is recorded below after the final code state.
+
+### Follow-up 2 Final Verification
+
+Run serially after the final ownership and generation changes:
+
+1. `node --test tests/game-store.test.mjs tests/ui-regressions.test.mjs`: 27/27 passed.
+2. `npm run build`: passed; Vite transformed 101 modules and postbuild copied enabled emoji assets.
+3. `npm test`: 51/51 passed, including A2 dropped/rejected rematch, confirmed round-1 clearing, same-room reconnect preservation, delayed connect invalidation, and out-of-order last-request-wins tests.
+4. Python Playwright at 390x844: passed with no page errors.
+
+The browser test additionally verified that browser Back unmounts `RoomView`, returns to the compiled lobby route, invalidates a still-pending identity request, and prevents the delayed continuation from opening a socket, restoring stale post-game UI, or sending a stale rematch.
+
+### Follow-up 2 Concerns
+
+- Generation invalidation prevents stale continuations from committing state or opening sockets, but it does not cancel network transfer itself. The identity request may still finish in the background; its result is ignored. This satisfies the requested generation-token option without introducing AbortController compatibility concerns.
+- `RoomView` unmount is the destructive cleanup boundary. Same-room identity reconnect remains non-destructive only while the same component stays mounted.
+- No later tasks, protocol/schema changes, voting, push, or deployment were included.

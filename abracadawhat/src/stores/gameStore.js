@@ -34,18 +34,21 @@ export const useGameStore = defineStore('game', () => {
   let errorClearTimer = null
   let castLockTimer = null
   let previousUnsubs = []
+  let connectGeneration = 0
 
   async function connect(roomCode, nickname, playerId, avatarId) {
     if (roomId.value && roomId.value !== roomCode) leaveRoom()
+    const generation = ++connectGeneration
     let token = null
     try {
       const res = await fetch('/api/identity?playerId=' + encodeURIComponent(playerId))
       if (res.ok) {
         const body = await res.json()
         token = body.token ?? null
-        if (token) sessionStorage.setItem('identity_token', token)
       }
     } catch { /* offline */ }
+    if (generation !== connectGeneration) return
+    if (token) sessionStorage.setItem('identity_token', token)
     roomId.value = roomCode
     inRoom.value = true
     wsClient.connect({ roomId: roomCode, nickname, playerId, avatarId, token })
@@ -61,6 +64,7 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function leaveRoom() {
+    ++connectGeneration
     previousUnsubs.forEach(unsubscribe => unsubscribe())
     previousUnsubs = []
     disconnect()

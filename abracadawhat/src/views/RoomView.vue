@@ -68,13 +68,11 @@ watch(() => game.gameOverOpen, async (open) => {
 }, { immediate: true, flush: 'post' })
 
 onUnmounted(() => {
-  unsubs.forEach(u => u())
-  game.disconnect()
+  unsubs = []
+  game.leaveRoom()
 })
 
 function goToLobby() {
-  unsubs = []
-  game.leaveRoom()
   router.push('/')
 }
 

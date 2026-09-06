@@ -84,5 +84,15 @@ with sync_playwright() as playwright:
     expect(page.get_by_text("房主法师 获胜！")).to_have_count(0)
     expect(page.get_by_test_id("post-game-actions")).to_have_count(0)
 
+    page.go_back()
+    expect(page.get_by_role("heading", name="A4 测试大厅")).to_be_visible()
+    page.evaluate("window.__a4ResolveIdentity()")
+    page.wait_for_timeout(50)
+    assert page.evaluate("window.__a4Connections") == []
+    assert page.evaluate("window.__a4Sent.length") == sent_before_leave
+    page.evaluate("window.__a4EmitLateRoomA()")
+    expect(page.get_by_test_id("post-game-actions")).to_have_count(0)
+    expect(page.get_by_text("房主法师 获胜！")).to_have_count(0)
+
     assert page_errors == [], page_errors
     browser.close()

@@ -14,6 +14,35 @@ function createStore() {
   return { store, cleanup: () => unsubs.forEach((unsubscribe) => unsubscribe()) }
 }
 
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
+
+async function withControlledConnections(run) {
+  const originalFetch = globalThis.fetch
+  const originalConnect = wsClient.connect
+  const connections = []
+  const identityRequests = []
+  globalThis.fetch = () => {
+    const request = deferred()
+    identityRequests.push(request)
+    return request.promise
+  }
+  wsClient.connect = options => connections.push(options)
+  try {
+    await run({ connections, identityRequests })
+  } finally {
+    globalThis.fetch = originalFetch
+    wsClient.connect = originalConnect
+  }
+}
+
 function seedCompletedMatch(store) {
   wsClient._emit(Msg.RCV_ROUND_END, {
     standings: [{ id: 'a', score: 8, gained: 2 }],
@@ -93,6 +122,55 @@ test('同房间断线重连保留比赛结束数据和重赛路径', () => {
   assert.ok(store.lastGameOver)
   assert.equal(store.gameOverOpen, true)
   cleanup()
+})
+
+test('身份请求未完成时离开房间会使连接续程失效', async () => {
+  await withControlledConnections(async ({ connections, identityRequests }) => {
+    const { store } = createStore()
+    const connecting = store.connect('ROOMA', 'A', 'a', '0')
+
+    store.leaveRoom()
+    identityRequests[0].resolve({ ok: false })
+    await connecting
+
+    assert.equal(store.roomId, null)
+    assert.equal(store.inRoom, false)
+    assert.deepEqual(connections, [])
+  })
+})
+
+test('重叠连接乱序完成时只有最后一次请求可以进入房间并打开连接', async () => {
+  await withControlledConnections(async ({ connections, identityRequests }) => {
+    const { store } = createStore()
+    const connectingA = store.connect('ROOMA', 'A', 'a', '0')
+    const connectingB = store.connect('ROOMB', 'B', 'b', '1')
+
+    identityRequests[1].resolve({ ok: false })
+    await connectingB
+    identityRequests[0].resolve({ ok: false })
+    await connectingA
+
+    assert.equal(store.roomId, 'ROOMB')
+    assert.equal(store.inRoom, true)
+    assert.deepEqual(connections.map(connection => connection.roomId), ['ROOMB'])
+  })
+})
+
+test('过期身份请求失败不会覆盖最后一次连接状态', async () => {
+  await withControlledConnections(async ({ connections, identityRequests }) => {
+    const { store } = createStore()
+    const connectingA = store.connect('ROOMA', 'A', 'a', '0')
+    const connectingB = store.connect('ROOMB', 'B', 'b', '1')
+
+    identityRequests[1].resolve({ ok: false })
+    await connectingB
+    identityRequests[0].reject(new Error('late identity failure'))
+    await connectingA
+
+    assert.equal(store.roomId, 'ROOMB')
+    assert.equal(store.inRoom, true)
+    assert.deepEqual(connections.map(connection => connection.roomId), ['ROOMB'])
+  })
 })
 
 test('关闭后可以重新打开比赛结算详情而不改变结算数据', () => {

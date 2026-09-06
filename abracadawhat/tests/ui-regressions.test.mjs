@@ -107,12 +107,23 @@ test('比赛结算详情具备对话框语义和键盘焦点管理', async () =>
 test('返回大厅和跨房间连接使用显式房间清理且同房重连仍只断开传输', async () => {
   const roomView = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
   const store = await readFile(new URL('../src/stores/gameStore.js', import.meta.url), 'utf8')
-  assert.match(roomView, /game\.leaveRoom\(\)/)
   assert.match(store, /function leaveRoom\(\)/)
   assert.match(store, /roomId\.value !== roomCode/)
   assert.match(roomView, /game\.disconnect\(\)[\s\S]*game\.connect\(roomCode\.value/)
   const goToLobby = roomView.match(/function goToLobby\(\) \{([\s\S]*?)\n\}/)?.[1] ?? ''
   assert.doesNotMatch(goToLobby, /unsubs\.forEach/)
+  assert.doesNotMatch(goToLobby, /game\.leaveRoom\(\)/)
+  assert.match(goToLobby, /router\.push\('\/'\)/)
+  const unmount = roomView.match(/onUnmounted\(\(\) => \{([\s\S]*?)\n\}\)/)?.[1] ?? ''
+  assert.match(unmount, /game\.leaveRoom\(\)/)
+  assert.doesNotMatch(unmount, /game\.disconnect\(\)/)
+})
+
+test('连接续程使用递增代次阻止离开后或乱序请求打开旧房间', async () => {
+  const store = await readFile(new URL('../src/stores/gameStore.js', import.meta.url), 'utf8')
+  assert.match(store, /connectGeneration/)
+  assert.match(store, /\+\+connectGeneration/)
+  assert.match(store, /generation !== connectGeneration/)
 })
 
 test('A4 浏览器夹具的大厅路由使用编译 SFC 而不是运行时内联模板', async () => {
