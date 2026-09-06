@@ -229,6 +229,40 @@ const env = {
 }
 
 {
+  // 部署前已持久化并休眠的进行中房间没有 reportId，结束时必须继续发 v1。
+  const players = [
+    { id: 'p1', nickname: '旧一号', score: 8, health: 4 },
+    { id: 'p2', nickname: '旧二号', score: 3, health: 2 },
+  ]
+  const stats = Object.fromEntries(players.map((player) => [player.id, {
+    playerId: player.id, nickname: player.nickname, score: player.score, kills: 0, deaths: 0,
+    spellsCast: {}, secretsTaken: 0, roundsSurvived: 1, roundWonAtHp1: false,
+    roundEndSecrets: 0, roundKillsNonDragon: 0, dragonKills: 0, dragonOneCastKills: 0,
+    finalHp: player.health, firstRoundSuicide: false, roundSpellCasts: [], maxFailsInRound: 0,
+    hadFullHpThenDied: false, castStreaks: {}, turnSpellSets: {}, currentTurnIndex: 0,
+    dragonFails: 0, suicides: 0, killedHighHpTarget: false, singleCastMultiKillNonDragon: 0,
+    firstTurnDragon3: false, comebackFromBehind: false, roundWonNoSecrets: false,
+    hadLowThenFullThenDied: false, lowHpSeen: false, castOwlThisMatch: false,
+  }]))
+  const room = new AbracaRoom({ name: 'OLD-ROOM' }, {})
+  const report = room.buildMatchReport({
+    round: 3,
+    players,
+    matchStats: {
+      startAt: '2026-01-01T00:00:00.000Z',
+      scoreSnapshots: [{ p1: 3, p2: 7 }],
+      players: stats,
+    },
+  }, players[0])
+
+  assert.equal(report.schemaVersion, undefined)
+  assert.ok(Array.isArray(report.players))
+  assert.equal(report.standings, undefined)
+  assert.equal(report.players.find((player) => player.playerId === 'p1').comebackFromBehind, true)
+  assert.equal(sanitizeMatchReport(report).version, 1)
+}
+
+{
   let state = {
     hostId: 'p1',
     phase: 'waiting',

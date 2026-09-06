@@ -320,6 +320,30 @@ export class AbracaRoom {
 
   buildMatchReport(state, champion) {
     const snapshots = state.matchStats?.scoreSnapshots || []
+    if (!state.matchStats?.reportId) {
+      return {
+        game: 'abracadawhat',
+        roomId: this.roomId,
+        rounds: state.round,
+        players: Object.values(state.matchStats?.players || {}).map(ms => {
+          const player = state.players.find(p => p.id === ms.playerId)
+          const wasBehind = ms.playerId === champion.id && snapshots.some(snap => {
+            const opponentMax = Math.max(0, ...Object.entries(snap)
+              .filter(([id]) => id !== ms.playerId)
+              .map(([, score]) => score))
+            return opponentMax >= 7 && (snap[ms.playerId] || 0) <= 3
+          })
+          if (wasBehind) ms.comebackFromBehind = true
+          return {
+            ...ms,
+            nickname: normalizeNickname(ms.nickname),
+            score: player?.score ?? ms.score,
+            isChampion: ms.playerId === champion.id,
+            finalHp: player?.health ?? null,
+          }
+        }),
+      }
+    }
     const standings = [...state.players]
       .sort((a, b) => b.score - a.score)
       .map((player, index) => {

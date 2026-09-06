@@ -1,6 +1,9 @@
 -- Migration 005: Abracadawhat schema v2 and idempotent match reports.
 
 ALTER TABLE matches ADD COLUMN report_id TEXT;
+ALTER TABLE matches ADD COLUMN report_hash TEXT;
+ALTER TABLE matches ADD COLUMN report_status TEXT NOT NULL DEFAULT 'complete' CHECK (report_status IN ('pending', 'complete'));
+ALTER TABLE matches ADD COLUMN expected_players INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE match_players ADD COLUMN dragon_kills INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE match_players ADD COLUMN round_wins INTEGER NOT NULL DEFAULT 0;

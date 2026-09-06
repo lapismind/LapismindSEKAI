@@ -719,7 +719,9 @@ npx wrangler deploy --dry-run
 **生产迁移顺序**
 
 1. 备份/导出 D1 或确认 Cloudflare D1 可用恢复点；禁止跳过。
-2. 在 `auth/` 依次执行：
+2. 对目标数据库只读执行 `auth/migrations/preflight-005-match-player-duplicates.sql`。若返回任何 `(match_id, player_id)` 重复行，立即中止并人工审查；禁止静默删除、合并或任选历史行。
+3. 当前既有数据库的 001-004 曾用 `wrangler d1 execute` 直接执行，不在 `d1_migrations` 中；直接执行不等于 Wrangler migration tracking。建立并人工核对基线前，禁止对既有库盲目运行 `wrangler d1 migrations apply`。
+4. 在 `auth/` 依次执行：
 
 ```powershell
 npx wrangler d1 execute sekai-db --remote --file=./migrations/005_abracadawhat_match_v2.sql
@@ -727,11 +729,11 @@ npx wrangler d1 execute sekai-db --remote --file=./migrations/006_legendary_achi
 npx wrangler d1 execute sekai-db --remote --file=./migrations/007_player_match_reports.sql
 ```
 
-3. 远程只读核对表、索引和迁移映射；不对无法证明的旧比赛补故事/成就。
-4. 先部署 Auth，使其能同时接 v1/v2；再部署 Abracadawhat 开始发送 v2；最后部署 Blog 消费新增查询。该顺序保证发布窗口内旧游戏仍可上报。
-5. Auth：在 `auth/` 运行 `npm run deploy`。
-6. Abracadawhat：严格按 `abracadawhat/docs/deployment-v2.md` 在 `abracadawhat/` 运行 `npm run deploy`，不得拆开绕过 `postbuild` 表情复制。
-7. Blog：在 `blog/` 运行 `npm run build` 后 `npx wrangler deploy`。
+5. 远程只读核对表、索引和迁移映射；不对无法证明的旧比赛补故事/成就。
+6. 先部署 Auth，使其能同时接 v1/v2；再部署 Abracadawhat 开始发送 v2；最后部署 Blog 消费新增查询。该顺序保证发布窗口内旧游戏仍可上报。
+7. Auth：在 `auth/` 运行 `npm run deploy`。
+8. Abracadawhat：严格按 `abracadawhat/docs/deployment-v2.md` 在 `abracadawhat/` 运行 `npm run deploy`，不得拆开绕过 `postbuild` 表情复制。
+9. Blog：在 `blog/` 运行 `npm run build` 后 `npx wrangler deploy`。
 
 **生产验证**
 

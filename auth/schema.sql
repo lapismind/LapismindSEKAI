@@ -29,6 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_comments_page ON comments(page_path, created_at D
 CREATE TABLE IF NOT EXISTS matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   report_id TEXT,                        -- v2 stable id; legacy rows remain NULL
+  report_hash TEXT,                      -- SHA-256 of the canonical sanitized v2 payload
+  report_status TEXT NOT NULL DEFAULT 'complete' CHECK (report_status IN ('pending', 'complete')), -- pending rows are excluded from career reads
+  expected_players INTEGER NOT NULL DEFAULT 0,
   game TEXT NOT NULL,                    -- 'abracadawhat' / 'turtle-soup' / ...
   room_id TEXT,                          -- DO 房间号（可空，调试用）
   rounds INTEGER NOT NULL DEFAULT 0,     -- 总轮数

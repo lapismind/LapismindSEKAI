@@ -208,6 +208,25 @@ function validV2Report() {
   }
 }
 
+function addStanding(body, playerId, rank) {
+  body.standings.push({
+    playerId,
+    nickname: `法师${rank}号`,
+    rank,
+    score: 0,
+    scoreBySource: { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 },
+    spellCounts: {},
+    kills: 0,
+    dragonKills: 0,
+    deaths: 0,
+    suicides: 0,
+    roundWins: 0,
+    roundWinsByReason: { kill: 0, all_spells: 0 },
+    maxTurnCastCount: 0,
+    maxTurnDistinctSpells: 0,
+  })
+}
+
 test('v2 清洗接受规范字段和当前空事实与故事结构', () => {
   const result = moduleResult.module.sanitizeMatchReport(validV2Report())
 
@@ -282,5 +301,123 @@ test('v2 清洗限制结构化 fact/story data 的规范键和值域', () => {
   assert.equal(mutate((body) => { body.facts = fact({ actorHp: 7 }) }).ok, false)
   assert.equal(mutate((body) => { body.facts = fact({ targetPlayerId: 'p3' }) }).ok, false)
   assert.equal(mutate((body) => { body.facts = fact({ reason: 'arbitrary' }) }).ok, false)
-  assert.equal(mutate((body) => { body.stories = story({ spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' }) }).ok, true)
+  assert.equal(mutate((body) => { body.stories = story({ round: 1, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' }) }).ok, true)
+})
+
+test('v2 清洗对无效日历日期返回 400 结果而不是抛异常', () => {
+  const body = validV2Report()
+  body.startedAt = '2026-13-01T00:00:00.000Z'
+
+  assert.doesNotThrow(() => moduleResult.module.sanitizeMatchReport(body))
+  assert.deepEqual(moduleResult.module.sanitizeMatchReport(body), { ok: false, error: 'invalid timestamp' })
+})
+
+test('v2 fact key 使用各自精确 schema 并拒绝空 bag 与语义冲突', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const cases = {
+    turn_distinct_spells: { round: 1, spellIds: [5, 6, 7], castCount: 4 },
+    turn_clear_streak: { round: 1, successCount: 4, reason: 'all_spells' },
+    all_spell_types: { spellIds: [1, 2, 3, 4, 5, 6, 7, 8] },
+    round_win_low_hp: { round: 2, actorHp: 1, reason: 'kill' },
+    low_hp_kill: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' },
+    multi_kill_non_dragon: { round: 2, spellId: 7, killCount: 2 },
+    dragon_multi_kill: { round: 2, spellId: 1, killCount: 3 },
+    comeback_win: { playerScoreBefore: 3, opponentScoreBefore: 7, finalScore: 8 },
+    survivor_secret_stack: { round: 2, secretCount: 3 },
+    round_win_routes: { kill: 1, allSpells: 1 },
+    voluntary_stop: { round: 2, successCount: 3, distinctCount: 2 },
+  }
+
+  for (const [key, data] of Object.entries(cases)) {
+    const body = validV2Report()
+    if (key === 'multi_kill_non_dragon') addStanding(body, 'p3', 3)
+    if (key === 'dragon_multi_kill') {
+      addStanding(body, 'p3', 3)
+      addStanding(body, 'p4', 4)
+    }
+    body.facts = [{ key, playerId: 'p1', data }]
+    assert.equal(sanitize(body).ok, true, `${key} 接受规范结构`)
+    body.facts[0].data = {}
+    assert.equal(sanitize(body).ok, false, `${key} 拒绝空 bag`)
+  }
+
+  const invalid = [
+    ['turn_distinct_spells', { round: 1, spellIds: [5, 5, 7], castCount: 3 }],
+    ['all_spell_types', { spellIds: [1, 2, 3, 4, 5, 6, 7] }],
+    ['round_win_low_hp', { round: 1, actorHp: 2, reason: 'kill' }],
+    ['low_hp_kill', { round: 1, spellId: 7, actorHp: 1, targetHpBefore: 1, targetPlayerId: 'p2' }],
+    ['multi_kill_non_dragon', { round: 1, spellId: 1, killCount: 2 }],
+    ['dragon_multi_kill', { round: 1, spellId: 7, killCount: 3 }],
+    ['comeback_win', { playerScoreBefore: 4, opponentScoreBefore: 7, finalScore: 8 }],
+    ['survivor_secret_stack', { round: 1, secretCount: 2 }],
+    ['round_win_routes', { kill: 1, allSpells: 0 }],
+    ['voluntary_stop', { round: 1, successCount: 1, distinctCount: 2 }],
+  ]
+  for (const [key, data] of invalid) {
+    const body = validV2Report()
+    body.facts = [{ key, playerId: 'p1', data }]
+    assert.equal(sanitize(body).ok, false, `${key} 拒绝语义冲突`)
+  }
+})
+
+test('v2 story key 使用精确 schema 且引用 standings 内玩家', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const cases = {
+    comeback_win: { playerScoreBefore: 3, opponentScoreBefore: 7, finalScore: 8 },
+    dragon_multi_kill: { round: 2, spellId: 1, killCount: 3 },
+    low_hp_kill: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' },
+    turn_clear_streak: { round: 2, successCount: 4, reason: 'all_spells' },
+    secret_score: { secretPoints: 3, secretCount: 3 },
+    round_win_routes: { kill: 1, allSpells: 1 },
+    all_spell_types: { spellIds: [1, 2, 3, 4, 5, 6, 7, 8] },
+    voluntary_stop: { round: 2, successCount: 3, distinctCount: 2 },
+  }
+
+  for (const [key, data] of Object.entries(cases)) {
+    const body = validV2Report()
+    if (key === 'dragon_multi_kill') {
+      addStanding(body, 'p3', 3)
+      addStanding(body, 'p4', 4)
+    }
+    body.stories = [{ key, playerId: 'p1', tier: 'A', data }]
+    assert.equal(sanitize(body).ok, true, `${key} 接受规范结构`)
+  }
+
+  const body = validV2Report()
+  body.stories = [{ key: 'low_hp_kill', playerId: 'p1', tier: 'A', data: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p-missing' } }]
+  assert.equal(sanitize(body).ok, false)
+
+  body.stories = [{ key: 'low_hp_kill', playerId: 'p1', tier: 'A', data: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p1' } }]
+  assert.equal(sanitize(body).ok, false, '击杀目标不能是故事主体本人')
+
+  body.stories = [{ key: 'dragon_multi_kill', playerId: 'p1', tier: 'S', data: { round: 2, spellId: 1, killCount: 3 } }]
+  assert.equal(sanitize(body).ok, false, '双人局不可能一击三杀')
+})
+
+test('v2 清洗把 standings 与 spellCounts 归一化为稳定规范顺序', () => {
+  const body = validV2Report()
+  body.standings.reverse()
+  body.standings[1].spellCounts = { 8: 1, 1: 2 }
+
+  const result = moduleResult.module.sanitizeMatchReport(body)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.report.standings.map((row) => row.rank), [1, 2])
+  assert.deepEqual(Object.keys(result.report.standings[0].spellCounts), ['1', '8'])
+})
+
+test('v2 清洗使用本场轮数和玩家统计之间的相对语义边界', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { body.standings[0].deaths = 4 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].suicides = 2 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].roundWins = 4 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].roundWinsByReason = { kill: 2, all_spells: 1 } }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].maxTurnCastCount = 2; body.standings[0].maxTurnDistinctSpells = 3 }).ok, false)
+  assert.equal(mutate((body) => { body.facts = [{ key: 'round_win_low_hp', playerId: 'p1', data: { round: 4, actorHp: 1, reason: 'kill' } }] }).ok, false)
 })

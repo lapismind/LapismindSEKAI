@@ -14,8 +14,6 @@ const MAX_FAILS_IN_ROUND = 36
 const MAX_REPORT_ID_LENGTH = 64
 const MAX_FACTS = 100
 const MAX_STORIES = 3
-const MAX_STRUCTURED_DATA_KEYS = 16
-const MAX_STRUCTURED_STRING_LENGTH = 64
 
 const V2_TOP_LEVEL_KEYS = new Set([
   'schemaVersion', 'reportId', 'game', 'roomId', 'startedAt', 'finishedAt',
@@ -38,11 +36,29 @@ const STORY_KEYS = new Set([
   'secret_score', 'round_win_routes', 'all_spell_types', 'voluntary_stop',
 ])
 const STORY_TIERS = new Set(['S', 'A', 'B', 'C'])
-const STRUCTURED_DATA_KEYS = new Set([
-  'round', 'spellId', 'actorHp', 'targetHpBefore', 'targetPlayerId', 'score',
-  'opponentScore', 'count', 'distinctCount', 'secretCount', 'successCount',
-  'killCount', 'roundWinPoints', 'survivalPoints', 'secretPoints', 'reason',
-])
+const FACT_DATA_SCHEMAS = {
+  turn_distinct_spells: cleanTurnDistinctSpells,
+  turn_clear_streak: cleanTurnClearStreak,
+  all_spell_types: cleanAllSpellTypes,
+  round_win_low_hp: cleanRoundWinLowHp,
+  low_hp_kill: cleanLowHpKill,
+  multi_kill_non_dragon: cleanMultiKillNonDragon,
+  dragon_multi_kill: cleanDragonMultiKill,
+  comeback_win: cleanComebackWin,
+  survivor_secret_stack: cleanSurvivorSecretStack,
+  round_win_routes: cleanRoundWinRoutes,
+  voluntary_stop: cleanVoluntaryStop,
+}
+const STORY_DATA_SCHEMAS = {
+  comeback_win: cleanComebackWin,
+  dragon_multi_kill: cleanDragonMultiKill,
+  low_hp_kill: cleanLowHpKill,
+  turn_clear_streak: cleanTurnClearStreak,
+  secret_score: cleanSecretScore,
+  round_win_routes: cleanRoundWinRoutes,
+  all_spell_types: cleanAllSpellTypes,
+  voluntary_stop: cleanVoluntaryStop,
+}
 
 function isCount(value, max = MAX_MATCH_EVENTS) {
   return Number.isInteger(value) && value >= 0 && value <= max
@@ -59,7 +75,8 @@ function hasOnlyKeys(value, allowed) {
 
 function isIsoTimestamp(value) {
   if (typeof value !== 'string' || value.length !== 24 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false
-  return new Date(value).toISOString() === value
+  const date = new Date(value)
+  return Number.isFinite(date.getTime()) && date.toISOString() === value
 }
 
 function cleanExactCounts(value, keys, max = MAX_SCORE) {
@@ -72,51 +89,119 @@ function cleanExactCounts(value, keys, max = MAX_SCORE) {
   return clean
 }
 
-function cleanStructuredData(value, playerIds) {
-  if (!hasOnlyKeys(value, STRUCTURED_DATA_KEYS) || Object.keys(value).length > MAX_STRUCTURED_DATA_KEYS) return null
-  const clean = {}
-  for (const [key, item] of Object.entries(value)) {
-    if (key === 'targetPlayerId') {
-      if (typeof item !== 'string' || item.length > MAX_STRUCTURED_STRING_LENGTH || !playerIds.has(item)) return null
-    } else if (key === 'reason') {
-      if (!['kill', 'all_spells', 'self_destruct'].includes(item)) return null
-    } else if (key === 'spellId') {
-      if (!Number.isInteger(item) || item < 1 || item > 8) return null
-    } else if (key === 'actorHp' || key === 'targetHpBefore') {
-      if (!isCount(item, MAX_HEALTH)) return null
-    } else if (key === 'round') {
-      if (!isCount(item, MAX_ROUNDS)) return null
-    } else if (key === 'distinctCount') {
-      if (!isCount(item, 8)) return null
-    } else if (!isCount(item, MAX_MATCH_EVENTS)) {
-      return null
-    }
-    clean[key] = item
-  }
-  return clean
+function cleanSpellIds(value, expectedLength = null) {
+  if (!Array.isArray(value) || value.length < 1 || value.length > 8) return null
+  if (expectedLength != null && value.length !== expectedLength) return null
+  if (value.some((id) => !Number.isInteger(id) || id < 1 || id > 8)) return null
+  if (new Set(value).size !== value.length) return null
+  return [...value].sort((a, b) => a - b)
 }
 
-function cleanFacts(value, playerIds) {
+function cleanTurnDistinctSpells(data) {
+  if (!hasOnlyKeys(data, new Set(['round', 'spellIds', 'castCount'])) || Object.keys(data).length !== 3) return null
+  const spellIds = cleanSpellIds(data.spellIds)
+  if (!isCount(data.round, MAX_ROUNDS) || !spellIds || spellIds.length < 3 || !isCount(data.castCount, MAX_SPELLS_PER_TURN) || data.castCount < spellIds.length) return null
+  return { round: data.round, spellIds, castCount: data.castCount }
+}
+
+function cleanTurnClearStreak(data) {
+  if (!hasOnlyKeys(data, new Set(['round', 'successCount', 'reason'])) || Object.keys(data).length !== 3) return null
+  if (!isCount(data.round, MAX_ROUNDS) || !isCount(data.successCount, MAX_SPELLS_PER_TURN) || data.successCount < 4 || data.reason !== 'all_spells') return null
+  return { round: data.round, successCount: data.successCount, reason: 'all_spells' }
+}
+
+function cleanAllSpellTypes(data) {
+  if (!hasOnlyKeys(data, new Set(['spellIds'])) || Object.keys(data).length !== 1) return null
+  const spellIds = cleanSpellIds(data.spellIds, 8)
+  return spellIds ? { spellIds } : null
+}
+
+function cleanRoundWinLowHp(data) {
+  if (!hasOnlyKeys(data, new Set(['round', 'actorHp', 'reason'])) || Object.keys(data).length !== 3) return null
+  if (!isCount(data.round, MAX_ROUNDS) || data.actorHp !== 1 || !['kill', 'all_spells'].includes(data.reason)) return null
+  return { round: data.round, actorHp: 1, reason: data.reason }
+}
+
+function cleanLowHpKill(data, playerIds) {
+  const keys = new Set(['round', 'spellId', 'actorHp', 'targetHpBefore', 'targetPlayerId'])
+  if (!hasOnlyKeys(data, keys) || Object.keys(data).length !== keys.size) return null
+  if (!isCount(data.round, MAX_ROUNDS) || !Number.isInteger(data.spellId) || data.spellId < 1 || data.spellId > 8) return null
+  if (data.actorHp !== 1 || !isCount(data.targetHpBefore, MAX_HEALTH) || data.targetHpBefore < 3) return null
+  if (typeof data.targetPlayerId !== 'string' || !playerIds.has(data.targetPlayerId)) return null
+  return { round: data.round, spellId: data.spellId, actorHp: 1, targetHpBefore: data.targetHpBefore, targetPlayerId: data.targetPlayerId }
+}
+
+function cleanMultiKillNonDragon(data, playerIds) {
+  if (!hasOnlyKeys(data, new Set(['round', 'spellId', 'killCount'])) || Object.keys(data).length !== 3) return null
+  if (!isCount(data.round, MAX_ROUNDS) || !Number.isInteger(data.spellId) || data.spellId < 2 || data.spellId > 8) return null
+  if (!isCount(data.killCount, Math.min(MAX_ONE_CAST_KILLS, playerIds.size - 1)) || data.killCount < 2) return null
+  return { round: data.round, spellId: data.spellId, killCount: data.killCount }
+}
+
+function cleanDragonMultiKill(data, playerIds) {
+  if (!hasOnlyKeys(data, new Set(['round', 'spellId', 'killCount'])) || Object.keys(data).length !== 3) return null
+  if (!isCount(data.round, MAX_ROUNDS) || data.spellId !== 1 || !isCount(data.killCount, Math.min(MAX_ONE_CAST_KILLS, playerIds.size - 1)) || data.killCount < 3) return null
+  return { round: data.round, spellId: 1, killCount: data.killCount }
+}
+
+function cleanComebackWin(data) {
+  const keys = new Set(['playerScoreBefore', 'opponentScoreBefore', 'finalScore'])
+  if (!hasOnlyKeys(data, keys) || Object.keys(data).length !== keys.size) return null
+  if (!isCount(data.playerScoreBefore, 3) || !isCount(data.opponentScoreBefore, MAX_SCORE) || data.opponentScoreBefore < 7) return null
+  if (!isCount(data.finalScore, MAX_SCORE) || data.finalScore < 8 || data.finalScore <= data.opponentScoreBefore) return null
+  return { playerScoreBefore: data.playerScoreBefore, opponentScoreBefore: data.opponentScoreBefore, finalScore: data.finalScore }
+}
+
+function cleanSurvivorSecretStack(data) {
+  if (!hasOnlyKeys(data, new Set(['round', 'secretCount'])) || Object.keys(data).length !== 2) return null
+  if (!isCount(data.round, MAX_ROUNDS) || !isCount(data.secretCount, MAX_ROUND_SECRETS) || data.secretCount < 3) return null
+  return { round: data.round, secretCount: data.secretCount }
+}
+
+function cleanRoundWinRoutes(data) {
+  if (!hasOnlyKeys(data, new Set(['kill', 'allSpells'])) || Object.keys(data).length !== 2) return null
+  if (!isCount(data.kill, MAX_ROUNDS) || data.kill < 1 || !isCount(data.allSpells, MAX_ROUNDS) || data.allSpells < 1) return null
+  return { kill: data.kill, allSpells: data.allSpells }
+}
+
+function cleanVoluntaryStop(data) {
+  if (!hasOnlyKeys(data, new Set(['round', 'successCount', 'distinctCount'])) || Object.keys(data).length !== 3) return null
+  if (!isCount(data.round, MAX_ROUNDS) || !isCount(data.successCount, MAX_SPELLS_PER_TURN) || data.successCount < 2) return null
+  if (!isCount(data.distinctCount, 8) || data.distinctCount < 1 || data.distinctCount > data.successCount) return null
+  return { round: data.round, successCount: data.successCount, distinctCount: data.distinctCount }
+}
+
+function cleanSecretScore(data) {
+  if (!hasOnlyKeys(data, new Set(['secretPoints', 'secretCount'])) || Object.keys(data).length !== 2) return null
+  if (!isCount(data.secretPoints, MAX_ROUND_SECRETS) || data.secretPoints < 3 || data.secretCount !== data.secretPoints) return null
+  return { secretPoints: data.secretPoints, secretCount: data.secretCount }
+}
+
+function cleanFacts(value, playerIds, rounds) {
   if (!Array.isArray(value) || value.length > MAX_FACTS) return null
   const clean = []
   for (const fact of value) {
     if (!hasOnlyKeys(fact, new Set(['key', 'playerId', 'data'])) || Object.keys(fact).length !== 3) return null
     if (!FACT_KEYS.has(fact.key) || !playerIds.has(fact.playerId)) return null
-    const data = cleanStructuredData(fact.data, playerIds)
+    const data = FACT_DATA_SCHEMAS[fact.key]?.(fact.data, playerIds)
     if (!data) return null
+    if (fact.key === 'low_hp_kill' && data.targetPlayerId === fact.playerId) return null
+    if (data.round != null && (data.round < 1 || data.round > rounds)) return null
     clean.push({ key: fact.key, playerId: fact.playerId, data })
   }
   return clean
 }
 
-function cleanStories(value, playerIds) {
+function cleanStories(value, playerIds, rounds) {
   if (!Array.isArray(value) || value.length > MAX_STORIES) return null
   const clean = []
   for (const story of value) {
     if (!hasOnlyKeys(story, new Set(['key', 'playerId', 'tier', 'data'])) || Object.keys(story).length !== 4) return null
     if (!STORY_KEYS.has(story.key) || !playerIds.has(story.playerId) || !STORY_TIERS.has(story.tier)) return null
-    const data = cleanStructuredData(story.data, playerIds)
+    const data = STORY_DATA_SCHEMAS[story.key]?.(story.data, playerIds)
     if (!data) return null
+    if (story.key === 'low_hp_kill' && data.targetPlayerId === story.playerId) return null
+    if (data.round != null && (data.round < 1 || data.round > rounds)) return null
     clean.push({ key: story.key, playerId: story.playerId, tier: story.tier, data })
   }
   return clean
@@ -126,7 +211,7 @@ function cleanSpellCounts(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const clean = {}
   let total = 0
-  for (const [key, count] of Object.entries(value)) {
+  for (const [key, count] of Object.entries(value).sort(([left], [right]) => Number(left) - Number(right))) {
     if (!isCanonicalSpellKey(key) || !isCount(count)) return null
     total += count
     if (total > MAX_MATCH_EVENTS) return null
@@ -305,10 +390,17 @@ function sanitizeV2(body) {
   }
   const ranks = standings.map((standing) => standing.rank).sort((a, b) => a - b)
   if (ranks.some((rank, index) => rank !== index + 1)) return { ok: false, error: 'invalid rank' }
+  standings.sort((left, right) => left.rank - right.rank)
+  if (standings.some((standing) => standing.deaths > body.rounds || standing.suicides > standing.deaths
+      || standing.roundWins > body.rounds
+      || standing.roundWinsByReason.kill + standing.roundWinsByReason.all_spells !== standing.roundWins
+      || standing.maxTurnDistinctSpells > standing.maxTurnCastCount)) {
+    return { ok: false, error: 'invalid standing totals' }
+  }
 
   const playerIds = new Set(standings.map((standing) => standing.playerId))
-  const facts = cleanFacts(body.facts, playerIds)
-  const stories = cleanStories(body.stories, playerIds)
+  const facts = cleanFacts(body.facts, playerIds, body.rounds)
+  const stories = cleanStories(body.stories, playerIds, body.rounds)
   if (!facts || !stories) return { ok: false, error: 'invalid facts or stories' }
 
   return {
@@ -368,4 +460,13 @@ export function sanitizeMatchReport(body) {
       players,
     },
   }
+}
+
+export function canonicalMatchReportJson(report) {
+  return JSON.stringify(report)
+}
+
+export async function hashMatchReport(report) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonicalMatchReportJson(report)))
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
 }

@@ -472,9 +472,9 @@ console.log('worker match-report tests passed')
         args: [],
         bind(...args) { statement.args = args; return statement },
         async first() {
-          if (sql === 'SELECT id FROM matches WHERE report_id = ?') {
+          if (sql.includes('FROM matches WHERE report_id = ?')) {
             const row = matches.find((match) => match.report_id === statement.args[0])
-            return row ? { id: row.id } : null
+            return row ? { id: row.id, report_hash: row.report_hash, report_status: row.report_status, expected_players: row.expected_players } : null
           }
           if (sql.includes('SUM(') && sql.includes('match_players')) {
             return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
@@ -483,19 +483,23 @@ console.log('worker match-report tests passed')
         },
         async run() {
           if (sql.startsWith('INSERT OR IGNORE INTO matches')) {
-            const [reportId, game, roomId, rounds, finishedAt] = statement.args
+            const [reportId, reportHash, game, roomId, rounds, expectedPlayers, finishedAt] = statement.args
             const existing = matches.find((match) => match.report_id === reportId)
             if (existing) return { meta: { changes: 0, last_row_id: 0 } }
-            const row = { id: nextMatchId++, report_id: reportId, game, room_id: roomId, rounds, finished_at: finishedAt }
+            const row = { id: nextMatchId++, report_id: reportId, report_hash: reportHash, report_status: 'pending', expected_players: expectedPlayers, game, room_id: roomId, rounds, finished_at: finishedAt }
             matches.push(row)
             return { meta: { changes: 1, last_row_id: row.id } }
           }
-          if (sql.startsWith('INSERT OR IGNORE INTO match_players')) {
+          if (sql.startsWith('INSERT INTO match_players')) {
             const [matchId, playerId] = statement.args
-            if (matchPlayers.some((row) => row.match_id === matchId && row.player_id === playerId)) {
-              return { meta: { changes: 0 } }
-            }
-            matchPlayers.push({ match_id: matchId, player_id: playerId, args: [...statement.args] })
+            const existing = matchPlayers.findIndex((row) => row.match_id === matchId && row.player_id === playerId)
+            const row = { match_id: matchId, player_id: playerId, args: [...statement.args] }
+            if (existing >= 0) matchPlayers[existing] = row
+            else matchPlayers.push(row)
+            return { meta: { changes: 1 } }
+          }
+          if (sql.startsWith("UPDATE matches SET report_status = 'complete'")) {
+            matches.find((match) => match.id === statement.args[0]).report_status = 'complete'
             return { meta: { changes: 1 } }
           }
           if (sql.startsWith('INSERT OR IGNORE INTO achievements')) {
@@ -505,11 +509,25 @@ console.log('worker match-report tests passed')
           throw new Error('v2 match report fake db: unsupported run: ' + sql)
         },
         async all() {
+          if (sql.startsWith('SELECT player_id, nickname')) {
+            return { results: matchPlayers.filter((row) => row.match_id === statement.args[0]).map((row) => ({
+              player_id: row.args[1], nickname: row.args[2], score: row.args[3], is_champion: row.args[4],
+              kills: row.args[5], deaths: row.args[6], spells_cast: row.args[7], suicides: row.args[11],
+              dragon_kills: row.args[12], round_wins: row.args[13], round_win_points: row.args[14],
+              survival_points: row.args[15], secret_points: row.args[16], round_wins_by_reason: row.args[17],
+              max_turn_cast_count: row.args[18], max_turn_distinct_spells: row.args[19],
+            })).sort((a, b) => a.player_id.localeCompare(b.player_id)) }
+          }
           if (sql.includes('json_each')) return { results: [] }
           throw new Error('v2 match report fake db: unsupported all: ' + sql)
         },
       }
       return statement
+    },
+    async batch(statements) {
+      const results = []
+      for (const statement of statements) results.push(await statement.run())
+      return results
     },
   }
 
@@ -551,3 +569,13 @@ console.log('worker match-report tests passed')
 }
 
 console.log('worker v2 idempotency tests passed')
+
+// ---- career 查询必须排除 pending v2 match，避免失败批次产生可见累计 ----
+{
+  const source = await import('node:fs/promises').then(fs => fs.readFile(new URL('../src/index.js', import.meta.url), 'utf8'))
+  const careerQueries = [...source.matchAll(/FROM match_players mp[^`]+/g)].map((match) => match[0])
+  assert.ok(careerQueries.length >= 3, '找到上报和资料页 career 查询')
+  assert.ok(careerQueries.every((query) => query.includes("report_status = 'complete'")), '所有 career 查询只累计 complete match')
+}
+
+console.log('worker pending-career isolation tests passed')

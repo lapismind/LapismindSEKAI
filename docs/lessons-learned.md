@@ -1,5 +1,19 @@
 # Lessons Learned
 
+## 2026-09-07 严格白名单测试不能同时期待未知字段被静默丢弃
+
+- 当批准计划明确要求 schema v2 遇到未知 key 返回 400 时，合法 payload 测试不得沿用 v1 的“忽略额外字段”预期。严格版本应分别验证规范形状成功、顶层/嵌套未知 key 失败；否则测试合同自身矛盾，RED 不能作为实现依据。
+- 假 D1 的 SQL 分支必须匹配实现的完整写法；`INSERT INTO matches` 不会匹配 `INSERT OR IGNORE INTO matches`。幂等测试应显式支持后者，避免把测试桩缺口误判成数据库逻辑失败。
+- 涉及 `startedAt <= finishedAt` 的 Worker fixture 不应把开始时间固定在“今天稍后的时刻”；运行时生成结束时间会受实际时钟影响。固定开始时间应明确早于测试执行时间，生产清洗仍保持严格时序校验。
+- Windows 上不要并行执行多个 `wrangler d1 execute --local` 读取同一个本地 D1 状态；workerd 可能报 `SQLITE_BUSY_RECOVERY` 并异常退出。迁移后的 `PRAGMA`/索引核对应串行执行。
+- Windows PowerShell 下不能把 `git grep --no-index` 指向 Unix `/dev/stdin` 做 staged diff 扫描；该路径不存在且会关闭管道。提交前改用专用 Grep 对明确 staged 文件集扫描，并结合 `git diff --cached` 人工核对。
+- Node `spawnSync('npx.cmd', ..., { shell: false })` 在当前 Windows 测试环境可能返回 `status: null`，没有真正启动 Wrangler。迁移集成测试调用固定的本地 Wrangler 命令时使用 `shell: true`，并继续检查退出码和完整输出，避免把启动失败当业务 RED。
+- Windows `cmd /c` 下把每个固定参数都用 `JSON.stringify` 包成双引号会让 `npx` 把 `"wrangler"` 解析成非法包标签。固定、无用户输入的测试参数可直接交给 `spawnSync('npx.cmd', args, { shell: true })`；若以后接收外部参数，必须改用无 shell 的可执行文件路径而不是沿用此写法。
+- `require.resolve('wrangler/bin/wrangler.js')` 会被 Wrangler 的 package `exports` 拒绝，不能用猜测的子路径定位 CLI。应读取已安装 `node_modules/wrangler/package.json` 的 `bin` 声明，再用其真实相对路径通过 `node` 启动。
+- 检查 SQL 是否只读时要先剥离 `--` 注释；安全说明中的“delete”不能被当成可执行 `DELETE`。断言应针对 executable SQL，而不是注释文本。
+- 专用 Grep 使用的 ripgrep 默认不支持正则 lookahead/lookbehind；检查“不带 JOIN 的查询”不要写 `(?!...)`，应先搜全部候选行再人工核对上下文，或使用 Bash `rg --pcre2` 计数。
+- 把 Wrangler 原始输出粘进 Markdown 报告时，`Resource location: local ` 行尾自带空格会触发 `git diff --check`。报告保留可见输出内容即可，删除不可见尾随空格后再暂存。
+
 ## 2026-09-07 已打开对话框的初始焦点不能只依赖后续 watch 变化
 
 - 测试夹具或路由恢复可能在组件挂载前就把对话框状态设为打开；普通 `watch()` 只监听后续变化，不会为初始打开状态设置焦点。对话框初始焦点逻辑需要 `immediate: true`（并等待 `nextTick` 后 ref 挂载），浏览器测试必须覆盖首次渲染即打开的路径。
