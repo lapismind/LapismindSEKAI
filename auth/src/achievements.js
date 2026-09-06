@@ -2,11 +2,8 @@
  * achievements.js —— 出包魔法师成就定义与判定引擎（纯函数，可单测）。
  *
  * 新版只触发 10 个传奇成就；旧定义保留为 legacy 元数据。
- * 输入上下文：
- *   match  —— 单场聚合（rounds / players / events 由 DO 上报）
- *   p      —— 该玩家的本场数据
- *   career —— 跨场次累计（Worker 查 D1 得出）
- * 新增成就只需往 ACHIEVEMENT_DEFS 加一条 + 在 CHECKS 里加判定。
+ * v2 只读取清洗后的 standings/facts；v1 只读取清洗后的旧玩家统计。
+ * 判定不访问 D1，也不从昵称或文本猜测事实。
  */
 
 export const ACHIEVEMENT_DEFS = [
@@ -116,110 +113,73 @@ export function progressFromCareer(key, career) {
   }
 }
 
-// 判定表：key → (ctx) => boolean
-// ctx = { p, match, career }
-const CHECKS = {
-  // 一星
-  first_cast: ({ p, career }) => career.totalCasts + castsOf(p) >= 1,
-  first_kill: ({ p, career }) => career.totalKills + (p.kills || 0) >= 1,
-  potion_addict: ({ p, career }) => spellCount(career, p, 8) >= 10,
-  spell_collector: ({ p, career }) => new Set([...Object.keys(career.spellCounts), ...Object.keys(p.spellsCast || {})]).size >= 8,
-
-  // 二星
-  meteor: ({ p }) => maxStreak(p.castStreaks?.[7]) >= 3,
-  frost: ({ p }) => maxStreak(p.castStreaks?.[6]) >= 3,
-  weather_child: ({ p }) => {
-    const byRound = {}
-    for (const rc of p.roundSpellCasts || []) {
-      if ([5, 6, 7].includes(rc.spellId)) (byRound[rc.round] ??= new Set()).add(rc.spellId)
-    }
-    return Object.values(byRound).some(s => [5, 6, 7].every(id => s.has(id)))
-  },
-  night_walker: ({ p, career }) => spellCount(career, p, 2) >= 20,
-  last_breath: ({ p }) => p.roundWonAtHp1 === true,
-  secret_rich: ({ p }) => p.roundEndSecrets >= 3,
-
-  // 三星
-  comeback: ({ p }) => p.killedHighHpTarget === true,
-  double_kill: ({ p }) => p.singleCastMultiKillNonDragon >= 2,
-  pacifist_king: ({ p }) => p.isChampion && (p.kills || 0) === 0,
-  untouchable: ({ p }) => p.isChampion && (p.deaths || 0) === 0,
-  hundred_casts: ({ p, career }) => career.totalCasts + castsOf(p) >= 100,
-  dragon_clown: ({ p, career }) =>
-    (career.dragonFails || 0) + (p.dragonFails || 0) >= 10 &&
-    (career.suicides || 0) + (p.suicides || 0) >= 10,
-  all_rounded: ({ p, career }) => {
-    for (let id = 1; id <= 8; id++) {
-      if (spellCount(career, p, id) < 5) return false
-    }
+const V2_CHECKS = {
+  magic_staircase: ({ fact }) => fact('turn_distinct_spells', ({ spellIds, castCount }) =>
+    Array.isArray(spellIds) && new Set(spellIds).size >= 3 && castCount >= spellIds.length),
+  one_breath: ({ fact }) => fact('turn_clear_streak', ({ successCount, reason }) =>
+    successCount >= 4 && reason === 'all_spells'),
+  eight_facets: ({ player }) => {
+    for (let id = 1; id <= 8; id++) if ((player.spellCounts?.[id] || 0) < 1) return false
     return true
   },
-  dragon_triple_total: ({ p }) => (p.dragonKills || 0) >= 3,
+  last_breath: ({ fact }) => fact('round_win_low_hp', ({ actorHp, reason }) =>
+    actorHp === 1 && (reason === 'kill' || reason === 'all_spells')),
+  weak_over_strong: ({ fact }) => fact('low_hp_kill', ({ actorHp, targetHpBefore, targetPlayerId }) =>
+    actorHp === 1 && targetHpBefore >= 3 && typeof targetPlayerId === 'string'),
+  pincer_finish: ({ fact }) => fact('multi_kill_non_dragon', ({ spellId, killCount }) =>
+    spellId >= 2 && spellId <= 8 && killCount >= 2),
+  dragon_sweep: ({ fact }) => fact('dragon_multi_kill', ({ spellId, killCount }) =>
+    spellId === 1 && killCount >= 3),
+  refuse_ending: ({ fact }) => fact('comeback_win', ({ playerScoreBefore, opponentScoreBefore, finalScore }) =>
+    playerScoreBefore <= 3 && opponentScoreBefore >= 7 && finalScore > opponentScoreBefore),
+  secret_investor: ({ fact }) => fact('survivor_secret_stack', ({ secretCount }) => secretCount >= 3),
+  different_paths: ({ player }) =>
+    player.roundWinsByReason?.kill >= 1 && player.roundWinsByReason?.all_spells >= 1,
+}
 
-  // 四星
-  not_approved: ({ p }) => p.comebackFromBehind === true,
-  opening_blast: ({ p }) => p.firstTurnDragon3 === true,
-  elemental: ({ p }) => {
-    for (const set of Object.values(p.turnSpellSets || {})) {
-      if ([5, 6, 7].every(id => set.includes(id))) return true
-    }
-    return false
+const V1_CHECKS = {
+  magic_staircase: ({ player }) => Object.values(player.turnSpellSets || {}).some((spellIds) =>
+    Array.isArray(spellIds) && new Set(spellIds).size >= 3),
+  one_breath: () => false,
+  eight_facets: ({ player }) => {
+    for (let id = 1; id <= 8; id++) if ((player.spellsCast?.[id] || 0) < 1) return false
+    return true
   },
-  dragon_veteran: ({ p, career }) => spellCount(career, p, 1) >= 30,
-  god_of_kill: ({ p, career }) => career.totalKills + (p.kills || 0) >= 50,
-  match_master: ({ p, career }) => career.totalWins + (p.isChampion ? 1 : 0) >= 50,
-  dragon_triple_one: ({ p }) => (p.dragonOneCastKills || 0) >= 3,
-
-  // 彩蛋
-  egg_first_round_suicide: ({ p }) => p.firstRoundSuicide === true,
-  egg_gentle: ({ p }) => {
-    const ids = Object.keys(p.spellsCast || {}).map(Number)
-    if (ids.length === 0) return false
-    return ids.every(id => id === 3 || id === 8) && (p.kills || 0) === 0
-  },
-  egg_full_then_dead: ({ p }) => p.hadLowThenFullThenDied === true,
-  egg_social_death: ({ p }) => (p.maxFailsInRound || 0) >= 3,
-  egg_no_secret_win: ({ p }) => p.roundWonNoSecrets === true,
+  last_breath: ({ player }) => player.roundWonAtHp1 === true,
+  weak_over_strong: ({ player }) => player.killedHighHpTarget === true,
+  pincer_finish: ({ player }) => player.singleCastMultiKillNonDragon >= 2,
+  dragon_sweep: ({ player }) => player.dragonOneCastKills >= 3,
+  refuse_ending: ({ player }) => player.comebackFromBehind === true,
+  secret_investor: () => false,
+  different_paths: () => false,
 }
 
 /**
- * @param {object} match - { players: [...], events? }
- * @param {function} careerLookup - async (playerId) => career
+ * @param {object} match - sanitized v2 report or sanitized v1 match
+ * @param {function} careerLookup - retained call compatibility; active checks do not use career data
  * @returns {Promise<Array<{playerId, key}>>}
  */
 export async function evaluateAchievements(match, careerLookup) {
   const out = []
-  for (const p of match.players) {
-    const career = await careerLookup(p.playerId)
-    const ctx = { p, match, career }
+  const isV2 = match?.schemaVersion === 2 && Array.isArray(match.standings)
+  const players = isV2 ? match.standings : match?.players || []
+  const checks = isV2 ? V2_CHECKS : V1_CHECKS
+  for (const player of players) {
+    const facts = isV2
+      ? (match.facts || []).filter((entry) => entry.playerId === player.playerId)
+      : []
+    const ctx = {
+      player,
+      match,
+      fact: (key, predicate) => facts.some((entry) => entry.key === key && predicate(entry.data || {})),
+    }
     for (const { key, status } of ACHIEVEMENT_DEFS) {
       if (status !== 'active' && status !== 'hidden') continue
-      const check = CHECKS[key]
+      const check = checks[key]
       try {
-        if (check?.(ctx)) out.push({ playerId: p.playerId, key })
+        if (check?.(ctx)) out.push({ playerId: player.playerId, key })
       } catch { /* 单条判定异常不拖垮整场 */ }
     }
   }
   return out
-}
-
-// ---------- 工具 ----------
-
-function castsOf(p) {
-  return Object.values(p.spellsCast || {}).reduce((s, n) => s + n, 0)
-}
-
-function spellCount(career, p, id) {
-  return (career.spellCounts[id] || 0) + (p.spellsCast?.[id] || 0)
-}
-
-/** castStreaks[spellId] = [true, true, false, true, true, true] → 最长连续 true 段 */
-function maxStreak(arr) {
-  if (!Array.isArray(arr)) return 0
-  let best = 0, cur = 0
-  for (const v of arr) {
-    cur = v ? cur + 1 : 0
-    if (cur > best) best = cur
-  }
-  return best
 }

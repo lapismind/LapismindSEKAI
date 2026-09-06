@@ -75,11 +75,15 @@ test('real isolated local D1 executes persistence conflict rollback pending repa
     assert.equal(first.status, 200, JSON.stringify({ firstBody, stdout, stderr }))
     const retry = await post(payload())
     assert.equal(retry.status, 200)
-    assert.equal((await retry.json()).matchId, firstBody.matchId)
+    const retryBody = await retry.json()
+    assert.equal(retryBody.matchId, firstBody.matchId)
+    assert.deepEqual(retryBody.newAchievements, [])
     assert.equal((await post(payload({ rounds: 3 }))).status, 409)
 
     let query = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, '--command=SELECT report_status, COUNT(mp.id) AS players FROM matches m LEFT JOIN match_players mp ON mp.match_id=m.id WHERE m.report_id IS NOT NULL GROUP BY m.id;', '--json'])
     assert.deepEqual(rows(query), [{ report_status: 'complete', players: 2 }])
+    query = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, '--command=SELECT player_id, achievement_key, COUNT(*) AS n FROM achievements GROUP BY player_id, achievement_key ORDER BY player_id, achievement_key;', '--json'])
+    assert.deepEqual(rows(query), [{ player_id: 'p1', achievement_key: 'different_paths', n: 1 }])
 
     const trigger = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, '--command=CREATE TRIGGER fail_p2 BEFORE INSERT ON match_players WHEN NEW.player_id = \'p2\' BEGIN SELECT RAISE(ABORT, \'forced\'); END;', '--json'])
     assert.equal(trigger.status, 0, trigger.stderr || trigger.stdout)

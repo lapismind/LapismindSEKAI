@@ -22,6 +22,15 @@ CREATE TABLE match_players (
   suicides INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE achievements (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id TEXT NOT NULL,
+  achievement_key TEXT NOT NULL,
+  match_id INTEGER REFERENCES matches(id),
+  unlocked_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(player_id, achievement_key)
+);
+
 INSERT INTO matches (game, room_id, rounds) VALUES ('abracadawhat', 'OLD', 1);
 INSERT INTO match_players (match_id, player_id) VALUES (1, 'p1');
 INSERT INTO match_players (match_id, player_id) VALUES (1, 'p2');

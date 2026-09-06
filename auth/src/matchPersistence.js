@@ -1,4 +1,5 @@
 import { hashMatchReport } from './matchReports.js'
+import { ACHIEVEMENT_DEFS, evaluateAchievements, projectAchievement } from './achievements.js'
 
 export class ReportConflictError extends Error {
   constructor() {
@@ -46,7 +47,21 @@ export async function persistV2MatchReport(db, report) {
     throw new Error('v2 match incomplete after write')
   }
 
-  return { matchId: match.id, reportId: report.reportId, savedReports: [], newAchievements: [] }
+  const unlocked = await evaluateAchievements(report)
+  const achievementStatements = unlocked.map((entry) => db.prepare(
+    'INSERT OR IGNORE INTO achievements (player_id, achievement_key, match_id) VALUES (?, ?, ?)'
+  ).bind(entry.playerId, entry.key, match.id))
+  const insertResults = achievementStatements.length > 0 ? await db.batch(achievementStatements) : []
+  const newAchievements = unlocked.flatMap((entry, index) => {
+    if ((insertResults[index]?.meta?.changes || 0) < 1) return []
+    const projected = projectAchievement(ACHIEVEMENT_DEFS.find((definition) => definition.key === entry.key), {
+      unlocked: true,
+      includeUnlockState: false,
+    })
+    return projected ? [{ playerId: entry.playerId, ...projected }] : []
+  })
+
+  return { matchId: match.id, reportId: report.reportId, savedReports: [], newAchievements }
 }
 
 function playerUpsert(db, matchId, row) {

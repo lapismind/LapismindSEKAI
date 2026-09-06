@@ -25,6 +25,7 @@ function payload(overrides = {}) {
 function makeTransactionalDB({ failPlayerId = null } = {}) {
   const matches = []
   const players = []
+  const achievements = []
   let nextMatchId = 1
 
   function statement(sql) {
@@ -38,7 +39,7 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
     }
   }
 
-  function execute(stmt, state = { matches, players }) {
+  function execute(stmt, state = { matches, players, achievements }) {
     const { sql, args } = stmt
     if (sql.startsWith('INSERT OR IGNORE INTO matches')) {
       if (state.matches.some((row) => row.report_id === args[0])) return { meta: { changes: 0 } }
@@ -65,6 +66,14 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
         const row = state.players[index]
         if (row.match_id === matchId && !expectedPlayerIds.includes(row.player_id)) state.players.splice(index, 1)
       }
+      return { meta: { changes: 1 } }
+    }
+    if (sql.startsWith('INSERT OR IGNORE INTO achievements')) {
+      const [playerId, achievementKey, matchId] = args
+      if (state.achievements.some((row) => row.player_id === playerId && row.achievement_key === achievementKey)) {
+        return { meta: { changes: 0 } }
+      }
+      state.achievements.push({ player_id: playerId, achievement_key: achievementKey, match_id: matchId })
       return { meta: { changes: 1 } }
     }
     throw new Error('unsupported run: ' + sql)
@@ -105,12 +114,14 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
   return {
     matches,
     players,
+    achievements,
     prepare: statement,
     async batch(statements) {
-      const staged = { matches: structuredClone(matches), players: structuredClone(players) }
+      const staged = { matches: structuredClone(matches), players: structuredClone(players), achievements: structuredClone(achievements) }
       const results = statements.map((stmt) => execute(stmt, staged))
       matches.splice(0, matches.length, ...staged.matches)
       players.splice(0, players.length, ...staged.players)
+      achievements.splice(0, achievements.length, ...staged.achievements)
       return results
     },
   }
@@ -136,6 +147,48 @@ test('同 reportId 同规范 payload 并发/重复返回同 matchId 且保持完
   assert.equal(db.matches.length, 1)
   assert.equal(db.matches[0].report_status, 'complete')
   assert.equal(db.players.length, 2)
+})
+
+test('v2 complete 后写入并投影新成就，重复 retry 不再返回新解锁', async () => {
+  const db = makeTransactionalDB()
+  const report = payload({
+    facts: [{ key: 'round_win_low_hp', playerId: 'p1', data: { round: 2, actorHp: 1, reason: 'kill' } }],
+  })
+
+  const first = await post(db, report)
+  const firstBody = await first.json()
+  assert.equal(first.status, 200)
+  assert.deepEqual(firstBody.newAchievements, [
+    {
+      playerId: 'p1',
+      key: 'last_breath',
+      game: 'abracadawhat',
+      name: '一线生机',
+      desc: '只剩 1 点生命时赢下一轮',
+      difficulty: 3,
+      stars: 3,
+      status: 'active',
+    },
+    {
+      playerId: 'p1',
+      key: 'different_paths',
+      game: 'abracadawhat',
+      name: '殊途同归',
+      desc: '同一场至少一次靠击杀赢轮、一次靠清空手牌赢轮',
+      difficulty: 2,
+      stars: 2,
+      status: 'active',
+    },
+  ])
+  assert.deepEqual(db.achievements, [
+    { player_id: 'p1', achievement_key: 'last_breath', match_id: firstBody.matchId },
+    { player_id: 'p1', achievement_key: 'different_paths', match_id: firstBody.matchId },
+  ])
+
+  const retry = await post(db, report)
+  assert.equal(retry.status, 200)
+  assert.deepEqual((await retry.json()).newAchievements, [])
+  assert.equal(db.achievements.length, 2)
 })
 
 test('同 reportId 不同 payload 返回 409 且不写玩家或改动已完成比赛', async () => {
@@ -201,6 +254,7 @@ test('玩家批量写入失败会回滚全部 career 行并保持 pending 供同
   assert.equal(db.matches.length, 1)
   assert.equal(db.matches[0].report_status, 'pending')
   assert.equal(db.players.length, 0, 'batch 失败不得留下部分 career 行')
+  assert.equal(db.achievements.length, 0, 'pending 比赛不得写入成就')
 
   const repaired = makeTransactionalDB()
   repaired.matches.push(...structuredClone(db.matches))

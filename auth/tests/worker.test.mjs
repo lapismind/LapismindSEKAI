@@ -691,7 +691,10 @@ console.log('worker match-report tests passed')
   assert.deepEqual(firstBody.savedReports, [])
   assert.equal(matches.length, 1, '只创建一个 matches 行')
   assert.equal(matchPlayers.length, 2, '每名玩家只创建一个 career 行')
-  assert.equal(achievementInserts.length, 0, 'B1 不为 v2 重复或提前执行旧成就写入')
+  assert.deepEqual(achievementInserts, [
+    ['p1', 'different_paths', firstBody.matchId],
+    ['p1', 'different_paths', firstBody.matchId],
+  ], 'C2 只在 complete 后尝试 active 成就写入，重复上报由 INSERT OR IGNORE 去重')
 }
 
 console.log('worker v2 idempotency tests passed')
