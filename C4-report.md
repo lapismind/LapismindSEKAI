@@ -72,3 +72,28 @@ git diff --check for reviewer-fix paths: passed
 - `@lapismind/lobby-kit` still has no TypeScript declaration file; the two existing Astro hints remain non-blocking.
 - The two-second achievement timeout is intentionally page-local policy. Other lobby-kit consumers receive optional signal support but no forced timeout.
 - No D reports endpoint or reports UI was added.
+
+## Reviewer Race And Tier Fixes
+
+The follow-up review identified that aborting a request alone did not prevent a stale mock or transport that ignores `AbortSignal` from mutating the page. It also identified that the earlier whitespace-token tier assertion did not detect punctuation- or CJK-adjacent tier letters.
+
+- `profile.astro` now keeps page-level `currentAchievementsController` and a monotonically increasing `requestGeneration`.
+- Every new achievement load aborts the previous controller and claims a new generation.
+- All asynchronous success, catch, and finally UI mutations require the request to still own the current generation. A superseded abort therefore cannot expose an error or hide a newer loading state.
+- `astro:before-swap` and `pagehide` invalidate the generation and abort the current request before page teardown.
+- Playwright holds the first request unresolved while a second request succeeds, then makes the stale request resolve or reject despite ignoring its abort signal. In both cases the newer result remains intact.
+- The tier scanner now uses non-Latin-letter boundaries, detecting examples such as `等级：S`, `（A）`, `评级/B，`, and `段位C。` while ignoring normal words such as `SEKAI`, `CSS`, `Astro`, and `GitHub`.
+- Tier scans cover the Profile shell's visible and hidden rendered DOM plus `aria-*`, `title`, `alt`, and `value` attributes in success, loading, empty, error/retry, locked hidden, revealed hidden, and overlapping-request states. Script, style, template, music-player, and other page-external content are correctly excluded from the C4 privacy surface.
+- Correction to the prior report wording: the previous check used whitespace tokenization and did not prove punctuation/CJK-adjacent tier detection. The new boundary-aware scanner is the evidence for that claim.
+
+### Race And Tier Verification
+
+```text
+lobby-kit npm test: passed (7 test files)
+blog npm test: passed
+blog npm run check: 0 errors, 0 warnings, 2 existing missing-declaration hints
+blog npm run lint: passed
+blog npm run build: passed (14 pages)
+Playwright: 10/10 scenarios passed, including stale resolve, stale reject, and teardown invalidation
+No D reports endpoint or reports UI added
+```

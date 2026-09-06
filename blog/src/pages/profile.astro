@@ -232,13 +232,18 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			// ---------- 成就展馆与法师档案（只展示 API 数据） ----------
+			let currentAchievementsController: AbortController | null = null;
+			let requestGeneration = 0;
 
 			async function loadAchievements() {
+				currentAchievementsController?.abort();
+				const generation = ++requestGeneration;
 				const loadingState = el('ach-loading');
 				const errorState = el('ach-error');
 				const emptyState = el('ach-empty');
 				const achievementsContent = el('ach-content');
 				const controller = new AbortController();
+				currentAchievementsController = controller;
 				const timeout = window.setTimeout(() => controller.abort(), 2000);
 				loadingState.hidden = false;
 				errorState.hidden = true;
@@ -247,6 +252,7 @@ import { SITE_TITLE } from '../consts';
 				el('career-section').hidden = true;
 				try {
 					const res = await auth.getAchievements({ signal: controller.signal });
+					if (generation !== requestGeneration) return;
 					if (!res.ok) throw new Error('no achievements data');
 					renderHall(res);
 					renderCareer(res.career);
@@ -254,13 +260,24 @@ import { SITE_TITLE } from '../consts';
 					emptyState.hidden = hasAchievements;
 					achievementsContent.hidden = !hasAchievements;
 				} catch {
+					if (generation !== requestGeneration) return;
 					errorState.hidden = false;
 					el('career-section').hidden = true;
 				} finally {
 					window.clearTimeout(timeout);
+					if (generation !== requestGeneration) return;
+					currentAchievementsController = null;
 					loadingState.hidden = true;
 				}
 			}
+
+			function teardownAchievements() {
+				requestGeneration += 1;
+				currentAchievementsController?.abort();
+				currentAchievementsController = null;
+			}
+			document.addEventListener('astro:before-swap', teardownAchievements, { once: true });
+			window.addEventListener('pagehide', teardownAchievements, { once: true });
 
 			function renderHall(payload: any) {
 				const hall = el('ach-hall');

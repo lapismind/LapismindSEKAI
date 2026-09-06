@@ -1,5 +1,6 @@
 import os
 import json
+import re
 
 from playwright.sync_api import sync_playwright
 
@@ -47,6 +48,19 @@ CAREER_EMPTY = {
     "roundWinsByReason": {"kill": 0, "all_spells": 0},
 }
 
+TIER_PATTERN = re.compile(r"(?<![A-Za-z])[SABC](?![A-Za-z])")
+ADVERSARIAL_TIERS = {
+    "labelS": "等级：S",
+    "labelA": "（A）",
+    "labelB": "评级/B，",
+    "labelC": "段位C。",
+}
+
+for sample in ADVERSARIAL_TIERS.values():
+    assert TIER_PATTERN.search(sample), f"tier scanner missed adversarial sample: {sample}"
+for safe_sample in ("SEKAI", "PLAYER ID", "CSS", "Astro", "GitHub"):
+    assert TIER_PATTERN.search(safe_sample) is None, f"tier scanner false positive: {safe_sample}"
+
 
 def payload(career=CAREER_TIE):
     active = [{**item, "unlocked": index < 3, "unlockedAt": "2026-09-07 12:00:00" if index < 3 else None} for index, item in enumerate(ACTIVE)]
@@ -58,6 +72,7 @@ def payload(career=CAREER_TIE):
         "legacyUnlockedCount": 1,
         "storyTier": "S",
         "internal": {"tier": "A", "rank": "B", "grade": "C"},
+        "adversarial": ADVERSARIAL_TIERS,
     }
 
 
@@ -73,9 +88,9 @@ def install_routes(context, provider="github", mode="success", career=CAREER_TIE
     }
 
     if mode == "empty":
-        achievement_body = {"achievements": [], "career": career, "unlockedCount": 0, "total": 0, "legacyUnlockedCount": 0}
+        achievement_body = {"achievements": [], "career": career, "unlockedCount": 0, "total": 0, "legacyUnlockedCount": 0, "adversarial": ADVERSARIAL_TIERS}
     elif mode == "malformed":
-        achievement_body = {"achievements": None, "career": {"tier": "S"}}
+        achievement_body = {"achievements": None, "career": {"tier": "S"}, "adversarial": ADVERSARIAL_TIERS}
     else:
         achievement_body = payload(career)
     context.add_init_script(script=f"""
@@ -83,11 +98,24 @@ def install_routes(context, provider="github", mode="success", career=CAREER_TIE
         const nativeFetch = window.fetch.bind(window);
         const mode = {json.dumps(mode)};
         const body = {json.dumps(achievement_body, ensure_ascii=False)};
+        const staleBody = {{...body, achievements: [], career: {json.dumps(CAREER_EMPTY)}, unlockedCount: 0, total: 0}};
         let achievementCalls = 0;
+        let settleFirst;
+        let rejectFirst;
+        let firstSignal;
+        window.__achievementMock = {{
+          resolveFirst: () => settleFirst?.(new Response(JSON.stringify(staleBody), {{status: 200, headers: {{'content-type': 'application/json'}}}})),
+          rejectFirst: () => rejectFirst?.(new Error('等级：S stale failure')),
+          firstAborted: () => firstSignal?.aborted === true,
+        }};
         window.fetch = (input, options = {{}}) => {{
           const url = String(input);
           if (!url.endsWith('/api/achievements')) return nativeFetch(input, options);
           achievementCalls += 1;
+          if ((mode === 'overlap_resolve' || mode === 'overlap_reject' || mode === 'teardown') && achievementCalls === 1) {{
+            firstSignal = options.signal;
+            return new Promise((resolve, reject) => {{ settleFirst = resolve; rejectFirst = reject; }});
+          }}
           const response = () => new Response(JSON.stringify(body), {{
             status: mode === 'http_error' || (mode === 'error_once' && achievementCalls === 1) ? 503 : 200,
             headers: {{'content-type': 'application/json'}},
@@ -122,6 +150,26 @@ def open_profile(browser, provider="github", mode="success", career=CAREER_TIE):
     return context, page
 
 
+def surface_text(page):
+    return page.locator(".profile-shell").evaluate("""root => {
+      const attrs = ['aria-label', 'aria-labelledby', 'aria-describedby', 'title', 'alt', 'value'];
+      const clone = root.cloneNode(true);
+      clone.querySelectorAll('script, style, template').forEach(node => node.remove());
+      const values = [root.innerText, clone.textContent];
+      for (const node of root.querySelectorAll('*')) for (const attr of attrs) {
+        if (node.hasAttribute(attr)) values.push(node.getAttribute(attr));
+      }
+      return values.filter(Boolean).join('\\n');
+    }""")
+
+
+def assert_no_tier_leak(page, state):
+    surface = surface_text(page)
+    leak = TIER_PATTERN.search(surface)
+    context = surface[max(0, leak.start() - 20):leak.end() + 20] if leak else ""
+    assert leak is None, f"story tier leaked in {state}: {context!r}"
+
+
 def assert_identity_isolated(browser, mode):
     context, page = open_profile(browser, provider="guest", mode=mode)
     page.locator("#profile-content").wait_for(state="visible", timeout=1000)
@@ -130,11 +178,13 @@ def assert_identity_isolated(browser, mode):
     assert page.locator("#pf-register-entry").is_visible()
     assert page.locator(".hint").is_visible()
     assert page.locator("#ach-section").is_visible()
+    assert_no_tier_leak(page, f"{mode} identity/loading")
     if mode in ("http_error", "malformed", "hanging"):
         page.locator("#ach-error").wait_for(state="visible", timeout=3500)
         assert page.locator("#ach-retry").is_visible()
         retry_box = page.locator("#ach-retry").bounding_box()
         assert retry_box and retry_box["width"] >= 44 and retry_box["height"] >= 44, retry_box
+        assert_no_tier_leak(page, f"{mode} error/retry")
     entry_box = page.locator("#pf-register-entry").bounding_box()
     assert entry_box and entry_box["width"] >= 44 and entry_box["height"] >= 44, entry_box
     context.close()
@@ -181,16 +231,7 @@ def assert_success(browser):
     page.keyboard.press("Tab")
     assert page.evaluate("document.activeElement !== document.body")
 
-    leak_surface = page.locator("body").evaluate("""root => {
-      const attrs = ['aria-label', 'aria-labelledby', 'aria-describedby', 'title', 'alt', 'value'];
-      const values = [root.innerText, root.textContent];
-      for (const node of root.querySelectorAll('*')) for (const attr of attrs) {
-        if (node.hasAttribute(attr)) values.push(node.getAttribute(attr));
-      }
-      return values.filter(Boolean).join('\\n');
-    }""")
-    for tier in ("S", "A", "B", "C"):
-        assert tier not in leak_surface.split(), f"story tier leaked through DOM or attributes: {tier}"
+    assert_no_tier_leak(page, "success hidden/revealed")
     assert page.evaluate("document.documentElement.scrollWidth") == 375
     context.close()
 
@@ -202,6 +243,7 @@ def assert_retry(browser):
     page.locator("#ach-content").wait_for(state="visible")
     assert page.get_by_text("魔法阶梯", exact=True).count() == 1
     assert not page.locator("#ach-error").is_visible()
+    assert_no_tier_leak(page, "retry success")
     context.close()
 
 
@@ -210,6 +252,7 @@ def assert_empty(browser):
     page.locator("#ach-empty").wait_for(state="visible")
     assert page.get_by_role("heading", name="法师档案").count() == 1
     assert page.get_by_text("暂无", exact=True).count() >= 2
+    assert_no_tier_leak(page, "empty")
     context.close()
 
 
@@ -217,7 +260,35 @@ def assert_delayed(browser):
     context, page = open_profile(browser, provider="guest", mode="delayed")
     page.locator("#profile-content").wait_for(state="visible", timeout=1000)
     assert page.locator("#ach-loading").is_visible()
+    assert_no_tier_leak(page, "delayed loading")
     page.locator("#ach-content").wait_for(state="visible", timeout=2500)
+    context.close()
+
+
+def assert_overlap(browser, outcome):
+    context, page = open_profile(browser, mode=f"overlap_{outcome}")
+    page.locator("#profile-content").wait_for(state="visible")
+    assert page.locator("#ach-loading").is_visible()
+    page.locator("#ach-retry").evaluate("el => el.click()")
+    page.locator("#ach-content").wait_for(state="visible")
+    assert page.get_by_text("魔法阶梯", exact=True).count() == 1
+    page.evaluate(f"window.__achievementMock.{outcome}First()")
+    page.wait_for_timeout(100)
+    assert page.get_by_text("魔法阶梯", exact=True).count() == 1, "stale request overwrote newer success"
+    assert not page.locator("#ach-error").is_visible(), "stale request exposed error"
+    assert not page.locator("#ach-loading").is_visible(), "stale finally changed newer loading state"
+    assert_no_tier_leak(page, f"overlap {outcome}")
+    context.close()
+
+
+def assert_teardown(browser):
+    context, page = open_profile(browser, mode="teardown")
+    page.locator("#ach-loading").wait_for(state="visible")
+    page.evaluate("document.dispatchEvent(new Event('astro:before-swap'))")
+    assert page.evaluate("window.__achievementMock.firstAborted()"), "teardown did not abort current request"
+    page.evaluate("window.__achievementMock.resolveFirst()")
+    page.wait_for_timeout(100)
+    assert not page.locator("#ach-content").is_visible(), "teardown-invalidated request mutated content"
     context.close()
 
 
@@ -232,6 +303,12 @@ if __name__ == "__main__":
         print("PASS delayed achievements isolation")
         assert_retry(browser)
         print("PASS achievements retry recovery")
+        assert_overlap(browser, "resolve")
+        print("PASS overlapping stale resolve isolation")
+        assert_overlap(browser, "reject")
+        print("PASS overlapping stale reject isolation")
+        assert_teardown(browser)
+        print("PASS page teardown invalidation")
         for failure_mode in ("http_error", "malformed", "hanging"):
             assert_identity_isolated(browser, failure_mode)
             print(f"PASS {failure_mode} isolation")
