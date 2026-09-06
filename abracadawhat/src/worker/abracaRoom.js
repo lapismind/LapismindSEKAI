@@ -427,9 +427,16 @@ export class AbracaRoom {
       await this.saveState(state)
       const gameOverData = {
         winnerId: champion.id,
-        standings: [...state.players]
-          .map(p => ({ id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score }))
-          .sort((a, b) => b.score - a.score),
+        rounds: state.round,
+        standings: reportPayload.schemaVersion === 2
+          ? reportPayload.standings.map(row => ({
+              id: row.playerId,
+              avatarId: state.players.find(player => player.id === row.playerId)?.avatarId,
+              ...row,
+            }))
+          : [...state.players]
+              .map(p => ({ id: p.id, nickname: p.nickname, avatarId: p.avatarId, score: p.score }))
+              .sort((a, b) => b.score - a.score),
       }
       if (reportPayload.reportId) {
         Object.assign(gameOverData, {

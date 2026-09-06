@@ -509,9 +509,22 @@ test('game_over broadcasts reportId, standings, stories and saving before Auth r
       data: {
         reportId: state.matchStats.reportId,
         winnerId: 'p1',
+        rounds: 3,
         standings: [
-          { id: 'p1', nickname: '一号', avatarId: '1', score: 8 },
-          { id: 'p2', nickname: '二号', avatarId: '2', score: 7 },
+          {
+            id: 'p1', playerId: 'p1', nickname: '一号', avatarId: '1', rank: 1, score: 8,
+            scoreBySource: { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 },
+            spellCounts: {}, kills: 0, dragonKills: 0, deaths: 0, suicides: 0,
+            roundWins: 2, roundWinsByReason: { kill: 1, all_spells: 1 },
+            maxTurnCastCount: 4, maxTurnDistinctSpells: 3,
+          },
+          {
+            id: 'p2', playerId: 'p2', nickname: '二号', avatarId: '2', rank: 2, score: 7,
+            scoreBySource: { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 },
+            spellCounts: {}, kills: 0, dragonKills: 0, deaths: 0, suicides: 0,
+            roundWins: 2, roundWinsByReason: { kill: 1, all_spells: 1 },
+            maxTurnCastCount: 4, maxTurnDistinctSpells: 3,
+          },
         ],
         stories: [{
           key: 'low_hp_kill', playerId: 'p1', tier: 'A',

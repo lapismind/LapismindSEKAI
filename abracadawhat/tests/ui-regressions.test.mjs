@@ -131,3 +131,46 @@ test('A4 浏览器夹具的大厅路由使用编译 SFC 而不是运行时内联
   assert.match(source, /A4LobbyHarness\.vue/)
   assert.doesNotMatch(source, /component:\s*\{\s*template:/)
 })
+
+test('回合结算展示权威赢家、魔法、原因、得分来源和本人起手摘要', async () => {
+  const source = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  assert.match(source, /game\.roomState\?\.summary/)
+  assert.match(source, /decisiveSpellId/)
+  assert.match(source, /击杀结束/)
+  assert.match(source, /清空手牌结束/)
+  assert.match(source, /施法失败自爆结束/)
+  assert.match(source, /轮胜分/)
+  assert.match(source, /幸存分/)
+  assert.match(source, /秘密牌分/)
+  assert.match(source, /你手里原来有/)
+  assert.match(source, /startingHand/)
+  assert.match(source, /开启下一轮/)
+})
+
+test('比赛复盘展示排名统计、最多三条故事、成就折叠和保存失败提示', async () => {
+  const source = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  assert.match(source, /formattedStories/)
+  assert.match(source, /slice\(0, 3\)/)
+  assert.match(source, /轮胜/)
+  assert.match(source, /击杀/)
+  assert.match(source, /最长连放/)
+  assert.match(source, /slice\(0, 2\)/)
+  assert.match(source, /其余.*成就/)
+  assert.match(source, /<details/)
+  assert.match(source, /战报暂未保存/)
+  assert.match(source, /matchReportStatus\?\.saved === false/)
+  assert.match(source, /查看完整统计/)
+})
+
+test('故事展示只调用固定 presentation 且不把内部级别插入模板或可访问属性', async () => {
+  const source = await readFile(new URL('../src/views/RoomView.vue', import.meta.url), 'utf8')
+  assert.match(source, /formatStory/)
+  assert.doesNotMatch(source, /story\.tier/)
+  assert.doesNotMatch(source, /:title="[^"]*tier|:aria-label="[^"]*tier/)
+})
+
+test('B5 浏览器夹具使用编译 SFC 并提供回合与比赛确定状态', async () => {
+  const source = await readFile(new URL('./fixtures/b5-harness.js', import.meta.url), 'utf8')
+  assert.match(source, /B5Harness\.vue/)
+  assert.doesNotMatch(source, /component:\s*\{\s*template:/)
+})

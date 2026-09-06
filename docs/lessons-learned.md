@@ -1,5 +1,11 @@
 # Lessons Learned
 
+## 2026-09-07 B5 compiled recap fixture
+
+- Vue may render adjacent interpolations and text into one accessibility text node; an achievement card containing stars plus a title will not satisfy `get_by_text(title, exact=True)` even though the title is visibly present. Browser assertions for highlighted-vs-collapsed items should target the card/container boundary and then inspect its content or visibility, rather than assuming each interpolation becomes an independent text node.
+- Substring text locators inside collapsed details can match both a title and its description, causing Playwright strict-mode failure. To verify progressive disclosure, assert the details element is closed and its content container is not visible, rather than selecting a non-unique substring.
+- A presentation fixture that invents a friendlier enum alias can make browser tests pass while production payloads still fall through to generic copy. Round-end fixtures must use the exact rules-engine reason values (`kill`, `all_spells`, `self_destruct`) before UI mapping is accepted.
+
 ## 2026-09-07 B4 plan restore
 
 - The active planning file had been condensed to 45 lines, so reading it at the canonical plan's old B4 offset failed. When a plan has both an active summary and a canonical approved document, check the active file length first and read task details from the canonical path rather than reusing historical offsets.
