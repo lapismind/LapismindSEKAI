@@ -176,7 +176,7 @@ const [first, ...rest] = posts;
 	</head>
 	<body>
 		<Header />
-		<main class="container page-main">
+		<main class="container page-main" id="main-content" tabindex="-1">
 			<header class="page-head reveal">
 				<p class="eyebrow">journal</p>
 				<h1>博客</h1>
@@ -187,7 +187,7 @@ const [first, ...rest] = posts;
 				first && (
 					<a class="featured reveal" href={`/blog/${first.id}/`}>
 						<div class="featured-media">
-							{first.data.heroImage && <Image width={760} height={430} src={first.data.heroImage} alt="" />}
+							{first.data.heroImage && <Image width={760} height={430} src={first.data.heroImage} alt={first.data.heroImageAlt ?? ''} />}
 						</div>
 						<div class="featured-body">
 							<p class="date"><FormattedDate date={first.data.pubDate} /></p>
@@ -204,7 +204,7 @@ const [first, ...rest] = posts;
 					rest.map((post, i) => (
 						<a class="post-card reveal" style={`--reveal-delay:${i * 70}ms`} href={`/blog/${post.id}/`}>
 							<div class="media">
-								{post.data.heroImage && <Image width={640} height={360} src={post.data.heroImage} alt="" />}
+								{post.data.heroImage && <Image width={640} height={360} src={post.data.heroImage} alt={post.data.heroImageAlt ?? ''} />}
 							</div>
 							<div class="body">
 								<h3>{post.data.title}</h3>

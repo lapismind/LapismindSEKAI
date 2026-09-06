@@ -507,8 +507,9 @@ import songs from '../data/music-player.json';
 	.md-icon {
 		display: grid;
 		place-items: center;
-		width: 30px;
-		height: 30px;
+		width: var(--tap-min);
+		height: var(--tap-min);
+		flex-shrink: 0;
 		border: none;
 		background: transparent;
 		color: var(--muted);
@@ -527,8 +528,8 @@ import songs from '../data/music-player.json';
 	.md-play {
 		display: grid;
 		place-items: center;
-		width: 40px;
-		height: 40px;
+		width: var(--tap-min);
+		height: var(--tap-min);
 		flex-shrink: 0;
 		border-radius: 50%;
 		border: none;

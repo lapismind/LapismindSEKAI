@@ -3,6 +3,7 @@ title: '入场动画把游戏页盖住了，顺便聊聊这个站的美化'
 description: '主页入场动画在切页后赖着不走的排查记录，以及这个站的配色、看板娘、箱曲电台都是怎么来的。'
 pubDate: 'Aug 23 2026'
 heroImage: '../../assets/covers/editor-1787590896179.jpg'
+heroImageAlt: '代码编辑器中排查个人网站前端问题的画面'
 ---
 
 ## 先说 bug

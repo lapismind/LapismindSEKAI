@@ -3,6 +3,7 @@ title: '为了页脚五个馒头人，装了一晚上 MMD'
 description: '没用过 MMD，从装软件开始，给馒头人调了一晚上姿势，最后导出一张图放在了页脚。'
 pubDate: 'Aug 24 2026'
 heroImage: '../../assets/covers/editor-1787590192670.png'
+heroImageAlt: '在 MMD 中为 25 时角色模型调整姿势的制作画面'
 ---
 
 ## 起因

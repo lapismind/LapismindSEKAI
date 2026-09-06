@@ -197,6 +197,7 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				font-family: var(--font-mono);
 				letter-spacing: 0.05em;
 				cursor: var(--cursor-pointer);
+				min-height: var(--tap-min);
 				box-shadow: 0 4px 18px oklch(0 0 0 / 0.25);
 				transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 			}
@@ -329,7 +330,7 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			}
 			.card-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+				grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 				gap: 1.6rem;
 			}
 			.project-card {
@@ -501,7 +502,7 @@ const projectImages: Record<string, typeof SoupLobby> = {
 	</head>
 	<body>
 		<Header overHero />
-		<main class="container">
+		<main class="container" id="main-content" tabindex="-1">
 			<section class="hero">
 				<div
 					class="hero-photo"

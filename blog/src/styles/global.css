@@ -46,6 +46,7 @@
 	--radius-sm: 10px;
 	--radius: 18px;
 	--radius-lg: 26px;
+	--tap-min: 44px;
 }
 
 :root[data-theme='dark'] {
@@ -193,6 +194,35 @@ textarea {
 }
 a:hover {
 	color: var(--primary-bright);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[role='button']:focus-visible {
+	outline: 3px solid var(--primary-bright);
+	outline-offset: 3px;
+}
+
+.skip-link {
+	position: fixed;
+	top: 0.75rem;
+	left: 0.75rem;
+	z-index: 1000;
+	padding: 0.55rem 0.9rem;
+	border-radius: var(--radius-sm);
+	background: var(--card-solid);
+	color: var(--ink);
+	box-shadow: var(--shadow-md);
+	text-decoration: none;
+	transform: translateY(calc(-100% - 1rem));
+	transition: transform 0.18s ease;
+}
+.skip-link:focus-visible {
+	transform: translateY(0);
 }
 
 img {

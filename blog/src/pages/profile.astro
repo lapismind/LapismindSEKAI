@@ -22,7 +22,7 @@ import { SITE_TITLE } from '../consts';
 			.name-pencil { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--line); border-radius: 8px; background: var(--card-solid); color: var(--muted); font-size: 0.8rem; line-height: 1; cursor: var(--cursor-pointer); opacity: 0; transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
 			.name-row:hover .name-pencil, .name-pencil:focus-visible { opacity: 1; }
 			.name-pencil:hover { color: var(--primary); border-color: var(--primary); }
-			.name-editor { padding: 0.15em 0.4em; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-solid); color: var(--ink); font: inherit; font-size: 1.7rem; font-weight: 700; line-height: 1.25; outline: none; }
+			.name-editor { padding: 0.15em 0.4em; border: 1px solid var(--primary); border-radius: 8px; background: var(--card-solid); color: var(--ink); font: inherit; font-size: 1.7rem; font-weight: 700; line-height: 1.25; }
 			.name-msg { margin: 0.3rem 0 0; font-size: 0.82rem; color: #d64545; }
 			.meta-list { display: flex; flex-direction: column; padding: 0.5rem 1.4rem; margin-top: 1.2rem; }
 			.meta-row { display: grid; grid-template-columns: 8em 1fr; gap: 1rem; align-items: baseline; padding: 0.75em 0; border-bottom: 1px dashed var(--line); }
@@ -98,7 +98,7 @@ import { SITE_TITLE } from '../consts';
 	</head>
 	<body>
 		<Header />
-		<main class="container-narrow page-main">
+		<main class="container-narrow page-main" id="main-content" tabindex="-1">
 			<header class="page-head reveal">
 				<p class="eyebrow">player profile</p>
 				<h1>个人资料</h1>

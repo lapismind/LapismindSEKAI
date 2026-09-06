@@ -88,8 +88,8 @@ async function logout() {
     position: relative;
     display: grid;
     place-items: center;
-    width: 38px;
-    height: 38px;
+    width: var(--tap-min);
+    height: var(--tap-min);
     padding: 0;
     border: 1px solid var(--line);
     border-radius: 50%;

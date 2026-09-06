@@ -6,6 +6,7 @@ import UserAvatar from './UserAvatar.vue';
 const { overHero = false } = Astro.props;
 ---
 
+<a class="skip-link" href="#main-content">跳到正文</a>
 <header class:list={['site-header', { 'over-hero': overHero }]}>
 	<nav class="container">
 		<a class="brand" href="/">
@@ -177,8 +178,8 @@ const { overHero = false } = Astro.props;
 	.theme-toggle {
 		display: grid;
 		place-items: center;
-		width: 38px;
-		height: 38px;
+		width: var(--tap-min);
+		height: var(--tap-min);
 		border-radius: 50%;
 		transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease,
 			border-color 0.2s ease;
@@ -231,6 +232,20 @@ const { overHero = false } = Astro.props;
 		}
 		.internal-links {
 			gap: 0;
+		}
+	}
+	@media (max-width: 360px) {
+		.brand {
+			display: none;
+		}
+		nav {
+			gap: 0.35rem;
+		}
+		.internal-links {
+			margin-right: auto;
+		}
+		.internal-links :global(a) {
+			padding-inline: 0.65em;
 		}
 	}
 </style>

@@ -1,5 +1,35 @@
 # Lessons Learned
 
+## 2026-09-04 空补丁调用
+
+- `apply_patch` 不能传空对象或缺少 `patchText`；即使只是准备进入下一步，也不要预调用编辑工具。调用前先形成实际 diff，再提交完整补丁。
+- 补丁上下文中的相邻行顺序也必须与当前文件完全一致；长会话中不要凭记忆拼上下文，先读取目标片段再改。
+- 同一文件有多个修改片段时，补丁块按源码出现顺序排列；跨多文件大补丁任一上下文失败会整体取消，优先拆成可独立验证的小批次。
+
+## 2026-09-04 UI 审阅截图能力边界
+
+- 浏览器能成功保存截图，不代表当前模型能读取图像内容；遇到图片输入不受支持时，不能声称完成了视觉看图审阅。保留截图供人工复核，并用 DOM 几何、计算样式、交互状态、焦点顺序和资源数据支撑可验证结论。
+
+## 2026-09-04 PowerShell 内联浏览器探测
+
+- `python -c` 内再嵌套 JavaScript 箭头函数和多层引号容易被 PowerShell 提前解析，报 `ParserError`。已有 Playwright 脚本时直接增加测试 case，避免把复杂探测压成一行。
+
+## 2026-09-04 npm audit 镜像限制
+
+- `registry.npmmirror.com` 当前对 npm audit 的 `/-/npm/v1/security/advisories/bulk` 返回 404 `NOT_IMPLEMENTED`；这只是审计服务不可用，不能解读为零漏洞。发布前用 `npm audit --registry https://registry.npmjs.org` 获取有效结果。
+- 官方 registry 审计若长时间无输出并被工具超时终止，同样不能宣称审计通过；记录未完成状态。若本轮没有依赖变化，可继续其他验证，但交付时明确该缺口。
+
+## 2026-09-06 Playwright 触控热区断言与 CSS 过渡
+
+- `bounding_box()` 返回变换后的视觉几何。元素父级若正从 `scale(0.97)` 过渡到 `scale(1)`，源码中的 44px 会暂时测成约 42.7px，形成假失败。触控盒回归应先等待面板可见且 `transform: none`，再断言稳定状态尺寸；不要为了动画中间帧盲目放大源码尺寸。
+- 多文件补丁中任一文件上下文不匹配会导致整体不应用。移动端目录块只有 `display` 和 `padding-top`，不能按记忆补出不存在的 `margin`/`border` 上下文；先读准确片段，再拆分补丁。
+- Astro 组件脚本动态创建的 TOC `<a>` 不会带组件的 `data-astro-cid`，普通 scoped `.toc-nav a` 即使写进 CSS 也不会命中；动态子元素必须用 `.toc-nav :global(a)`。排查时要看浏览器计算样式或构建后的选择器，不能只看源码里“已经写了规则”。
+- 生产页有 Live2D、音乐等持续资源活动时，Playwright `page.goto(..., wait_until='networkidle')` 会偶发 30 秒超时，即使页面 HTTP 200 且 DOM 已可用。UI 回归改用 `domcontentloaded`，再等待被测元素或状态；不要把“网络完全静默”当 UI 可测的前提。
+- `locator.wait_for()` 同样受 Playwright strict mode 约束，就绪选择器可能命中多个元素时要明确 `.first` 或使用唯一选择器。动态折叠区不能只在点击后立刻测量，应先等待 `open` 状态和目标链接可见。
+- Astro 的目录脚本监听 `astro:page-load`，生产资源延迟下可能晚于 `DOMContentLoaded`；目录链接由同一初始化函数生成，可把首个 `.toc-nav a` 已挂载作为“开关监听已接近就绪”的信号，再点击并等待 `.open`。
+- Windows 当前终端环境不一定有可直接调用的 `rg`，即使项目搜索工具底层使用 ripgrep。提交前敏感信息扫描若命令报 `rg is not recognized`，要改用专用 Grep 工具检查目标文件，不能把失败命令当成零匹配。
+- 批量路由回归的断言不能只附 `path` 或留空；焦点类偶发失败至少要带“路径 + 阶段”（初始焦点/激活后焦点），否则生产重跑只能看到空 `AssertionError`，无法判断失败边界。
+
 ## 2026-08-29 统一登录接入三个游戏（apply_patch 踩坑）
 
 - apply_patch 的路径参数用反斜杠（D:\\xxx\\yyy）会报 "Failed to read file"，一律用正斜杠 D:/xxx/yyy。

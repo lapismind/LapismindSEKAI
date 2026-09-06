@@ -204,7 +204,6 @@ async function submit() {
   color: var(--ink);
   font-size: 0.92rem;
   line-height: 1.6;
-  outline: none;
   transition: border-color 0.15s ease;
   cursor: text;
 }

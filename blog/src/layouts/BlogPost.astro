@@ -11,7 +11,7 @@ type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
 };
 
-const { title, description, pubDate, updatedDate, heroImage, readingTime } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, heroImageAlt = '', readingTime } = Astro.props;
 // 评论区路径键：去掉尾斜杠的规范化路径，如 /blog/my-post
 const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 ---
@@ -134,7 +134,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				flex-direction: column;
 				gap: 0.35rem;
 			}
-			.toc-nav a {
+			.toc-nav :global(a) {
 				display: block;
 				padding: 0.28em 0.7em;
 				border-radius: 8px;
@@ -145,15 +145,15 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				border-left: 2px solid transparent;
 				transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 			}
-			.toc-nav a:hover {
+			.toc-nav :global(a:hover) {
 				color: var(--primary);
 				background: var(--primary-ghost);
 			}
-			.toc-nav a.lvl-3 {
+			.toc-nav :global(a.lvl-3) {
 				padding-left: 1.35em;
 				font-size: 0.82rem;
 			}
-			.toc-nav a.active {
+			.toc-nav :global(a.active) {
 				color: var(--primary);
 				border-left-color: var(--primary);
 				background: var(--primary-ghost);
@@ -165,7 +165,11 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 			.toc-mobile-toggle {
 				display: none;
 				align-items: center;
+				justify-content: center;
 				gap: 0.3em;
+				min-width: var(--tap-min);
+				min-height: var(--tap-min);
+				padding: 0 0.35rem;
 				border: none;
 				background: none;
 				color: var(--muted);
@@ -186,6 +190,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				}
 				.toc {
 					position: static;
+					order: -1;
 					max-height: none;
 					padding: 0.9rem 1.1rem;
 				}
@@ -195,6 +200,11 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				.toc-nav.open {
 					display: flex;
 					padding-top: 0.4rem;
+				}
+				.toc-nav :global(a) {
+					display: flex;
+					align-items: center;
+					min-height: var(--tap-min);
 				}
 				.toc-mobile-toggle {
 					display: inline-flex;
@@ -209,7 +219,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 	<body>
 		<div class="reading-progress" aria-hidden="true"></div>
 		<Header />
-		<main class="container page-main">
+		<main class="container page-main" id="main-content" tabindex="-1">
 			<a class="back-link" href="/blog/">← 返回博客</a>
 			<article>
 				<header class="article-head">
@@ -236,7 +246,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 
 				{heroImage && (
 					<div class="hero-image">
-						<Image width={1020} height={510} src={heroImage} alt="" />
+						<Image width={1020} height={510} src={heroImage} alt={heroImageAlt} />
 					</div>
 				)}
 
@@ -271,6 +281,7 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 				if (!prose || !nav || !wrap) return;
 
 				const headings = [...prose.querySelectorAll('h2, h3')];
+				const toggle = wrap.querySelector('.toc-mobile-toggle') as HTMLButtonElement | null;
 				if (headings.length < 2) {
 					wrap.style.display = 'none';
 					return;
@@ -285,13 +296,16 @@ const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 					a.addEventListener('click', (e) => {
 						e.preventDefault();
 						scrollToHeading(h);
-						if (nav.classList.contains('open')) nav.classList.remove('open');
+						if (nav.classList.contains('open')) {
+							nav.classList.remove('open');
+							toggle?.setAttribute('aria-expanded', 'false');
+							toggle?.focus();
+						}
 					});
 					nav.appendChild(a);
 				});
 
 				// 移动端展开/收起
-				const toggle = wrap.querySelector('.toc-mobile-toggle');
 				if (toggle) {
 					toggle.addEventListener('click', () => {
 						const open = nav.classList.toggle('open');

@@ -20,7 +20,7 @@ import { SITE_TITLE } from '../consts';
 			.form-card h2 { margin: 0; font-size: 1.05rem; }
 			.form-card .form-note { margin: -0.2rem 0 0.2rem; font-size: 0.8rem; color: var(--muted); }
 			.form-card label { font-size: 0.8rem; color: var(--ink-soft); display: flex; flex-direction: column; gap: 0.35rem; }
-			.form-card input { padding: 0.55em 0.9em; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink); font-size: 0.92rem; outline: none; transition: border-color 0.15s ease; }
+			.form-card input { padding: 0.55em 0.9em; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--card-solid); color: var(--ink); font-size: 0.92rem; transition: border-color 0.15s ease; }
 			.form-card input:focus { border-color: var(--primary); }
 			.form-card .btn { justify-content: center; margin-top: 0.2rem; }
 			.form-msg { margin-top: 0.9rem; min-height: 1.4em; font-size: 0.85rem; text-align: center; }
@@ -31,7 +31,7 @@ import { SITE_TITLE } from '../consts';
 	</head>
 	<body>
 		<Header />
-		<main class="container-narrow page-main">
+		<main class="container-narrow page-main" id="main-content" tabindex="-1">
 			<header class="page-head reveal">
 				<p class="eyebrow">enter · sekai</p>
 				<h1>进入 SEKAI</h1>
