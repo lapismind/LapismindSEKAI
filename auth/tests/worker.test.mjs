@@ -100,11 +100,12 @@ function makeFakeDB() {
           throw new Error('fake db: unsupported run: ' + sql)
         },
         async all() {
-          if (sql.startsWith('SELECT achievement_key')) {
+          if (sql.includes('FROM achievements a LEFT JOIN matches')) {
             const pid = api.args[0]
             return {
               results: achievements
                 .filter((r) => r.player_id === pid)
+                .filter((r) => r.match_id == null || r.report_status !== 'pending')
                 .sort((a, b) => (a.unlocked_at < b.unlocked_at ? 1 : -1))
                 .map((r) => ({ achievement_key: r.achievement_key, unlocked_at: r.unlocked_at })),
             }
@@ -277,7 +278,8 @@ console.log('worker smoke tests passed')
   // 手工塞两条解锁记录后回读
   env.DB.achievements.push(
     { player_id: guestData.user.playerId, achievement_key: 'first_cast', unlocked_at: '2026-08-27 10:00:00' },
-    { player_id: guestData.user.playerId, achievement_key: 'first_kill', unlocked_at: '2026-08-27 10:05:00' },
+    { player_id: guestData.user.playerId, achievement_key: 'first_kill', unlocked_at: '2026-08-27 10:05:00', match_id: 1, report_status: 'complete' },
+    { player_id: guestData.user.playerId, achievement_key: 'dragon_veteran', unlocked_at: '2026-08-27 10:10:00', match_id: 2, report_status: 'pending' },
   )
   const unlocked = await worker.fetch(
     new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
@@ -288,7 +290,7 @@ console.log('worker smoke tests passed')
   const byKey = Object.fromEntries(unlockedData.achievements.map((a) => [a.key, a]))
   assert.equal(byKey.first_cast.unlocked, true, 'first_cast 已解锁')
   assert.equal(byKey.first_kill.unlocked, true, 'first_kill 已解锁')
-  assert.equal(byKey.dragon_veteran.unlocked, false, '未解锁成就保持 false')
+  assert.equal(byKey.dragon_veteran.unlocked, false, 'pending match 关联成就保持隐藏')
   assert.equal(byKey.first_cast.unlockedAt, '2026-08-27 10:00:00', '带回解锁时间')
 }
 
@@ -502,6 +504,14 @@ console.log('worker match-report tests passed')
             matches.find((match) => match.id === statement.args[0]).report_status = 'complete'
             return { meta: { changes: 1 } }
           }
+          if (sql.startsWith('DELETE FROM match_players')) {
+            const [matchId, ...expectedPlayerIds] = statement.args
+            for (let index = matchPlayers.length - 1; index >= 0; index--) {
+              const row = matchPlayers[index]
+              if (row.match_id === matchId && !expectedPlayerIds.includes(row.player_id)) matchPlayers.splice(index, 1)
+            }
+            return { meta: { changes: 1 } }
+          }
           if (sql.startsWith('INSERT OR IGNORE INTO achievements')) {
             achievementInserts.push([...statement.args])
             return { meta: { changes: 0 } }
@@ -512,7 +522,8 @@ console.log('worker match-report tests passed')
           if (sql.startsWith('SELECT player_id, nickname')) {
             return { results: matchPlayers.filter((row) => row.match_id === statement.args[0]).map((row) => ({
               player_id: row.args[1], nickname: row.args[2], score: row.args[3], is_champion: row.args[4],
-              kills: row.args[5], deaths: row.args[6], spells_cast: row.args[7], suicides: row.args[11],
+              kills: row.args[5], deaths: row.args[6], spells_cast: row.args[7],
+              secrets_taken: row.args[8], rounds_survived: row.args[9], dragon_fails: row.args[10], suicides: row.args[11],
               dragon_kills: row.args[12], round_wins: row.args[13], round_win_points: row.args[14],
               survival_points: row.args[15], secret_points: row.args[16], round_wins_by_reason: row.args[17],
               max_turn_cast_count: row.args[18], max_turn_distinct_spells: row.args[19],
@@ -579,3 +590,12 @@ console.log('worker v2 idempotency tests passed')
 }
 
 console.log('worker pending-career isolation tests passed')
+
+// ---- achievements linked to pending matches stay hidden; null/legacy match ids remain visible ----
+{
+  const source = await import('node:fs/promises').then(fs => fs.readFile(new URL('../src/index.js', import.meta.url), 'utf8'))
+  assert.match(source, /FROM achievements a LEFT JOIN matches m ON m\.id = a\.match_id/)
+  assert.match(source, /a\.match_id IS NULL OR m\.report_status = 'complete'/)
+}
+
+console.log('worker pending-achievement isolation tests passed')

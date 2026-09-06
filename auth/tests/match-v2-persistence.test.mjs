@@ -59,6 +59,14 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
       match.report_status = 'complete'
       return { meta: { changes: 1 } }
     }
+    if (sql.startsWith('DELETE FROM match_players')) {
+      const [matchId, ...expectedPlayerIds] = args
+      for (let index = state.players.length - 1; index >= 0; index--) {
+        const row = state.players[index]
+        if (row.match_id === matchId && !expectedPlayerIds.includes(row.player_id)) state.players.splice(index, 1)
+      }
+      return { meta: { changes: 1 } }
+    }
     throw new Error('unsupported run: ' + sql)
   }
 
@@ -81,7 +89,8 @@ function makeTransactionalDB({ failPlayerId = null } = {}) {
             const args = row.args
             return {
               player_id: args[1], nickname: args[2], score: args[3], is_champion: args[4],
-              kills: args[5], deaths: args[6], spells_cast: args[7], suicides: args[11],
+              kills: args[5], deaths: args[6], spells_cast: args[7],
+              secrets_taken: args[8], rounds_survived: args[9], dragon_fails: args[10], suicides: args[11],
               dragon_kills: args[12], round_wins: args[13], round_win_points: args[14],
               survival_points: args[15], secret_points: args[16], round_wins_by_reason: args[17],
               max_turn_cast_count: args[18], max_turn_distinct_spells: args[19],
@@ -168,6 +177,20 @@ test('hash 相同的 complete 但缺行记录会被检测并用事务批次修�
   assert.equal(repaired.status, 200)
   assert.equal(db.players.length, 2)
   assert.equal(db.matches[0].report_status, 'complete')
+})
+
+test('hash 相同会修复遗漏的 legacy 列并删除额外 player 行', async () => {
+  const db = makeTransactionalDB()
+  const first = await post(db, payload())
+  assert.equal(first.status, 200)
+  db.players[0].args[8] = 9
+  db.players.push({ match_id: 1, player_id: 'p-extra', args: [1, 'p-extra', '额外', 0, 0, 0, 0, '{}', 0, 0, 0, 0, 0, 0, 0, 0, 0, '{}', 0, 0] })
+
+  const repaired = await post(db, payload())
+
+  assert.equal(repaired.status, 200)
+  assert.deepEqual(db.players.map((row) => row.player_id).sort(), ['p1', 'p2'])
+  assert.equal(db.players.find((row) => row.player_id === 'p1').args[8], 0)
 })
 
 test('玩家批量写入失败会回滚全部 career 行并保持 pending 供同 hash 重试修复', async () => {

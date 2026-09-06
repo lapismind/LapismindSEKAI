@@ -1,5 +1,15 @@
 # Lessons Learned
 
+## 2026-09-07 B1 final foundation test patch context
+
+- 跨文件 RED 补丁假定 `worker-auth.test.mjs` 使用 named import，但实际文件通过动态 import 后解构，导致整批补丁未应用。高风险多文件测试改动必须先按文件读取精确 import/尾部上下文，再拆分应用，避免一个上下文错误取消全部 RED。
+- 首次把真实 Wrangler D1 集成测试与其他 Auth RED 并跑时，测试挂到 60 秒超时，污染并吞掉其他断言输出。真实进程型集成测试必须先单独诊断启动/退出和清理，行为稳定后再纳入全量；超时不能算目标业务 RED。
+- facts/stories 顺序测试最初把 `round_win_low_hp` 当成 story key，但它只在 fact 白名单内；故事固定 key 不能由测试擅自扩展。改用已批准的 `low_hp_kill` 验证 story 顺序保持。
+- Windows 上只调用 `child.kill()` 可能留下 Wrangler/workerd 子进程和打开的 stdout/stderr 句柄，导致 Node 测试超时不退出。进程型集成测试清理使用 `taskkill /t /f` 终止整棵本地测试进程树，并在启动失败时附 stdout/stderr。
+- Wrangler 半启动或构建失败时，本地端口的 `fetch()` 不保证快速拒绝；无超时 readiness 探测会把 10 秒轮询拖成整个测试超时。探活请求使用 `AbortSignal.timeout(500)`，失败后继续轮询并最终输出 Wrangler stdout/stderr。
+- `--persist-to` 相同不代表不同 Wrangler 配置里的 D1 binding 指向同一份本地库；database ID 参与本地存储标识。测试 setup 用项目 ID、临时 dev 配置却用全零 ID 时会报 `no such table`。隔离测试配置应复用仓库公开的 database ID，同时用独立临时 `persist-to` 保证不碰默认本地库。
+- 真实 D1 集成 fixture 保留一条 pre-005 legacy match 时，查询全部 `matches` 会同时返回 legacy 和被测 v2 行；不能把两行误判成幂等重复。v2 幂等断言应限定 `report_id IS NOT NULL` 或具体 report ID。
+
 ## 2026-09-07 严格白名单测试不能同时期待未知字段被静默丢弃
 
 - 当批准计划明确要求 schema v2 遇到未知 key 返回 400 时，合法 payload 测试不得沿用 v1 的“忽略额外字段”预期。严格版本应分别验证规范形状成功、顶层/嵌套未知 key 失败；否则测试合同自身矛盾，RED 不能作为实现依据。

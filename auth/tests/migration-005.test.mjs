@@ -38,11 +38,16 @@ test('005 preflight detects historical duplicates and fixture does not run migra
   }
 })
 
-test('005 preflight SQL is read-only and contains no automatic cleanup', async () => {
-  const sql = await import('node:fs/promises').then((fs) => fs.readFile(path.join(authDir, 'migrations', 'preflight-005-match-player-duplicates.sql'), 'utf8'))
+test('005 preflight SQL is read-only and outside Wrangler migration discovery', async () => {
+  const sql = await import('node:fs/promises').then((fs) => fs.readFile(path.join(authDir, 'operations', 'preflight', '005-match-player-duplicates.sql'), 'utf8'))
   const executableSql = sql.replace(/^\s*--.*$/gm, '')
   assert.match(executableSql, /HAVING COUNT\(\*\) > 1/)
   assert.doesNotMatch(executableSql, /\b(DELETE|UPDATE|INSERT|REPLACE|DROP|ALTER)\b/i)
+
+  const migrations = run(['d1', 'migrations', 'list', 'sekai-db', '--local'])
+  assert.equal(migrations.status, 0, migrations.stderr || migrations.stdout)
+  assert.doesNotMatch(migrations.stdout, /preflight/i)
+  assert.match(migrations.stdout, /005_abracadawhat_match_v2\.sql/)
 })
 
 test('005 preflight passes clean pre-005 schema and migration adds hash/completeness constraints', async () => {

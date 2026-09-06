@@ -421,3 +421,39 @@ test('v2 清洗使用本场轮数和玩家统计之间的相对语义边界', ()
   assert.equal(mutate((body) => { body.standings[0].maxTurnCastCount = 2; body.standings[0].maxTurnDistinctSpells = 3 }).ok, false)
   assert.equal(mutate((body) => { body.facts = [{ key: 'round_win_low_hp', playerId: 'p1', data: { round: 4, actorHp: 1, reason: 'kill' } }] }).ok, false)
 })
+
+test('v2 清洗执行生产者消费者共同的比分和轮次契约', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { body.rounds = 0 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].scoreBySource.secretPoints = 0 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].scoreBySource.roundWinPoints = 5 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].kills = 4 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].scoreBySource.survivalPoints = 4 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].scoreBySource.secretPoints = 13 }).ok, false)
+})
+
+test('facts 是无序证据并规范排序，stories 保留服务端优先级顺序', async () => {
+  const first = validV2Report()
+  first.facts = [
+    { key: 'round_win_low_hp', playerId: 'p1', data: { round: 2, actorHp: 1, reason: 'kill' } },
+    { key: 'all_spell_types', playerId: 'p2', data: { spellIds: [8, 7, 6, 5, 4, 3, 2, 1] } },
+  ]
+  first.stories = [
+    { key: 'all_spell_types', playerId: 'p2', tier: 'C', data: { spellIds: [1, 2, 3, 4, 5, 6, 7, 8] } },
+    { key: 'low_hp_kill', playerId: 'p1', tier: 'A', data: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' } },
+  ]
+  const second = structuredClone(first)
+  second.facts.reverse()
+
+  const cleanFirst = moduleResult.module.sanitizeMatchReport(first).report
+  const cleanSecond = moduleResult.module.sanitizeMatchReport(second).report
+  assert.deepEqual(cleanFirst.facts, cleanSecond.facts)
+  assert.deepEqual(cleanFirst.stories.map((story) => story.key), ['all_spell_types', 'low_hp_kill'])
+  assert.equal(await moduleResult.module.hashMatchReport(cleanFirst), await moduleResult.module.hashMatchReport(cleanSecond))
+})

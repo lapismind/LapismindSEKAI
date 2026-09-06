@@ -370,3 +370,87 @@ Run serially after the final production change:
 - Match-row creation and the player batch cannot be one D1 binding transaction because the generated integer `matchId` must be looked up first. The explicit `pending` state is the boundary: pending rows are invisible to career queries and are repaired only by a hash-identical retry.
 - Existing databases still need an explicitly reviewed Wrangler migration baseline before `d1 migrations apply` can be used safely. This corrective task does not write migration tracking rows.
 - The preflight wrapper intentionally refuses `--remote`; the repository SQL is the approved read-only query for a separately authorized remote preflight.
+
+## Final Foundation Pass
+
+### Status
+
+All remaining B1 reviewer Medium/High findings were fixed after `a1bf49d`. This pass did not add B2 fact generation, story selection/UI, achievement checkers, recent reports, remote operations, deployment, or secret changes.
+
+### Changes
+
+- Moved the operational duplicate query from `auth/migrations/` to `auth/operations/preflight/005-match-player-duplicates.sql`; Wrangler migration discovery now lists only numbered migration files.
+- `startNextRound()` captures `matchStats.finishedAt` exactly once before saving game-over state. Rebuilding the same completed match reuses that timestamp and canonical hash. Legacy persisted rooms without `reportId` still emit v1.
+- Facts are defined as an unordered evidence set and sorted by canonical `key`, `playerId`, `round`, and canonical data. Stories preserve server-provided order because B3 uses that order for priority.
+- Extracted `persistV2MatchReport()` into `auth/src/matchPersistence.js` so the route and real local-D1 integration test execute the same persistence code.
+- Stored-row comparison now includes every written column, including `secrets_taken`, `rounds_survived`, and `dragon_fails`; hash-identical retries repair mismatches and transactionally delete unexpected extra player rows.
+- Achievement retrieval now includes unlocks with `match_id IS NULL` and unlocks linked to complete matches, while excluding unlocks linked to pending matches.
+- Tightened v2 invariants: at least one round, score-source sum equals final score, round-win points equal `3 * roundWins`, reason totals equal round wins, and conservative match-relative bounds apply to kills, survival points, and secret points.
+- Added producer-consumer fixtures for the exact accepted v2 shape without deriving missing B2 telemetry in Auth.
+- Added a real isolated Wrangler D1 integration test covering initial persistence, identical retry, changed-payload 409, actual trigger-forced batch rollback, zero complete-visible partial rows, pending repair, every stored column, corrupted legacy-column repair, and extra-row removal.
+- Added the tracked A2 positive path: a successful same-match Auth response broadcasts one `achievements_unlocked` message.
+
+### TDD Evidence
+
+Clean RED was observed before production changes:
+
+- Migration test failed because `auth/operations/preflight/005-match-player-duplicates.sql` did not exist.
+- Worker report test failed because `matchStats.finishedAt` was not persisted and repeated rebuilds generated different timestamps.
+- Sanitizer tests failed because facts retained input order and score/round invariants were not enforced.
+- Persistence tests failed because legacy columns were absent from exact comparison and extra player rows were not removed.
+- Achievement source assertion failed because retrieval did not join `matches` or filter pending rows.
+- Real Wrangler test failed first because `auth/src/matchPersistence.js` did not exist. After the module was introduced, it exposed and verified the actual local D1 persistence contract.
+
+### Migration Discovery Proof
+
+Command from `auth/`:
+
+```powershell
+node .\node_modules\wrangler\bin\wrangler.js d1 migrations list sekai-db --local
+```
+
+Output:
+
+```text
+ ⛅️ wrangler 4.125.0 (update available 4.129.0)
+───────────────────────────────────────────────
+Resource location: local
+
+Use --remote if you want to access the remote instance.
+
+Migrations to be applied:
+┌───────────────────────────────┐
+│ Name                          │
+├───────────────────────────────┤
+│ 001_password_accounts.sql     │
+├───────────────────────────────┤
+│ 002_avatar_id.sql             │
+├───────────────────────────────┤
+│ 003_login_attempts.sql        │
+├───────────────────────────────┤
+│ 004_display_name.sql          │
+├───────────────────────────────┤
+│ 005_abracadawhat_match_v2.sql │
+└───────────────────────────────┘
+```
+
+No preflight SQL appears in migration discovery.
+
+### Final Verification
+
+Run serially after the final production change:
+
+1. Migration discovery: passed; only 001-005 listed, no preflight file.
+2. Focused Auth B1 including real isolated D1: 30/30 passed.
+3. Focused Abracadawhat Worker: 1/1 passed.
+4. Auth full: 47/47 passed.
+5. Abracadawhat build: passed; Vite transformed 101 modules and emoji postbuild completed.
+6. Abracadawhat full: 51/51 passed.
+7. Syntax and `git diff --check`: passed before staging.
+
+### Final Concerns
+
+- Existing databases remain unbaselined for Wrangler migration tracking. Migration discovery output proves current state; it does not authorize `migrations apply` on an existing database.
+- The stricter v2 score contract requires authoritative score-source and round-win fields. B2 must populate them before a standalone game-Worker v2 rollout; Auth does not infer them. Pre-deploy in-progress rooms remain safe through v1 fallback.
+- Match-row creation still precedes the transactional player batch. A failed batch leaves only a pending match row; pending career and achievement data is invisible and hash-identical retry repairs it.
+- The real D1 integration uses a fixed local port (`19731`) and an isolated temporary `--persist-to` directory. A separate process already using that port would cause a deterministic test failure rather than silently selecting another environment.

@@ -288,11 +288,13 @@ export class AbracaRoom {
     const champion = [...state.players].sort((a, b) => b.score - a.score)[0]
     if (champion && champion.score >= state.targetScore) {
       state.phase = 'game_over'
+      const finishedAt = state.matchStats?.finishedAt ?? new Date().toISOString()
+      if (state.matchStats) state.matchStats.finishedAt = finishedAt
       // 记录本局战绩快照到房间历史
       if (!state.matchHistory) state.matchHistory = []
       state.matchHistory.push({
         startedAt: state.matchStats?.startAt ?? new Date().toISOString(),
-        endedAt: new Date().toISOString(),
+        endedAt: finishedAt,
         rounds: state.round,
         winnerId: champion.id,
         standings: [...state.players].map(p => ({
@@ -378,7 +380,7 @@ export class AbracaRoom {
       game: 'abracadawhat',
       roomId: this.roomId,
       startedAt: state.matchStats?.startAt,
-      finishedAt: new Date().toISOString(),
+      finishedAt: state.matchStats?.finishedAt,
       rounds: state.round,
       standings,
       facts: state.matchStats?.facts ?? [],

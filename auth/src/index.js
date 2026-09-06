@@ -15,7 +15,8 @@
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
 import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, ACHIEVEMENT_TARGETS, progressFromCareer } from './achievements.js'
-import { hashMatchReport, sanitizeMatchReport } from './matchReports.js'
+import { sanitizeMatchReport } from './matchReports.js'
+import { persistV2MatchReport, ReportConflictError } from './matchPersistence.js'
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
@@ -490,7 +491,10 @@ async function handleAchievements(request, env, cors = {}) {
   if (!session) return json({ error: 'login required' }, 401, cors)
 
   const { results } = await env.DB.prepare(
-    'SELECT achievement_key, unlocked_at FROM achievements WHERE player_id = ? ORDER BY unlocked_at DESC'
+    `SELECT a.achievement_key, a.unlocked_at
+     FROM achievements a LEFT JOIN matches m ON m.id = a.match_id
+     WHERE a.player_id = ? AND (a.match_id IS NULL OR m.report_status = 'complete')
+     ORDER BY a.unlocked_at DESC`
   ).bind(session.playerId).all()
 
   const unlockedAt = new Map(results.map(r => [r.achievement_key, r.unlocked_at]))
@@ -687,76 +691,14 @@ async function postMatch(request, env, cors = {}) {
   const { game, rounds } = report
 
   if (sanitized.version === 2) {
-    const reportHash = await hashMatchReport(report)
-    await env.DB.prepare(
-      `INSERT OR IGNORE INTO matches
-        (report_id, report_hash, report_status, game, room_id, rounds, expected_players, finished_at)
-       VALUES (?, ?, 'pending', ?, ?, ?, ?, ?)`
-    ).bind(report.reportId, reportHash, game, report.roomId, rounds, report.standings.length, report.finishedAt).run()
-    const existingMatch = await env.DB.prepare(
-      'SELECT id, report_hash, report_status, expected_players FROM matches WHERE report_id = ?'
-    ).bind(report.reportId).first()
-    if (!existingMatch) throw new Error('v2 match insert did not produce a row')
-    if (existingMatch.report_hash !== reportHash || existingMatch.expected_players !== report.standings.length) {
-      return json({ error: 'reportId payload conflict' }, 409, cors)
+    try {
+      return json({ ok: true, ...await persistV2MatchReport(env.DB, report) }, 200, cors)
+    } catch (error) {
+      if (error instanceof ReportConflictError || error?.code === 'REPORT_CONFLICT') {
+        return json({ error: error.message }, 409, cors)
+      }
+      throw error
     }
-    const matchId = existingMatch.id
-    const expectedRows = report.standings.map(storedV2Player).sort((a, b) => a.player_id.localeCompare(b.player_id))
-    const beforeRows = await loadStoredV2Players(env.DB, matchId)
-    const needsRepair = existingMatch.report_status !== 'complete'
-      || JSON.stringify(beforeRows) !== JSON.stringify(expectedRows)
-
-    if (needsRepair) {
-      const playerStatements = report.standings.map((row) => env.DB.prepare(
-        `INSERT INTO match_players
-          (match_id, player_id, nickname, score, is_champion, kills, deaths, spells_cast,
-           secrets_taken, rounds_survived, dragon_fails, suicides, dragon_kills, round_wins,
-           round_win_points, survival_points, secret_points, round_wins_by_reason,
-           max_turn_cast_count, max_turn_distinct_spells)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(match_id, player_id) DO UPDATE SET
-           nickname = excluded.nickname, score = excluded.score, is_champion = excluded.is_champion,
-           kills = excluded.kills, deaths = excluded.deaths, spells_cast = excluded.spells_cast,
-           secrets_taken = excluded.secrets_taken, rounds_survived = excluded.rounds_survived,
-           dragon_fails = excluded.dragon_fails, suicides = excluded.suicides,
-           dragon_kills = excluded.dragon_kills, round_wins = excluded.round_wins,
-           round_win_points = excluded.round_win_points, survival_points = excluded.survival_points,
-           secret_points = excluded.secret_points, round_wins_by_reason = excluded.round_wins_by_reason,
-           max_turn_cast_count = excluded.max_turn_cast_count,
-           max_turn_distinct_spells = excluded.max_turn_distinct_spells`
-      ).bind(
-        matchId, row.playerId, row.nickname, row.score, row.rank === 1 ? 1 : 0,
-        row.kills, row.deaths, JSON.stringify(row.spellCounts), 0, 0, 0, row.suicides,
-        row.dragonKills, row.roundWins, row.scoreBySource.roundWinPoints,
-        row.scoreBySource.survivalPoints, row.scoreBySource.secretPoints,
-        JSON.stringify(row.roundWinsByReason), row.maxTurnCastCount, row.maxTurnDistinctSpells,
-      ))
-      playerStatements.push(env.DB.prepare(
-        `UPDATE matches SET report_status = 'complete'
-         WHERE id = ? AND report_hash = ? AND report_status = 'pending'`
-      ).bind(matchId, reportHash))
-      await env.DB.batch(playerStatements)
-    }
-
-    const [completedMatch, storedRows] = await Promise.all([
-      env.DB.prepare(
-        'SELECT id, report_hash, report_status, expected_players FROM matches WHERE report_id = ?'
-      ).bind(report.reportId).first(),
-      loadStoredV2Players(env.DB, matchId),
-    ])
-    if (completedMatch?.report_status !== 'complete' || completedMatch.report_hash !== reportHash
-        || completedMatch.expected_players !== report.standings.length || storedRows.length !== report.standings.length
-        || JSON.stringify(storedRows) !== JSON.stringify(expectedRows)) {
-      throw new Error('v2 match incomplete after write')
-    }
-
-    return json({
-      ok: true,
-      matchId,
-      reportId: report.reportId,
-      savedReports: [],
-      newAchievements: [],
-    }, 200, cors)
   }
 
   const { players } = report
@@ -836,35 +778,4 @@ async function postMatch(request, env, cors = {}) {
       ...ACHIEVEMENT_DEFS.find(d => d.key === u.key) || { key: u.key, name: u.key },
     })),
   }, 200, cors)
-}
-
-function storedV2Player(row) {
-  return {
-    player_id: row.playerId,
-    nickname: row.nickname,
-    score: row.score,
-    is_champion: row.rank === 1 ? 1 : 0,
-    kills: row.kills,
-    deaths: row.deaths,
-    spells_cast: JSON.stringify(row.spellCounts),
-    suicides: row.suicides,
-    dragon_kills: row.dragonKills,
-    round_wins: row.roundWins,
-    round_win_points: row.scoreBySource.roundWinPoints,
-    survival_points: row.scoreBySource.survivalPoints,
-    secret_points: row.scoreBySource.secretPoints,
-    round_wins_by_reason: JSON.stringify(row.roundWinsByReason),
-    max_turn_cast_count: row.maxTurnCastCount,
-    max_turn_distinct_spells: row.maxTurnDistinctSpells,
-  }
-}
-
-async function loadStoredV2Players(db, matchId) {
-  const stored = await db.prepare(
-    `SELECT player_id, nickname, score, is_champion, kills, deaths, spells_cast, suicides,
-            dragon_kills, round_wins, round_win_points, survival_points, secret_points,
-            round_wins_by_reason, max_turn_cast_count, max_turn_distinct_spells
-     FROM match_players WHERE match_id = ? ORDER BY player_id`
-  ).bind(matchId).all()
-  return stored.results
 }

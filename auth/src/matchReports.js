@@ -189,9 +189,21 @@ function cleanFacts(value, playerIds, rounds) {
     if (data.round != null && (data.round < 1 || data.round > rounds)) return null
     clean.push({ key: fact.key, playerId: fact.playerId, data })
   }
-  return clean
+  return clean.sort((left, right) => {
+    const leftRound = left.data.round ?? 0
+    const rightRound = right.data.round ?? 0
+    return compareText(left.key, right.key)
+      || compareText(left.playerId, right.playerId)
+      || leftRound - rightRound
+      || compareText(JSON.stringify(left.data), JSON.stringify(right.data))
+  })
 }
 
+function compareText(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+// Facts are an unordered evidence set. Stories preserve server priority order for B3.
 function cleanStories(value, playerIds, rounds) {
   if (!Array.isArray(value) || value.length > MAX_STORIES) return null
   const clean = []
@@ -378,7 +390,7 @@ function sanitizeV2(body) {
   if (!isIsoTimestamp(body.startedAt) || !isIsoTimestamp(body.finishedAt) || body.finishedAt < body.startedAt) {
     return { ok: false, error: 'invalid timestamp' }
   }
-  if (!isCount(body.rounds, MAX_ROUNDS)) return { ok: false, error: 'invalid rounds' }
+  if (!isCount(body.rounds, MAX_ROUNDS) || body.rounds < 1) return { ok: false, error: 'invalid rounds' }
   if (!Array.isArray(body.standings) || body.standings.length < 2 || body.standings.length > 5) {
     return { ok: false, error: 'invalid standings' }
   }
@@ -394,6 +406,11 @@ function sanitizeV2(body) {
   if (standings.some((standing) => standing.deaths > body.rounds || standing.suicides > standing.deaths
       || standing.roundWins > body.rounds
       || standing.roundWinsByReason.kill + standing.roundWinsByReason.all_spells !== standing.roundWins
+      || standing.scoreBySource.roundWinPoints !== standing.roundWins * 3
+      || standing.scoreBySource.roundWinPoints + standing.scoreBySource.survivalPoints + standing.scoreBySource.secretPoints !== standing.score
+      || standing.kills > body.rounds * Math.min(MAX_ONE_CAST_KILLS, standings.length - 1)
+      || standing.scoreBySource.survivalPoints > body.rounds
+      || standing.scoreBySource.secretPoints > body.rounds * MAX_ROUND_SECRETS
       || standing.maxTurnDistinctSpells > standing.maxTurnCastCount)) {
     return { ok: false, error: 'invalid standing totals' }
   }

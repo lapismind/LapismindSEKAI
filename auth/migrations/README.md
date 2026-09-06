@@ -8,7 +8,9 @@ For the isolated local database used by tests:
 node ./scripts/preflight-005.mjs --local
 ```
 
-The exact read-only query is also stored at `migrations/preflight-005-match-player-duplicates.sql`. For an approved target database, execute that query first and treat any returned row as an abort condition. This task did not execute it remotely.
+The exact read-only query is stored outside migration discovery at `operations/preflight/005-match-player-duplicates.sql`. For an approved target database, execute that query first and treat any returned row as an abort condition. This task did not execute it remotely.
+
+Operational SQL must not be placed in `migrations/`: Wrangler discovers every top-level `.sql` file there as a migration.
 
 If the preflight exits with code `2`, abort the migration and review every reported historical duplicate. Never silently delete, merge, or choose one historical row automatically.
 

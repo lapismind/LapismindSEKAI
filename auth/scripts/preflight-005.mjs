@@ -22,7 +22,7 @@ if (persistIndex >= 0 && !persistTo) {
 
 const authDir = fileURLToPath(new URL('..', import.meta.url))
 const wranglerCli = path.join(authDir, 'node_modules', 'wrangler', 'bin', 'wrangler.js')
-const query = readFileSync(path.join(authDir, 'migrations', 'preflight-005-match-player-duplicates.sql'), 'utf8')
+const query = readFileSync(path.join(authDir, 'operations', 'preflight', '005-match-player-duplicates.sql'), 'utf8')
 const commandArgs = ['d1', 'execute', 'sekai-db', '--local', '--json', `--command=${query}`]
 if (persistTo) commandArgs.splice(4, 0, '--persist-to', persistTo)
 

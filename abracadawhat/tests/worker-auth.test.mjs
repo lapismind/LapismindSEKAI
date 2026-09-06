@@ -12,7 +12,7 @@ import './helpers/workerLoader.mjs'
 const { default: worker } = await import('../src/worker/index.js')
 const { AbracaRoom } = await import('../src/worker/abracaRoom.js')
 const { createSessionToken, createIdentityToken, verifyIdentityToken } = await import('@lapismind/lobby-kit')
-const { sanitizeMatchReport } = await import('../../auth/src/matchReports.js')
+const { hashMatchReport, sanitizeMatchReport } = await import('../../auth/src/matchReports.js')
 
 let forwarded = null
 function resetForwarded() {
@@ -216,10 +216,17 @@ const env = {
     hadLowThenFullThenDied: false,
     lowHpSeen: false,
     castOwlThisMatch: false,
+    scoreBySource: player.id === 'p1'
+      ? { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 }
+      : { roundWinPoints: 3, survivalPoints: 0, secretPoints: 0 },
+    roundWins: player.id === 'p1' ? 2 : 1,
+    roundWinsByReason: player.id === 'p1' ? { kill: 1, all_spells: 1 } : { kill: 1, all_spells: 0 },
+    maxTurnCastCount: 0,
+    maxTurnDistinctSpells: 0,
   }]))
   const room = new AbracaRoom({ name: 'ROOM-1' }, {})
   const reportId = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000'
-  const report = room.buildMatchReport({ round: 3, players, matchStats: { reportId, startAt: '2026-01-01T00:00:00.000Z', players: stats } }, players[0])
+  const report = room.buildMatchReport({ round: 3, players, matchStats: { reportId, startAt: '2026-01-01T00:00:00.000Z', finishedAt: '2026-01-01T00:20:00.000Z', players: stats } }, players[0])
   const sanitized = sanitizeMatchReport(report)
 
   assert.equal(report.schemaVersion, 2)
@@ -260,6 +267,46 @@ const env = {
   assert.equal(report.standings, undefined)
   assert.equal(report.players.find((player) => player.playerId === 'p1').comebackFromBehind, true)
   assert.equal(sanitizeMatchReport(report).version, 1)
+}
+
+{
+  const players = [
+    { id: 'p1', nickname: '一号', avatarId: '1', score: 8, health: 6 },
+    { id: 'p2', nickname: '二号', avatarId: '2', score: 3, health: 4 },
+  ]
+  const stats = Object.fromEntries(players.map((player) => [player.id, {
+    playerId: player.id, nickname: player.nickname, score: player.score, spellsCast: {}, kills: 0,
+    dragonKills: 0, deaths: 0, suicides: 0,
+    scoreBySource: player.id === 'p1'
+      ? { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 }
+      : { roundWinPoints: 3, survivalPoints: 0, secretPoints: 0 },
+    roundWins: player.id === 'p1' ? 2 : 1,
+    roundWinsByReason: player.id === 'p1' ? { kill: 1, all_spells: 1 } : { kill: 1, all_spells: 0 },
+    maxTurnCastCount: 0,
+    maxTurnDistinctSpells: 0,
+  }]))
+  let savedState
+  const ctx = {
+    name: 'ROOM-STABLE-FINISH',
+    storage: { put: async (_key, state) => { savedState = structuredClone(state) } },
+    getWebSockets: () => [],
+    waitUntil() {},
+  }
+  const room = new AbracaRoom(ctx, {})
+  const state = {
+    phase: 'round_end', round: 3, targetScore: 8, players,
+    matchStats: { reportId: 'abracadawhat:123e4567-e89b-42d3-a456-426614174000', startAt: '2026-01-01T00:00:00.000Z', players: stats },
+    matchHistory: [],
+  }
+
+  await room.startNextRound(state)
+  const first = room.buildMatchReport(savedState, players[0])
+  await new Promise((resolve) => setTimeout(resolve, 2))
+  const second = room.buildMatchReport(savedState, players[0])
+
+  assert.equal(savedState.matchStats.finishedAt, first.finishedAt)
+  assert.equal(first.finishedAt, second.finishedAt)
+  assert.equal(await hashMatchReport(sanitizeMatchReport(first).report), await hashMatchReport(sanitizeMatchReport(second).report))
 }
 
 {
@@ -348,6 +395,33 @@ const env = {
     false,
     '旧比赛延迟返回的成就不得广播到新比赛',
   )
+}
+
+{
+  // 同一场 Auth 成功返回时应广播新成就，关闭 A2 追踪的正向测试缺口。
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => new Response(JSON.stringify({
+    newAchievements: [{ playerId: 'p1', key: 'first_cast' }],
+  }), { status: 200, headers: { 'content-type': 'application/json' } })
+  const sent = []
+  const socket = {
+    send(message) { sent.push(JSON.parse(message)) },
+    deserializeAttachment() { return { playerId: 'p1' } },
+  }
+  const state = {
+    phase: 'game_over',
+    matchStats: { startAt: '2026-09-07T01:00:00.000Z' },
+  }
+  const room = new AbracaRoom({
+    storage: { get: async () => state },
+    getWebSockets: () => [socket],
+  }, { MATCH_REPORT_SECRET: 'test-secret' })
+  try {
+    await room.reportMatch({ game: 'abracadawhat', players: [] }, state.matchStats.startAt)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+  assert.equal(sent.filter((message) => message.type === 'achievements_unlocked').length, 1)
 }
 
 console.log('abraca worker auth tests passed')
