@@ -28,11 +28,14 @@ CREATE INDEX IF NOT EXISTS idx_comments_page ON comments(page_path, created_at D
 -- 对局记录（一场 = 一次 game_over，含多轮）
 CREATE TABLE IF NOT EXISTS matches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  report_id TEXT,                        -- v2 stable id; legacy rows remain NULL
   game TEXT NOT NULL,                    -- 'abracadawhat' / 'turtle-soup' / ...
   room_id TEXT,                          -- DO 房间号（可空，调试用）
   rounds INTEGER NOT NULL DEFAULT 0,     -- 总轮数
   finished_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_matches_report_id ON matches(report_id) WHERE report_id IS NOT NULL;
 
 -- 对局中的玩家战绩（按 playerId 记，游客和 GitHub 用户都存）
 CREATE TABLE IF NOT EXISTS match_players (
@@ -48,11 +51,20 @@ CREATE TABLE IF NOT EXISTS match_players (
   secrets_taken INTEGER NOT NULL DEFAULT 0,
   rounds_survived INTEGER NOT NULL DEFAULT 0,
   dragon_fails INTEGER NOT NULL DEFAULT 0,   -- 古代巨龙施法失败次数
-  suicides INTEGER NOT NULL DEFAULT 0        -- 施法失败自杀次数
+  suicides INTEGER NOT NULL DEFAULT 0,       -- 施法失败自杀次数
+  dragon_kills INTEGER NOT NULL DEFAULT 0,
+  round_wins INTEGER NOT NULL DEFAULT 0,
+  round_win_points INTEGER NOT NULL DEFAULT 0,
+  survival_points INTEGER NOT NULL DEFAULT 0,
+  secret_points INTEGER NOT NULL DEFAULT 0,
+  round_wins_by_reason TEXT NOT NULL DEFAULT '{}',
+  max_turn_cast_count INTEGER NOT NULL DEFAULT 0,
+  max_turn_distinct_spells INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_players_pid ON match_players(player_id);
 CREATE INDEX IF NOT EXISTS idx_match_players_match ON match_players(match_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_match_players_match_player ON match_players(match_id, player_id);
 
 -- 成就达成记录（跨场次唯一：同一玩家同一成就只记一次）
 CREATE TABLE IF NOT EXISTS achievements (

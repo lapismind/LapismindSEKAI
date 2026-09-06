@@ -683,7 +683,43 @@ async function postMatch(request, env, cors = {}) {
   const sanitized = sanitizeMatchReport(body)
   if (!sanitized.ok) return json({ error: sanitized.error }, 400, cors)
   const report = sanitized.report
-  const { game, players, rounds } = report
+  const { game, rounds } = report
+
+  if (sanitized.version === 2) {
+    await env.DB.prepare(
+      'INSERT OR IGNORE INTO matches (report_id, game, room_id, rounds, finished_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(report.reportId, game, report.roomId, rounds, report.finishedAt).run()
+    const existingMatch = await env.DB.prepare('SELECT id FROM matches WHERE report_id = ?').bind(report.reportId).first()
+    if (!existingMatch) throw new Error('v2 match insert did not produce a row')
+    const matchId = existingMatch.id
+
+    for (const row of report.standings) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO match_players
+          (match_id, player_id, nickname, score, is_champion, kills, deaths, spells_cast,
+           secrets_taken, rounds_survived, dragon_fails, suicides, dragon_kills, round_wins,
+           round_win_points, survival_points, secret_points, round_wins_by_reason,
+           max_turn_cast_count, max_turn_distinct_spells)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).bind(
+        matchId, row.playerId, row.nickname, row.score, row.rank === 1 ? 1 : 0,
+        row.kills, row.deaths, JSON.stringify(row.spellCounts), 0, 0, 0, row.suicides,
+        row.dragonKills, row.roundWins, row.scoreBySource.roundWinPoints,
+        row.scoreBySource.survivalPoints, row.scoreBySource.secretPoints,
+        JSON.stringify(row.roundWinsByReason), row.maxTurnCastCount, row.maxTurnDistinctSpells,
+      ).run()
+    }
+
+    return json({
+      ok: true,
+      matchId,
+      reportId: report.reportId,
+      savedReports: [],
+      newAchievements: [],
+    }, 200, cors)
+  }
+
+  const { players } = report
 
   // 写 matches
   const matchResult = await env.DB.prepare(

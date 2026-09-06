@@ -225,6 +225,7 @@ export class AbracaRoom {
     for (const p of state.players) p.score = 0
     // 开场：初始化战绩累积器
     state.matchStats = {
+      reportId: 'abracadawhat:' + crypto.randomUUID(),
       startAt: new Date().toISOString(),
       players: Object.fromEntries(state.players.map(p => [p.id, {
         playerId: p.id,
@@ -319,28 +320,45 @@ export class AbracaRoom {
 
   buildMatchReport(state, champion) {
     const snapshots = state.matchStats?.scoreSnapshots || []
-    return {
-      game: 'abracadawhat',
-      roomId: this.roomId,
-      rounds: state.round,
-      players: Object.values(state.matchStats?.players || {}).map(ms => {
-        const sp = state.players.find(p => p.id === ms.playerId)
-        // 我不同意：任一时刻有对手分数 >=7 而自己 <=3，最终自己夺冠
+    const standings = [...state.players]
+      .sort((a, b) => b.score - a.score)
+      .map((player, index) => {
+        const ms = state.matchStats?.players?.[player.id] || {}
         const wasBehind = ms.playerId === champion.id && snapshots.some(snap => {
           const oppMax = Math.max(0, ...Object.entries(snap)
             .filter(([id]) => id !== ms.playerId)
-            .map(([, v]) => v))
+            .map(([, value]) => value))
           return oppMax >= 7 && (snap[ms.playerId] || 0) <= 3
         })
         if (wasBehind) ms.comebackFromBehind = true
         return {
-          ...ms,
-          nickname: normalizeNickname(ms.nickname),
-          score: sp?.score ?? ms.score,
-          isChampion: ms.playerId === champion.id,
-          finalHp: sp?.health ?? null,
+          playerId: player.id,
+          nickname: normalizeNickname(ms.nickname ?? player.nickname),
+          rank: index + 1,
+          score: player.score ?? ms.score ?? 0,
+          scoreBySource: ms.scoreBySource ?? { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 },
+          spellCounts: ms.spellsCast ?? {},
+          kills: ms.kills ?? 0,
+          dragonKills: ms.dragonKills ?? 0,
+          deaths: ms.deaths ?? 0,
+          suicides: ms.suicides ?? 0,
+          roundWins: ms.roundWins ?? 0,
+          roundWinsByReason: ms.roundWinsByReason ?? { kill: 0, all_spells: 0 },
+          maxTurnCastCount: ms.maxTurnCastCount ?? 0,
+          maxTurnDistinctSpells: ms.maxTurnDistinctSpells ?? 0,
         }
-      }),
+      })
+    return {
+      schemaVersion: 2,
+      reportId: state.matchStats?.reportId,
+      game: 'abracadawhat',
+      roomId: this.roomId,
+      startedAt: state.matchStats?.startAt,
+      finishedAt: new Date().toISOString(),
+      rounds: state.round,
+      standings,
+      facts: state.matchStats?.facts ?? [],
+      stories: [],
     }
   }
 

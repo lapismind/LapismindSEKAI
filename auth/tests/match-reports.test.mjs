@@ -159,3 +159,128 @@ test('A1 不接受 v2 或其他游戏形状', () => {
   assert.equal(sanitize({ schemaVersion: 3, game: 'abracadawhat', players: [{ playerId: 'p1' }, { playerId: 'p2' }] }).ok, false)
   assert.equal(sanitize({ game: 'showhand', players: [{ playerId: 'p1' }, { playerId: 'p2' }] }).ok, false)
 })
+
+function validV2Report() {
+  return {
+    schemaVersion: 2,
+    reportId: 'abracadawhat:123e4567-e89b-42d3-a456-426614174000',
+    game: 'abracadawhat',
+    roomId: 'ROOM-2',
+    startedAt: '2026-09-07T00:00:00.000Z',
+    finishedAt: '2026-09-07T00:20:00.000Z',
+    rounds: 3,
+    standings: [
+      {
+        playerId: 'p1',
+        nickname: '法师一号',
+        rank: 1,
+        score: 8,
+        scoreBySource: { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 },
+        spellCounts: { 1: 2, 8: 1 },
+        kills: 2,
+        dragonKills: 1,
+        deaths: 1,
+        suicides: 0,
+        roundWins: 2,
+        roundWinsByReason: { kill: 1, all_spells: 1 },
+        maxTurnCastCount: 4,
+        maxTurnDistinctSpells: 3,
+      },
+      {
+        playerId: 'p2',
+        nickname: '法师二号',
+        rank: 2,
+        score: 3,
+        scoreBySource: { roundWinPoints: 3, survivalPoints: 0, secretPoints: 0 },
+        spellCounts: { 2: 1 },
+        kills: 0,
+        dragonKills: 0,
+        deaths: 2,
+        suicides: 1,
+        roundWins: 1,
+        roundWinsByReason: { kill: 1, all_spells: 0 },
+        maxTurnCastCount: 1,
+        maxTurnDistinctSpells: 1,
+      },
+    ],
+    facts: [],
+    stories: [],
+  }
+}
+
+test('v2 清洗接受规范字段和当前空事实与故事结构', () => {
+  const result = moduleResult.module.sanitizeMatchReport(validV2Report())
+
+  assert.equal(result.ok, true)
+  assert.equal(result.version, 2)
+  assert.deepEqual(result.report, validV2Report())
+})
+
+test('v2 清洗拒绝未知 key、无效 tier、越界值和非规范对象键', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { body.unknown = true }).ok, false, '顶层未知 key')
+  assert.equal(mutate((body) => { body.standings[0].unknown = true }).ok, false, '排名项未知 key')
+  assert.equal(mutate((body) => { body.standings[0].scoreBySource.bonus = 1 }).ok, false, '得分来源未知 key')
+  assert.equal(mutate((body) => { body.standings[0].spellCounts = { '01': 1 } }).ok, false, '魔法键必须规范')
+  assert.equal(mutate((body) => { body.facts = [{ key: 'not_a_fact', playerId: 'p1', data: {} }] }).ok, false, '未知 fact key')
+  assert.equal(mutate((body) => { body.stories = [{ key: 'comeback_win', playerId: 'p1', tier: 'Z', data: {} }] }).ok, false, '无效 story tier')
+  assert.equal(mutate((body) => { body.rounds = 101 }).ok, false, '轮数越界')
+  assert.equal(mutate((body) => { body.standings[0].score = 1501 }).ok, false, '分数越界')
+  assert.equal(mutate((body) => { body.standings[0].maxTurnDistinctSpells = 9 }).ok, false, '不同魔法数越界')
+  assert.equal(mutate((body) => { body.facts = Array.from({ length: 101 }, () => ({})) }).ok, false, '事实数组越界')
+  assert.equal(mutate((body) => { body.stories = Array.from({ length: 4 }, () => ({})) }).ok, false, '故事数组越界')
+})
+
+test('v2 清洗拒绝重复 playerId、重复/缺失 rank 和 dragonKills 大于 kills', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { body.standings[1].playerId = 'p1' }).ok, false)
+  assert.equal(mutate((body) => { body.standings[1].rank = 1 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[1].rank = 3 }).ok, false)
+  assert.equal(mutate((body) => { body.standings[0].dragonKills = 3 }).ok, false)
+})
+
+test('v2 清洗要求完整规范键、稳定 reportId 和有效时间顺序', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { delete body.facts }).ok, false)
+  assert.equal(mutate((body) => { delete body.standings[0].roundWins }).ok, false)
+  assert.equal(mutate((body) => { delete body.standings[0].scoreBySource.secretPoints }).ok, false)
+  assert.equal(mutate((body) => { body.reportId = 'abracadawhat:not-a-uuid' }).ok, false)
+  assert.equal(mutate((body) => { body.startedAt = '2026-09-07' }).ok, false)
+  assert.equal(mutate((body) => { body.finishedAt = '2026-09-06T23:59:59.999Z' }).ok, false)
+})
+
+test('v2 清洗限制结构化 fact/story data 的规范键和值域', () => {
+  const sanitize = moduleResult.module.sanitizeMatchReport
+  const fact = (data) => [{ key: 'low_hp_kill', playerId: 'p1', data }]
+  const story = (data) => [{ key: 'low_hp_kill', playerId: 'p1', tier: 'A', data }]
+  const mutate = (change) => {
+    const body = validV2Report()
+    change(body)
+    return sanitize(body)
+  }
+
+  assert.equal(mutate((body) => { body.facts = fact({ unknown: 1 }) }).ok, false)
+  assert.equal(mutate((body) => { body.facts = fact({ spellId: 9 }) }).ok, false)
+  assert.equal(mutate((body) => { body.facts = fact({ actorHp: 7 }) }).ok, false)
+  assert.equal(mutate((body) => { body.facts = fact({ targetPlayerId: 'p3' }) }).ok, false)
+  assert.equal(mutate((body) => { body.facts = fact({ reason: 'arbitrary' }) }).ok, false)
+  assert.equal(mutate((body) => { body.stories = story({ spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' }) }).ok, true)
+})

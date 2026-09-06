@@ -455,3 +455,99 @@ console.log('worker nickname tests passed')
 }
 
 console.log('worker match-report tests passed')
+
+// ---- v2 战绩重试：复用 matchId，玩家行和成就写入都只发生一次 ----
+{
+  const env = makeEnv()
+  const matches = []
+  const matchPlayers = []
+  const achievementInserts = []
+  let nextMatchId = 1
+  env.DB = {
+    matches,
+    matchPlayers,
+    achievementInserts,
+    prepare(sql) {
+      const statement = {
+        args: [],
+        bind(...args) { statement.args = args; return statement },
+        async first() {
+          if (sql === 'SELECT id FROM matches WHERE report_id = ?') {
+            const row = matches.find((match) => match.report_id === statement.args[0])
+            return row ? { id: row.id } : null
+          }
+          if (sql.includes('SUM(') && sql.includes('match_players')) {
+            return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
+          }
+          throw new Error('v2 match report fake db: unsupported first: ' + sql)
+        },
+        async run() {
+          if (sql.startsWith('INSERT OR IGNORE INTO matches')) {
+            const [reportId, game, roomId, rounds, finishedAt] = statement.args
+            const existing = matches.find((match) => match.report_id === reportId)
+            if (existing) return { meta: { changes: 0, last_row_id: 0 } }
+            const row = { id: nextMatchId++, report_id: reportId, game, room_id: roomId, rounds, finished_at: finishedAt }
+            matches.push(row)
+            return { meta: { changes: 1, last_row_id: row.id } }
+          }
+          if (sql.startsWith('INSERT OR IGNORE INTO match_players')) {
+            const [matchId, playerId] = statement.args
+            if (matchPlayers.some((row) => row.match_id === matchId && row.player_id === playerId)) {
+              return { meta: { changes: 0 } }
+            }
+            matchPlayers.push({ match_id: matchId, player_id: playerId, args: [...statement.args] })
+            return { meta: { changes: 1 } }
+          }
+          if (sql.startsWith('INSERT OR IGNORE INTO achievements')) {
+            achievementInserts.push([...statement.args])
+            return { meta: { changes: 0 } }
+          }
+          throw new Error('v2 match report fake db: unsupported run: ' + sql)
+        },
+        async all() {
+          if (sql.includes('json_each')) return { results: [] }
+          throw new Error('v2 match report fake db: unsupported all: ' + sql)
+        },
+      }
+      return statement
+    },
+  }
+
+  const payload = {
+    schemaVersion: 2,
+    reportId: 'abracadawhat:123e4567-e89b-42d3-a456-426614174000',
+    game: 'abracadawhat',
+    roomId: 'R2',
+    startedAt: '2026-09-07T00:00:00.000Z',
+    finishedAt: '2026-09-07T00:10:00.000Z',
+    rounds: 2,
+    standings: [
+      { playerId: 'p1', nickname: '一号', rank: 1, score: 8, scoreBySource: { roundWinPoints: 6, survivalPoints: 1, secretPoints: 1 }, spellCounts: { 1: 1 }, kills: 1, dragonKills: 1, deaths: 0, suicides: 0, roundWins: 2, roundWinsByReason: { kill: 1, all_spells: 1 }, maxTurnCastCount: 2, maxTurnDistinctSpells: 2 },
+      { playerId: 'p2', nickname: '二号', rank: 2, score: 2, scoreBySource: { roundWinPoints: 0, survivalPoints: 1, secretPoints: 1 }, spellCounts: {}, kills: 0, dragonKills: 0, deaths: 1, suicides: 0, roundWins: 0, roundWinsByReason: { kill: 0, all_spells: 0 }, maxTurnCastCount: 0, maxTurnDistinctSpells: 0 },
+    ],
+    facts: [],
+    stories: [],
+  }
+  const post = () => worker.fetch(new Request('https://auth.qmzhj.top/api/matches', {
+    method: 'POST',
+    headers: { authorization: 'Bearer match-report-secret', 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  }), env)
+
+  const first = await post()
+  const firstBody = await first.json()
+  const second = await post()
+  const secondBody = await second.json()
+
+  assert.equal(first.status, 200)
+  assert.equal(second.status, 200)
+  assert.equal(secondBody.matchId, firstBody.matchId, '同一 reportId 必须返回同一内部 matchId')
+  assert.equal(firstBody.reportId, payload.reportId)
+  assert.equal(secondBody.reportId, payload.reportId)
+  assert.deepEqual(firstBody.savedReports, [])
+  assert.equal(matches.length, 1, '只创建一个 matches 行')
+  assert.equal(matchPlayers.length, 2, '每名玩家只创建一个 career 行')
+  assert.equal(achievementInserts.length, 0, 'B1 不为 v2 重复或提前执行旧成就写入')
+}
+
+console.log('worker v2 idempotency tests passed')

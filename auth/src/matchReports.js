@@ -11,6 +11,38 @@ const MAX_DEATHS = MAX_ROUNDS
 const MAX_SECRETS_TAKEN = MAX_ROUNDS * 12
 const MAX_ROUND_SECRETS = 12
 const MAX_FAILS_IN_ROUND = 36
+const MAX_REPORT_ID_LENGTH = 64
+const MAX_FACTS = 100
+const MAX_STORIES = 3
+const MAX_STRUCTURED_DATA_KEYS = 16
+const MAX_STRUCTURED_STRING_LENGTH = 64
+
+const V2_TOP_LEVEL_KEYS = new Set([
+  'schemaVersion', 'reportId', 'game', 'roomId', 'startedAt', 'finishedAt',
+  'rounds', 'standings', 'facts', 'stories',
+])
+const V2_STANDING_KEYS = new Set([
+  'playerId', 'nickname', 'rank', 'score', 'scoreBySource', 'spellCounts',
+  'kills', 'dragonKills', 'deaths', 'suicides', 'roundWins',
+  'roundWinsByReason', 'maxTurnCastCount', 'maxTurnDistinctSpells',
+])
+const SCORE_SOURCE_KEYS = new Set(['roundWinPoints', 'survivalPoints', 'secretPoints'])
+const ROUND_WIN_REASON_KEYS = new Set(['kill', 'all_spells'])
+const FACT_KEYS = new Set([
+  'turn_distinct_spells', 'turn_clear_streak', 'all_spell_types', 'round_win_low_hp',
+  'low_hp_kill', 'multi_kill_non_dragon', 'dragon_multi_kill', 'comeback_win',
+  'survivor_secret_stack', 'round_win_routes', 'voluntary_stop',
+])
+const STORY_KEYS = new Set([
+  'comeback_win', 'dragon_multi_kill', 'low_hp_kill', 'turn_clear_streak',
+  'secret_score', 'round_win_routes', 'all_spell_types', 'voluntary_stop',
+])
+const STORY_TIERS = new Set(['S', 'A', 'B', 'C'])
+const STRUCTURED_DATA_KEYS = new Set([
+  'round', 'spellId', 'actorHp', 'targetHpBefore', 'targetPlayerId', 'score',
+  'opponentScore', 'count', 'distinctCount', 'secretCount', 'successCount',
+  'killCount', 'roundWinPoints', 'survivalPoints', 'secretPoints', 'reason',
+])
 
 function isCount(value, max = MAX_MATCH_EVENTS) {
   return Number.isInteger(value) && value >= 0 && value <= max
@@ -18,6 +50,76 @@ function isCount(value, max = MAX_MATCH_EVENTS) {
 
 function isCanonicalSpellKey(key) {
   return /^[1-8]$/.test(key)
+}
+
+function hasOnlyKeys(value, allowed) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    && Object.keys(value).every((key) => allowed.has(key))
+}
+
+function isIsoTimestamp(value) {
+  if (typeof value !== 'string' || value.length !== 24 || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false
+  return new Date(value).toISOString() === value
+}
+
+function cleanExactCounts(value, keys, max = MAX_SCORE) {
+  if (!hasOnlyKeys(value, keys) || Object.keys(value).length !== keys.size) return null
+  const clean = {}
+  for (const key of keys) {
+    if (!isCount(value[key], max)) return null
+    clean[key] = value[key]
+  }
+  return clean
+}
+
+function cleanStructuredData(value, playerIds) {
+  if (!hasOnlyKeys(value, STRUCTURED_DATA_KEYS) || Object.keys(value).length > MAX_STRUCTURED_DATA_KEYS) return null
+  const clean = {}
+  for (const [key, item] of Object.entries(value)) {
+    if (key === 'targetPlayerId') {
+      if (typeof item !== 'string' || item.length > MAX_STRUCTURED_STRING_LENGTH || !playerIds.has(item)) return null
+    } else if (key === 'reason') {
+      if (!['kill', 'all_spells', 'self_destruct'].includes(item)) return null
+    } else if (key === 'spellId') {
+      if (!Number.isInteger(item) || item < 1 || item > 8) return null
+    } else if (key === 'actorHp' || key === 'targetHpBefore') {
+      if (!isCount(item, MAX_HEALTH)) return null
+    } else if (key === 'round') {
+      if (!isCount(item, MAX_ROUNDS)) return null
+    } else if (key === 'distinctCount') {
+      if (!isCount(item, 8)) return null
+    } else if (!isCount(item, MAX_MATCH_EVENTS)) {
+      return null
+    }
+    clean[key] = item
+  }
+  return clean
+}
+
+function cleanFacts(value, playerIds) {
+  if (!Array.isArray(value) || value.length > MAX_FACTS) return null
+  const clean = []
+  for (const fact of value) {
+    if (!hasOnlyKeys(fact, new Set(['key', 'playerId', 'data'])) || Object.keys(fact).length !== 3) return null
+    if (!FACT_KEYS.has(fact.key) || !playerIds.has(fact.playerId)) return null
+    const data = cleanStructuredData(fact.data, playerIds)
+    if (!data) return null
+    clean.push({ key: fact.key, playerId: fact.playerId, data })
+  }
+  return clean
+}
+
+function cleanStories(value, playerIds) {
+  if (!Array.isArray(value) || value.length > MAX_STORIES) return null
+  const clean = []
+  for (const story of value) {
+    if (!hasOnlyKeys(story, new Set(['key', 'playerId', 'tier', 'data'])) || Object.keys(story).length !== 4) return null
+    if (!STORY_KEYS.has(story.key) || !playerIds.has(story.playerId) || !STORY_TIERS.has(story.tier)) return null
+    const data = cleanStructuredData(story.data, playerIds)
+    if (!data) return null
+    clean.push({ key: story.key, playerId: story.playerId, tier: story.tier, data })
+  }
+  return clean
 }
 
 function cleanSpellCounts(value) {
@@ -141,7 +243,94 @@ function cleanPlayer(player) {
   }
 }
 
+function cleanV2Standing(standing, playerCount) {
+  if (!hasOnlyKeys(standing, V2_STANDING_KEYS) || Object.keys(standing).length !== V2_STANDING_KEYS.size) return null
+  if (typeof standing.playerId !== 'string' || !standing.playerId.startsWith('p') || standing.playerId.length > 64) return null
+  if (typeof standing.nickname !== 'string' || standing.nickname.length > 64) return null
+  if (!Number.isInteger(standing.rank) || standing.rank < 1 || standing.rank > playerCount) return null
+  if (!isCount(standing.score, MAX_SCORE)) return null
+  const scoreBySource = cleanExactCounts(standing.scoreBySource, SCORE_SOURCE_KEYS)
+  const spellCounts = cleanSpellCounts(standing.spellCounts)
+  const roundWinsByReason = cleanExactCounts(standing.roundWinsByReason, ROUND_WIN_REASON_KEYS, MAX_ROUNDS)
+  if (!scoreBySource || !spellCounts || !roundWinsByReason) return null
+  if (!isCount(standing.kills, MAX_TOTAL_KILLS) || !isCount(standing.dragonKills, MAX_TOTAL_KILLS)) return null
+  if (standing.dragonKills > standing.kills) return null
+  if (!isCount(standing.deaths, MAX_DEATHS) || !isCount(standing.suicides, MAX_DEATHS)) return null
+  if (!isCount(standing.roundWins, MAX_ROUNDS)) return null
+  if (!isCount(standing.maxTurnCastCount, MAX_SPELLS_PER_TURN)) return null
+  if (!isCount(standing.maxTurnDistinctSpells, 8)) return null
+
+  return {
+    playerId: standing.playerId,
+    nickname: standing.nickname,
+    rank: standing.rank,
+    score: standing.score,
+    scoreBySource,
+    spellCounts,
+    kills: standing.kills,
+    dragonKills: standing.dragonKills,
+    deaths: standing.deaths,
+    suicides: standing.suicides,
+    roundWins: standing.roundWins,
+    roundWinsByReason,
+    maxTurnCastCount: standing.maxTurnCastCount,
+    maxTurnDistinctSpells: standing.maxTurnDistinctSpells,
+  }
+}
+
+function sanitizeV2(body) {
+  if (!hasOnlyKeys(body, V2_TOP_LEVEL_KEYS) || Object.keys(body).length !== V2_TOP_LEVEL_KEYS.size) {
+    return { ok: false, error: 'invalid payload' }
+  }
+  if (typeof body.reportId !== 'string' || body.reportId.length > MAX_REPORT_ID_LENGTH
+      || !/^abracadawhat:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(body.reportId)) {
+    return { ok: false, error: 'invalid reportId' }
+  }
+  if (body.game !== 'abracadawhat') return { ok: false, error: 'invalid payload' }
+  if (typeof body.roomId !== 'string' || body.roomId.length === 0 || body.roomId.length > MAX_ROOM_ID_LENGTH) {
+    return { ok: false, error: 'invalid roomId' }
+  }
+  if (!isIsoTimestamp(body.startedAt) || !isIsoTimestamp(body.finishedAt) || body.finishedAt < body.startedAt) {
+    return { ok: false, error: 'invalid timestamp' }
+  }
+  if (!isCount(body.rounds, MAX_ROUNDS)) return { ok: false, error: 'invalid rounds' }
+  if (!Array.isArray(body.standings) || body.standings.length < 2 || body.standings.length > 5) {
+    return { ok: false, error: 'invalid standings' }
+  }
+
+  const standings = body.standings.map((standing) => cleanV2Standing(standing, body.standings.length))
+  if (standings.some((standing) => !standing)) return { ok: false, error: 'invalid standing' }
+  if (new Set(standings.map((standing) => standing.playerId)).size !== standings.length) {
+    return { ok: false, error: 'duplicate playerId' }
+  }
+  const ranks = standings.map((standing) => standing.rank).sort((a, b) => a - b)
+  if (ranks.some((rank, index) => rank !== index + 1)) return { ok: false, error: 'invalid rank' }
+
+  const playerIds = new Set(standings.map((standing) => standing.playerId))
+  const facts = cleanFacts(body.facts, playerIds)
+  const stories = cleanStories(body.stories, playerIds)
+  if (!facts || !stories) return { ok: false, error: 'invalid facts or stories' }
+
+  return {
+    ok: true,
+    version: 2,
+    report: {
+      schemaVersion: 2,
+      reportId: body.reportId,
+      game: 'abracadawhat',
+      roomId: body.roomId,
+      startedAt: body.startedAt,
+      finishedAt: body.finishedAt,
+      rounds: body.rounds,
+      standings,
+      facts,
+      stories,
+    },
+  }
+}
+
 export function sanitizeMatchReport(body) {
+  if (body?.schemaVersion === 2) return sanitizeV2(body)
   if (!body || typeof body !== 'object' || (body.schemaVersion != null && body.schemaVersion !== 1) || body.game !== 'abracadawhat') {
     return { ok: false, error: 'invalid payload' }
   }

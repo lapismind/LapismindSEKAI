@@ -218,11 +218,46 @@ const env = {
     castOwlThisMatch: false,
   }]))
   const room = new AbracaRoom({ name: 'ROOM-1' }, {})
-  const report = room.buildMatchReport({ round: 3, players, matchStats: { players: stats } }, players[0])
+  const reportId = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000'
+  const report = room.buildMatchReport({ round: 3, players, matchStats: { reportId, startAt: '2026-01-01T00:00:00.000Z', players: stats } }, players[0])
   const sanitized = sanitizeMatchReport(report)
 
-  assert.equal(report.players[0].nickname.length, 64, 'sender 归一化展示昵称')
-  assert.equal(sanitized.ok, true, '实际 buildMatchReport v1 payload 可由 Auth 接收')
+  assert.equal(report.schemaVersion, 2)
+  assert.equal(report.reportId, reportId)
+  assert.equal(report.standings[0].nickname.length, 64, 'sender 归一化展示昵称')
+  assert.equal(sanitized.ok, true, '实际 buildMatchReport v2 payload 可由 Auth 接收')
+}
+
+{
+  let state = {
+    hostId: 'p1',
+    phase: 'waiting',
+    round: 0,
+    targetScore: 8,
+    players: [
+      { id: 'p1', nickname: '一号', avatarId: '1', score: 0, isHost: true },
+      { id: 'p2', nickname: '二号', avatarId: '2', score: 0, isHost: false },
+    ],
+    matchHistory: [],
+  }
+  const ctx = {
+    name: 'ROOM-REPORT-ID',
+    storage: {
+      put: async (_key, nextState) => { state = nextState },
+    },
+    getWebSockets: () => [],
+  }
+  const room = new AbracaRoom(ctx, {})
+
+  await room.hostStart(state, 'p1')
+  const firstReportId = state.matchStats.reportId
+  assert.match(firstReportId, /^abracadawhat:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+  assert.equal(room.buildMatchReport(state, state.players[0]).reportId, firstReportId)
+  assert.equal(room.buildMatchReport(state, state.players[0]).reportId, firstReportId, '同一场重复构建保持稳定')
+
+  state.phase = 'game_over'
+  await room.hostRematch(state, 'p1')
+  assert.notEqual(state.matchStats.reportId, firstReportId, '重赛生成新的 reportId')
 }
 
 {
