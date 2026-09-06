@@ -86,3 +86,32 @@ Final serial verification:
 Remaining concern:
 
 - Pre-B2 in-progress rooms still use the documented v1 report fallback because facts and score sources from their earlier rounds cannot be reconstructed authoritatively.
+
+## Final Reviewer Fix Pass
+
+The remaining B2 findings were fixed without implementing B3 story selection.
+
+- Bounded fact retention now first keeps the strongest representative for every `key + playerId` group present, preserving each player's achievement/story evidence. Remaining slots are filled from the same fixed-priority, stable ordering up to the Auth limit of 100.
+- Repeated facts use key-specific strength comparisons before canonical JSON tie-breaking: distinct spell/cast counts, clear streak length, target HP, kill count, comeback deficit/recovery, secret count, route count, and voluntary-stop cast/distinct counts. The same candidate set produces the same retained facts regardless of insertion order.
+- Pressure tests prove that 100 `turn_distinct_spells` facts cannot erase the only `survivor_secret_stack`, 100 `low_hp_kill` facts cannot erase `all_spell_types`, and all 11 supported fact keys remain represented for each tested player.
+- The pressured producer report remains at most 100 facts, contains all supported keys, and passes the exact Auth v2 sanitizer.
+- `startNextRound()` now persists `comeback_win` into authoritative `state.matchStats.facts` before report construction and the final `game_over` state save. Future story consumption can therefore read the same persisted evidence without B2 selecting stories.
+- `buildMatchReport()` remains pure and idempotent. Its legacy v1 comeback flag is computed in the returned object instead of mutating match stats, and repeated v2 builds neither add duplicate comeback facts nor alter state.
+
+Strict TDD evidence:
+
+- RED: survivor and all-spell evidence were evicted by fact floods; all-key/player pressure lost lower-priority groups; permutation/strongest-representative expectations failed; actual `startNextRound()` persistence contained no comeback fact.
+- Additional purity RED: `buildMatchReport()` mutated the legacy `comebackFromBehind` field while reading snapshots.
+- GREEN focused: `node --test tests/rules.test.mjs tests/match-facts.test.mjs` passed 42/42.
+
+Final serial verification:
+
+- Abracadawhat production build and emoji postbuild: passed.
+- Abracadawhat full: 75/75 passed.
+- Auth sanitizer focused: 19/19 passed.
+- Auth full, including isolated real D1 integration: 47/47 passed.
+- Auth full intentionally logged `forced player failure` while proving transaction rollback; the test passed.
+
+Remaining concern:
+
+- Pre-B2 in-progress rooms continue to use the documented v1 report fallback because their earlier-round facts and score sources cannot be reconstructed authoritatively.

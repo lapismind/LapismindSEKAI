@@ -119,6 +119,20 @@ function fact(state, key, playerId) {
   return state.matchStats.facts.filter((entry) => entry.key === key && entry.playerId === playerId)
 }
 
+const supportedFactSamples = [
+  ['turn_distinct_spells', { round: 1, spellIds: [5, 6, 7], castCount: 3 }],
+  ['turn_clear_streak', { round: 1, successCount: 4, reason: 'all_spells' }],
+  ['all_spell_types', { spellIds: [1, 2, 3, 4, 5, 6, 7, 8] }],
+  ['round_win_low_hp', { round: 1, actorHp: 1, reason: 'kill' }],
+  ['low_hp_kill', { round: 1, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' }],
+  ['multi_kill_non_dragon', { round: 1, spellId: 5, killCount: 2 }],
+  ['dragon_multi_kill', { round: 1, spellId: 1, killCount: 3 }],
+  ['comeback_win', { playerScoreBefore: 3, opponentScoreBefore: 7, finalScore: 8 }],
+  ['survivor_secret_stack', { round: 1, secretCount: 3 }],
+  ['round_win_routes', { kill: 1, allSpells: 1 }],
+  ['voluntary_stop', { round: 1, successCount: 2, distinctCount: 2 }],
+]
+
 test('beginRound snapshots starting hands and reveals each snapshot only to its owner at round_end', async () => {
   const players = [player('p1', 0), player('p2', 1)]
   const state = makeState(players, { phase: 'waiting', round: 0 })
@@ -205,8 +219,8 @@ test('doEndTurn persists the next action index before a reload', async () => {
   assert.equal(state.matchStats.players.p1.maxTurnCastCount, 3)
   assert.equal(state.matchStats.players.p1.maxTurnDistinctSpells, 3)
   assert.deepEqual(fact(state, 'voluntary_stop', 'p1').map((entry) => entry.data), [
-    { round: 1, successCount: 2, distinctCount: 2 },
     { round: 1, successCount: 3, distinctCount: 3 },
+    { round: 1, successCount: 2, distinctCount: 2 },
   ])
   const report = room.buildMatchReport(state, state.players[0])
   assert.equal(sanitizeMatchReport(report).ok, true)
@@ -508,8 +522,10 @@ test('buildMatchReport emits exact comeback_win data from an authoritative score
   state.matchStats.players.p2.roundWins = 2
   state.matchStats.players.p2.roundWinsByReason = { kill: 2, all_spells: 0 }
 
+  const beforeBuild = structuredClone(state)
   const report = makeRoom().buildMatchReport(state, players[0])
 
+  assert.deepEqual(state, beforeBuild)
   assert.deepEqual(report.facts.filter((entry) => entry.key === 'comeback_win'), [{
     key: 'comeback_win',
     playerId: 'p1',
@@ -587,4 +603,155 @@ test('capped canonical fact insertion suppresses an existing comeback duplicate'
   assert.equal(report.facts.length, 100)
   assert.equal(report.facts.filter((entry) => entry.key === 'comeback_win').length, 1)
   assert.equal(sanitizeMatchReport(report).ok, true)
+})
+
+test('100 turn facts cannot erase the only survivor-secret fact', () => {
+  const state = { matchStats: { facts: [] } }
+  const room = makeRoom()
+  for (let round = 1; round <= 100; round += 1) {
+    room.addMatchFact(state, 'turn_distinct_spells', 'p1', {
+      round, spellIds: [5, 6, 7], castCount: 3,
+    })
+  }
+
+  room.addMatchFact(state, 'survivor_secret_stack', 'p1', { round: 100, secretCount: 3 })
+
+  assert.equal(state.matchStats.facts.length, 100)
+  assert.equal(fact(state, 'survivor_secret_stack', 'p1').length, 1)
+})
+
+test('100 low-hp kills cannot erase the only all-spell-types fact', () => {
+  const state = { matchStats: { facts: [] } }
+  const room = makeRoom()
+  for (let round = 1; round <= 25; round += 1) {
+    for (let target = 2; target <= 5; target += 1) {
+      room.addMatchFact(state, 'low_hp_kill', 'p1', {
+        round, spellId: 1, actorHp: 1, targetHpBefore: 3, targetPlayerId: `p${target}`,
+      })
+    }
+  }
+
+  room.addMatchFact(state, 'all_spell_types', 'p1', { spellIds: [1, 2, 3, 4, 5, 6, 7, 8] })
+
+  assert.equal(state.matchStats.facts.length, 100)
+  assert.equal(fact(state, 'all_spell_types', 'p1').length, 1)
+})
+
+test('bounded retention preserves every supported key and player under pressure', () => {
+  const state = { matchStats: { facts: [] } }
+  const room = makeRoom()
+  for (let round = 1; round <= 100; round += 1) {
+    room.addMatchFact(state, 'turn_distinct_spells', 'p1', {
+      round, spellIds: [5, 6, 7], castCount: 3,
+    })
+  }
+  for (const playerId of ['p1', 'p2']) {
+    for (const [key, data] of supportedFactSamples) {
+      const playerData = key === 'low_hp_kill'
+        ? { ...data, targetPlayerId: playerId === 'p1' ? 'p2' : 'p1' }
+        : data
+      room.addMatchFact(state, key, playerId, playerData)
+    }
+  }
+
+  assert.equal(state.matchStats.facts.length, 100)
+  for (const playerId of ['p1', 'p2']) {
+    for (const [key] of supportedFactSamples) {
+      assert.equal(fact(state, key, playerId).length >= 1, true, `${playerId} retains ${key}`)
+    }
+  }
+})
+
+test('fact retention is permutation-independent and keeps the strongest representative', () => {
+  const candidates = [
+    ...Array.from({ length: 100 }, (_, index) => ({
+      key: 'turn_distinct_spells',
+      playerId: 'p1',
+      data: { round: index + 1, spellIds: [5, 6, 7], castCount: 3 },
+    })),
+    { key: 'survivor_secret_stack', playerId: 'p1', data: { round: 1, secretCount: 3 } },
+    { key: 'survivor_secret_stack', playerId: 'p1', data: { round: 2, secretCount: 5 } },
+    { key: 'multi_kill_non_dragon', playerId: 'p1', data: { round: 1, spellId: 5, killCount: 2 } },
+    { key: 'multi_kill_non_dragon', playerId: 'p1', data: { round: 2, spellId: 2, killCount: 4 } },
+  ]
+  const orders = [candidates, [...candidates].reverse(), [...candidates.slice(37), ...candidates.slice(0, 37)]]
+  const retained = orders.map((entries) => {
+    const state = { matchStats: { facts: [] } }
+    const room = makeRoom()
+    for (const entry of entries) room.addMatchFact(state, entry.key, entry.playerId, entry.data)
+    return state.matchStats.facts
+  })
+
+  assert.deepEqual(retained[1], retained[0])
+  assert.deepEqual(retained[2], retained[0])
+  assert.deepEqual(retained[0].find((entry) => entry.key === 'survivor_secret_stack').data, {
+    round: 2, secretCount: 5,
+  })
+  assert.deepEqual(retained[0].find((entry) => entry.key === 'multi_kill_non_dragon').data, {
+    round: 2, spellId: 2, killCount: 4,
+  })
+})
+
+test('pressured retained facts stay within 100 and pass the Auth sanitizer', () => {
+  const players = [
+    player('p1', 0, { score: 8 }),
+    player('p2', 1),
+    player('p3', 2),
+    player('p4', 3),
+    player('p5', 4),
+  ]
+  const state = makeState(players, { round: 100 })
+  state.matchStats.players.p1.scoreBySource = { roundWinPoints: 6, survivalPoints: 2, secretPoints: 0 }
+  state.matchStats.players.p1.roundWins = 2
+  state.matchStats.players.p1.roundWinsByReason = { kill: 2, all_spells: 0 }
+  const room = makeRoom()
+  for (let round = 1; round <= 100; round += 1) {
+    room.addMatchFact(state, 'turn_distinct_spells', 'p1', {
+      round, spellIds: [5, 6, 7], castCount: 3,
+    })
+  }
+  for (const [key, data] of supportedFactSamples) room.addMatchFact(state, key, 'p1', data)
+
+  const report = room.buildMatchReport(state, players[0])
+
+  assert.equal(report.facts.length <= 100, true)
+  assert.deepEqual(new Set(report.facts.map((entry) => entry.key)), new Set(supportedFactSamples.map(([key]) => key)))
+  assert.equal(sanitizeMatchReport(report).ok, true)
+})
+
+test('startNextRound persists comeback before reporting and repeated report builds are pure', async () => {
+  const players = [player('p1', 0, { score: 8 }), player('p2', 1, { score: 7 })]
+  const state = makeState(players, { phase: 'round_end', round: 3 })
+  state.matchStats.scoreSnapshots = [{ p1: 3, p2: 7 }]
+  state.matchStats.players.p1.scoreBySource = { roundWinPoints: 6, survivalPoints: 2, secretPoints: 0 }
+  state.matchStats.players.p1.roundWins = 2
+  state.matchStats.players.p1.roundWinsByReason = { kill: 2, all_spells: 0 }
+  state.matchStats.players.p2.scoreBySource = { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 }
+  state.matchStats.players.p2.roundWins = 2
+  state.matchStats.players.p2.roundWinsByReason = { kill: 2, all_spells: 0 }
+  let persisted
+  let reported
+  const room = new AbracaRoom({
+    name: 'COMEBACK-PERSIST',
+    storage: { put: async (_key, nextState) => { persisted = structuredClone(nextState) } },
+    getWebSockets: () => [],
+    waitUntil(promise) { reported = promise },
+  }, {})
+
+  await room.startNextRound(state)
+
+  assert.equal(persisted.phase, 'game_over')
+  assert.deepEqual(fact(persisted, 'comeback_win', 'p1'), [{
+    key: 'comeback_win',
+    playerId: 'p1',
+    data: { playerScoreBefore: 3, opponentScoreBefore: 7, finalScore: 8 },
+  }])
+  const beforeBuild = structuredClone(persisted)
+  const first = room.buildMatchReport(persisted, persisted.players[0])
+  const second = room.buildMatchReport(persisted, persisted.players[0])
+  assert.deepEqual(first, second)
+  assert.deepEqual(persisted, beforeBuild)
+  assert.equal(first.facts.filter((entry) => entry.key === 'comeback_win').length, 1)
+  assert.equal(sanitizeMatchReport(first).ok, true)
+  await reported
 })

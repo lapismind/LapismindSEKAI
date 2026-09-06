@@ -32,6 +32,81 @@ const FACT_PRIORITY = {
   voluntary_stop: 10,
 }
 
+function compareText(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
+function compareFactStrength(left, right) {
+  const leftData = left.data
+  const rightData = right.data
+  const descending = (...values) => {
+    for (const [leftValue, rightValue] of values) {
+      if (leftValue !== rightValue) return rightValue - leftValue
+    }
+    return 0
+  }
+  let strength = 0
+  switch (left.key) {
+    case 'turn_distinct_spells':
+      strength = descending([leftData.spellIds.length, rightData.spellIds.length], [leftData.castCount, rightData.castCount])
+      break
+    case 'turn_clear_streak':
+      strength = descending([leftData.successCount, rightData.successCount])
+      break
+    case 'low_hp_kill':
+      strength = descending([leftData.targetHpBefore, rightData.targetHpBefore])
+      break
+    case 'multi_kill_non_dragon':
+    case 'dragon_multi_kill':
+      strength = descending([leftData.killCount, rightData.killCount])
+      break
+    case 'comeback_win':
+      strength = descending(
+        [leftData.opponentScoreBefore - leftData.playerScoreBefore, rightData.opponentScoreBefore - rightData.playerScoreBefore],
+        [leftData.finalScore - leftData.opponentScoreBefore, rightData.finalScore - rightData.opponentScoreBefore],
+        [leftData.finalScore, rightData.finalScore],
+      )
+      break
+    case 'survivor_secret_stack':
+      strength = descending([leftData.secretCount, rightData.secretCount])
+      break
+    case 'round_win_routes':
+      strength = descending([leftData.kill + leftData.allSpells, rightData.kill + rightData.allSpells])
+      break
+    case 'voluntary_stop':
+      strength = descending([leftData.successCount, rightData.successCount], [leftData.distinctCount, rightData.distinctCount])
+      break
+    default:
+      break
+  }
+  return strength || compareText(JSON.stringify(leftData), JSON.stringify(rightData))
+}
+
+function compareFacts(left, right) {
+  const priority = (FACT_PRIORITY[left.key] ?? Number.MAX_SAFE_INTEGER)
+    - (FACT_PRIORITY[right.key] ?? Number.MAX_SAFE_INTEGER)
+  return priority
+    || compareText(left.key, right.key)
+    || compareText(left.playerId, right.playerId)
+    || compareFactStrength(left, right)
+}
+
+function retainMatchFacts(facts) {
+  const sorted = [...facts].sort(compareFacts)
+  const representatives = new Map()
+  for (const fact of sorted) {
+    const group = `${fact.key}\u0000${fact.playerId}`
+    if (!representatives.has(group)) representatives.set(group, fact)
+  }
+  const retained = [...representatives.values()]
+  const representativeSet = new Set(retained)
+  for (const fact of sorted) {
+    if (retained.length >= MAX_MATCH_FACTS) break
+    if (!representativeSet.has(fact)) retained.push(fact)
+  }
+  return retained.sort(compareFacts)
+}
+
 function validPlayerId(playerId) {
   return typeof playerId === 'string' && playerId.startsWith('p') && playerId.length <= MAX_PLAYER_ID_LENGTH
 }
@@ -311,6 +386,7 @@ export class AbracaRoom {
       state.phase = 'game_over'
       const finishedAt = state.matchStats?.finishedAt ?? new Date().toISOString()
       if (state.matchStats) state.matchStats.finishedAt = finishedAt
+      this.captureComebackFact(state, champion)
       // 记录本局战绩快照到房间历史
       if (!state.matchHistory) state.matchHistory = []
       state.matchHistory.push({
@@ -356,13 +432,13 @@ export class AbracaRoom {
               .map(([, score]) => score))
             return opponentMax >= 7 && (snap[ms.playerId] || 0) <= 3
           })
-          if (wasBehind) ms.comebackFromBehind = true
           return {
             ...ms,
             nickname: normalizeNickname(ms.nickname),
             score: player?.score ?? ms.score,
             isChampion: ms.playerId === champion.id,
             finalHp: player?.health ?? null,
+            comebackFromBehind: ms.comebackFromBehind === true || wasBehind,
           }
         }),
       }
@@ -377,7 +453,6 @@ export class AbracaRoom {
             .map(([, value]) => value))
           return oppMax >= 7 && (snap[ms.playerId] || 0) <= 3
         })
-        if (wasBehind) ms.comebackFromBehind = true
         return {
           playerId: player.id,
           nickname: normalizeNickname(ms.nickname ?? player.nickname),
@@ -679,15 +754,25 @@ export class AbracaRoom {
     const serialized = JSON.stringify(data)
     if (facts.some(fact => fact.key === key && fact.playerId === playerId && JSON.stringify(fact.data) === serialized)) return
     facts.push({ key, playerId, data })
-    facts.sort((left, right) => {
-      const priority = (FACT_PRIORITY[left.key] ?? Number.MAX_SAFE_INTEGER)
-        - (FACT_PRIORITY[right.key] ?? Number.MAX_SAFE_INTEGER)
-      if (priority !== 0) return priority
-      const leftCanonical = `${left.key}\u0000${left.playerId}\u0000${JSON.stringify(left.data)}`
-      const rightCanonical = `${right.key}\u0000${right.playerId}\u0000${JSON.stringify(right.data)}`
-      return leftCanonical < rightCanonical ? -1 : leftCanonical > rightCanonical ? 1 : 0
+    state.matchStats.facts = retainMatchFacts(facts)
+  }
+
+  captureComebackFact(state, champion) {
+    const snapshots = state.matchStats?.scoreSnapshots ?? []
+    const snapshot = snapshots.find((scores) => {
+      const opponentScore = Math.max(0, ...Object.entries(scores)
+        .filter(([id]) => id !== champion.id)
+        .map(([, score]) => score))
+      return opponentScore >= 7 && (scores[champion.id] || 0) <= 3 && champion.score > opponentScore
     })
-    if (facts.length > MAX_MATCH_FACTS) facts.length = MAX_MATCH_FACTS
+    if (!snapshot) return
+    this.addMatchFact(state, 'comeback_win', champion.id, {
+      playerScoreBefore: snapshot[champion.id] || 0,
+      opponentScoreBefore: Math.max(0, ...Object.entries(snapshot)
+        .filter(([id]) => id !== champion.id)
+        .map(([, score]) => score)),
+      finalScore: champion.score,
+    })
   }
 
   advanceActionIndex(state, playerId) {
