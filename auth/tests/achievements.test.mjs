@@ -9,6 +9,12 @@ test('成就定义 key 无重复', () => {
   assert.equal(new Set(keys).size, keys.length)
 })
 
+test('仅奶龙大王和社死现场标为 legacy，其余定义显式 active', () => {
+  const legacyKeys = ACHIEVEMENT_DEFS.filter(d => d.status === 'legacy').map(d => d.key).sort()
+  assert.deepEqual(legacyKeys, ['dragon_clown', 'egg_social_death'])
+  assert.ok(ACHIEVEMENT_DEFS.every(d => d.status === 'active' || d.status === 'legacy'))
+})
+
 test('龙来：单次龙息击杀 >= 3 触发', async () => {
   const match = {
     players: [{
@@ -80,7 +86,7 @@ test('卡牌大师：0 击杀夺冠', async () => {
   assert.ok(out.some(u => u.key === 'pacifist_king'))
 })
 
-test('奶龙大王：龙失败 10 次 + 自杀 10 次（跨场累计）', async () => {
+test('奶龙大王：达到旧触发条件也不再触发', async () => {
   const match = {
     players: [{
       playerId: 'p1', dragonFails: 4, suicides: 4, spellsCast: {},
@@ -89,7 +95,17 @@ test('奶龙大王：龙失败 10 次 + 自杀 10 次（跨场累计）', async 
   }
   const career = { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 6, suicides: 6, spellCounts: {} }
   const out = await evaluateAchievements(match, async () => career)
-  assert.ok(out.some(u => u.key === 'dragon_clown'))
+  assert.ok(!out.some(u => u.key === 'dragon_clown'))
+})
+
+test('社死现场：单回合失败 3 次也不再触发', async () => {
+  const match = {
+    players: [{
+      playerId: 'p1', maxFailsInRound: 3, spellsCast: {}, deaths: 0, roundsSurvived: 1,
+    }],
+  }
+  const out = await evaluateAchievements(match, async () => emptyCareer())
+  assert.ok(!out.some(u => u.key === 'egg_social_death'))
 })
 
 test('元素反应：单回合集齐雷雪火', async () => {

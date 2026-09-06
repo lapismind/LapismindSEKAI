@@ -11,44 +11,44 @@
 
 export const ACHIEVEMENT_DEFS = [
   // ---------- 一星（4）----------
-  { key: 'first_cast', stars: 1, name: '初试啼声', desc: '累计施法达到 1 次（完成首次成功施法即解锁）' },
-  { key: 'first_kill', stars: 1, name: '开张', desc: '累计击杀达到 1 次' },
-  { key: 'potion_addict', stars: 1, name: '药罐子', desc: '累计施放增益/治疗类魔法（8 系）达到 10 次' },
-  { key: 'spell_collector', stars: 1, name: '图鉴收集家', desc: '累计使用过 8 个不同系别的魔法各至少 1 次' },
+  { key: 'first_cast', status: 'active', stars: 1, name: '初试啼声', desc: '累计施法达到 1 次（完成首次成功施法即解锁）' },
+  { key: 'first_kill', status: 'active', stars: 1, name: '开张', desc: '累计击杀达到 1 次' },
+  { key: 'potion_addict', status: 'active', stars: 1, name: '药罐子', desc: '累计施放增益/治疗类魔法（8 系）达到 10 次' },
+  { key: 'spell_collector', status: 'active', stars: 1, name: '图鉴收集家', desc: '累计使用过 8 个不同系别的魔法各至少 1 次' },
 
   // ---------- 二星（6）----------
-  { key: 'meteor', stars: 2, name: '流星火雨', desc: '单局内连续 3 轮施放火系魔法（7 系）' },
-  { key: 'frost', stars: 2, name: '霜天', desc: '单局内连续 3 轮施放冰系魔法（6 系）' },
-  { key: 'weather_child', stars: 2, name: '天气之子', desc: '同一回合内同时施放雷、雪、火三系魔法（5/6/7 系）' },
-  { key: 'night_walker', stars: 2, name: '夜行侠', desc: '累计施放暗影/夜行类魔法（2 系）达到 20 次' },
-  { key: 'last_breath', stars: 2, name: '一线生机', desc: '在仅剩 1 点生命值时赢下当前回合' },
-  { key: 'secret_rich', stars: 2, name: '秘密富翁', desc: '单回合结束时同时持有至少 3 张秘密牌' },
+  { key: 'meteor', status: 'active', stars: 2, name: '流星火雨', desc: '单局内连续 3 轮施放火系魔法（7 系）' },
+  { key: 'frost', status: 'active', stars: 2, name: '霜天', desc: '单局内连续 3 轮施放冰系魔法（6 系）' },
+  { key: 'weather_child', status: 'active', stars: 2, name: '天气之子', desc: '同一回合内同时施放雷、雪、火三系魔法（5/6/7 系）' },
+  { key: 'night_walker', status: 'active', stars: 2, name: '夜行侠', desc: '累计施放暗影/夜行类魔法（2 系）达到 20 次' },
+  { key: 'last_breath', status: 'active', stars: 2, name: '一线生机', desc: '在仅剩 1 点生命值时赢下当前回合' },
+  { key: 'secret_rich', status: 'active', stars: 2, name: '秘密富翁', desc: '单回合结束时同时持有至少 3 张秘密牌' },
 
   // ---------- 三星（7）----------
-  { key: 'comeback', stars: 3, name: '绝地反击', desc: '击败一名生命值明显高于你的目标（以弱胜强）' },
-  { key: 'double_kill', stars: 3, name: '双杀现场', desc: '单次施法（非龙息）在同一回合造成 2 次击杀' },
-  { key: 'pacifist_king', stars: 3, name: '卡牌大师', desc: '全程未造成任何击杀却获得最终冠军' },
-  { key: 'untouchable', stars: 3, name: '稳如老狗', desc: '全程未被击倒（0 次阵亡）并夺得冠军' },
-  { key: 'hundred_casts', stars: 3, name: '百法齐鸣', desc: '累计施法达到 100 次' },
-  { key: 'dragon_clown', stars: 3, name: '奶龙大王', desc: '累计龙息失败与自杀各达到 10 次' },
-  { key: 'all_rounded', stars: 3, name: '齿轮全转', desc: '8 个系别每个累计施放均达到 5 次' },
-  { key: 'dragon_triple_total', stars: 3, name: '三星龙', desc: '单场对局中累计击杀 3 条龙' },
+  { key: 'comeback', status: 'active', stars: 3, name: '绝地反击', desc: '击败一名生命值明显高于你的目标（以弱胜强）' },
+  { key: 'double_kill', status: 'active', stars: 3, name: '双杀现场', desc: '单次施法（非龙息）在同一回合造成 2 次击杀' },
+  { key: 'pacifist_king', status: 'active', stars: 3, name: '卡牌大师', desc: '全程未造成任何击杀却获得最终冠军' },
+  { key: 'untouchable', status: 'active', stars: 3, name: '稳如老狗', desc: '全程未被击倒（0 次阵亡）并夺得冠军' },
+  { key: 'hundred_casts', status: 'active', stars: 3, name: '百法齐鸣', desc: '累计施法达到 100 次' },
+  { key: 'dragon_clown', status: 'legacy', stars: 3, name: '奶龙大王', desc: '累计龙息失败与自杀各达到 10 次' },
+  { key: 'all_rounded', status: 'active', stars: 3, name: '齿轮全转', desc: '8 个系别每个累计施放均达到 5 次' },
+  { key: 'dragon_triple_total', status: 'active', stars: 3, name: '三星龙', desc: '单场对局中累计击杀 3 条龙' },
 
   // ---------- 四星（7）----------
-  { key: 'not_approved', stars: 4, name: '我不同意', desc: '在明显落后局面下完成翻盘逆转' },
-  { key: 'opening_blast', stars: 4, name: '开幕雷击', desc: '开幕回合即召唤 3 连龙息' },
-  { key: 'elemental', stars: 4, name: '元素反应', desc: '任意回合内同时凑齐雷、雪、火三系魔法（5/6/7 系）' },
-  { key: 'dragon_veteran', stars: 4, name: '驭龙老炮', desc: '累计施放龙息类魔法（1 系）达到 30 次' },
-  { key: 'god_of_kill', stars: 4, name: '杀神', desc: '累计击杀达到 50 次' },
-  { key: 'match_master', stars: 4, name: '常胜将军', desc: '累计夺冠达到 50 次' },
-  { key: 'dragon_triple_one', stars: 4, name: '龙来', desc: '单次施法（龙息）在同一回合造成 3 次击杀' },
+  { key: 'not_approved', status: 'active', stars: 4, name: '我不同意', desc: '在明显落后局面下完成翻盘逆转' },
+  { key: 'opening_blast', status: 'active', stars: 4, name: '开幕雷击', desc: '开幕回合即召唤 3 连龙息' },
+  { key: 'elemental', status: 'active', stars: 4, name: '元素反应', desc: '任意回合内同时凑齐雷、雪、火三系魔法（5/6/7 系）' },
+  { key: 'dragon_veteran', status: 'active', stars: 4, name: '驭龙老炮', desc: '累计施放龙息类魔法（1 系）达到 30 次' },
+  { key: 'god_of_kill', status: 'active', stars: 4, name: '杀神', desc: '累计击杀达到 50 次' },
+  { key: 'match_master', status: 'active', stars: 4, name: '常胜将军', desc: '累计夺冠达到 50 次' },
+  { key: 'dragon_triple_one', status: 'active', stars: 4, name: '龙来', desc: '单次施法（龙息）在同一回合造成 3 次击杀' },
 
   // ---------- 彩蛋（6）----------
-  { key: 'egg_first_round_suicide', stars: 0, name: '出生即退场', desc: '开局首回合即阵亡退场' },
-  { key: 'egg_gentle', stars: 0, name: '独善其身', desc: '全程只施放增益/治疗魔法（3、8 系）且 0 击杀' },
-  { key: 'egg_full_then_dead', stars: 0, name: '回光返照', desc: '经历残血→满血复活后，紧接着在同一局内被击杀' },
-  { key: 'egg_social_death', stars: 0, name: '社死现场', desc: '单回合内施法失败次数达到 3 次' },
-  { key: 'egg_no_secret_win', stars: 0, name: '白板登基', desc: '一张秘密牌都没摸到却夺得冠军' },
+  { key: 'egg_first_round_suicide', status: 'active', stars: 0, name: '出生即退场', desc: '开局首回合即阵亡退场' },
+  { key: 'egg_gentle', status: 'active', stars: 0, name: '独善其身', desc: '全程只施放增益/治疗魔法（3、8 系）且 0 击杀' },
+  { key: 'egg_full_then_dead', status: 'active', stars: 0, name: '回光返照', desc: '经历残血→满血复活后，紧接着在同一局内被击杀' },
+  { key: 'egg_social_death', status: 'legacy', stars: 0, name: '社死现场', desc: '单回合内施法失败次数达到 3 次' },
+  { key: 'egg_no_secret_win', status: 'active', stars: 0, name: '白板登基', desc: '一张秘密牌都没摸到却夺得冠军' },
 ]
 
 // 成就所属游戏（用于展馆按游戏分组收束）
@@ -169,7 +169,9 @@ export async function evaluateAchievements(match, careerLookup) {
   for (const p of match.players) {
     const career = await careerLookup(p.playerId)
     const ctx = { p, match, career }
-    for (const [key, check] of Object.entries(CHECKS)) {
+    for (const { key, status } of ACHIEVEMENT_DEFS) {
+      if (status === 'legacy') continue
+      const check = CHECKS[key]
       try {
         if (check(ctx)) out.push({ playerId: p.playerId, key })
       } catch { /* 单条判定异常不拖垮整场 */ }
