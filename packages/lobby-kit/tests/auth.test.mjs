@@ -89,12 +89,19 @@ function makeFakeFetch() {
     ],
     unlockedCount: 1,
     total: 31,
+    legacyUnlockedCount: 4,
+    career: {
+      matchesCompleted: 7,
+      favoriteSpellId: 6,
+    },
   })
   const auth = createAuthClient({ fetchImpl: fake.fetch })
   const res = await auth.getAchievements()
   assert.equal(res.ok, true)
   assert.equal(res.unlockedCount, 1)
   assert.equal(res.total, 31)
+  assert.equal(res.legacyUnlockedCount, 4, '兼容计数原样返回')
+  assert.deepEqual(res.career, { matchesCompleted: 7, favoriteSpellId: 6 }, 'career 原样返回')
   assert.equal(res.achievements[0].unlocked, true, '已解锁成就带 unlocked=true')
   assert.equal(res.achievements[1].unlocked, false, '未解锁成就带 unlocked=false')
 }

@@ -9,6 +9,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
+    "test": "node tests/profile-presentation.test.mjs",
     "astro": "astro",
     "check": "astro check --tsconfig tsconfig.check.json",
     "lint": "eslint .",

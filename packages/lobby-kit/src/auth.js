@@ -178,7 +178,7 @@ export function createAuthClient({
     if (!res.ok) return { ok: false, error: 'achievements fetch failed' }
     const data = await res.json().catch(() => ({}))
     if (!Array.isArray(data.achievements)) return { ok: false, error: 'bad response' }
-    return { ok: true, achievements: data.achievements, unlockedCount: data.unlockedCount, total: data.total }
+    return { ...data, ok: true }
   }
 
   function isGuest() {
