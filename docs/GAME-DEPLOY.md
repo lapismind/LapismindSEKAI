@@ -9,8 +9,10 @@
 改完代码后在对应项目目录执行：
 
 ```powershell
-npm run deploy   # 等于 vite build && wrangler deploy
+npm run deploy
 ```
+
+不要自行拆成 `vite build` 和 `wrangler deploy`。项目可能通过 `prebuild`、`postbuild` 或 `deploy` 脚本处理额外资源。`abracadawhat` 的聊天表情就是这种情况，详见 [abracadawhat 部署说明](../abracadawhat/docs/deployment-v2.md)。
 
 构建成功标志：vite 输出 `built in xxxs`。
 部署成功标志：wrangler 输出 `Deployed <项目名> triggers` 和 `<域名> (custom domain)`。
@@ -34,8 +36,10 @@ git add -A; git commit -m "fix: 说明"; git push
 package.json 里加部署脚本：
 
 ```json
-"deploy": "vite build && wrangler deploy"
+"deploy": "npm run build && wrangler deploy"
 ```
+
+如果项目有 Vite 不会自动处理的共享静态资源，把复制或生成步骤放进 `postbuild`，不要只写在部署命令里。这样本地构建、CI 和部署得到的是同一份 `dist`。
 
 ### 2. wrangler.toml
 
@@ -144,6 +148,9 @@ A: 先查 `wrangler.toml` 里 `run_worker_first` 是否包含 `/ws*`；再确认
 
 **Q: 改了代码但线上没变化？**
 A: Cloudflare CDN 缓存，强刷 Ctrl+F5。静态资源文件名带 hash，正常情况下新版本立即生效。
+
+**Q: abracadawhat 聊天表情只显示文件名？**
+A: 图片请求失败后浏览器会显示 `alt` 文本。若 `/chat-kit/emojis/...png` 返回 `200 text/html`，说明表情没有进入 `dist`，SPA fallback 返回了 `index.html`。不要只强刷；按 [abracadawhat 部署说明](../abracadawhat/docs/deployment-v2.md) 检查 `postbuild`、构建产物测试和生产 `Content-Type`。
 
 **Q: wrangler 卡住或超时？**
 A: 国内网络波动，重试一次通常就好。持续失败检查代理设置。

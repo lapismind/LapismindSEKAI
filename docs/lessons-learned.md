@@ -30,6 +30,13 @@
 - Windows 当前终端环境不一定有可直接调用的 `rg`，即使项目搜索工具底层使用 ripgrep。提交前敏感信息扫描若命令报 `rg is not recognized`，要改用专用 Grep 工具检查目标文件，不能把失败命令当成零匹配。
 - 批量路由回归的断言不能只附 `path` 或留空；焦点类偶发失败至少要带“路径 + 阶段”（初始焦点/激活后焦点），否则生产重跑只能看到空 `AssertionError`，无法判断失败边界。
 
+## 2026-09-06 Abracadawhat 表情资源排查
+
+- 子项目不一定有独立 `AGENTS.md` 或 `wrangler.jsonc`；`abracadawhat` 当前沿用根约定并使用 `wrangler.toml`。读取不存在文件报错后应回到实际配置，不据缺文件猜部署方式。
+- Glob 底层搜索偶发执行失败时，改用目录读取和具体资源 HTTP 探测交叉验证，不能把“No files found”和工具执行失败混为同一结论。
+- `abracadawhat` 当前没有 README 或正式部署文档，只有会话交接日志；反复出现的表情漏包规则应写入 `abracadawhat/docs/deployment-v2.md`，不能继续只留在临时日志和个人记忆里。
+- 构建产物测试不能与 `npm run build` 并行：Vite 会先清空 `dist`，测试可能在 `postbuild` 复制表情之前读取，形成 `Missing built emoji` 假红。验证顺序必须是先完整 build，再运行测试。
+
 ## 2026-08-29 统一登录接入三个游戏（apply_patch 踩坑）
 
 - apply_patch 的路径参数用反斜杠（D:\\xxx\\yyy）会报 "Failed to read file"，一律用正斜杠 D:/xxx/yyy。

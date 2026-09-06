@@ -47,13 +47,14 @@ npm run dev       # Vite dev server
 npx wrangler dev  # 联机游戏本地调试 DO，多开浏览器标签测多人
 ```
 
-部署是各游戏独立 `wrangler.toml`：
+部署使用各项目自己的脚本，不要绕过项目的构建生命周期：
 
 ```bash
-npm run build && npx wrangler deploy
+npm run deploy
 ```
 
 详细的从零上线流程（域名、DNS、DO migration、密钥管理）写在 [docs/GAME-DEPLOY.md](./docs/GAME-DEPLOY.md)。
+`abracadawhat` 的聊天表情需要在构建后复制到 `dist`，发布前必须阅读 [abracadawhat/docs/deployment-v2.md](./abracadawhat/docs/deployment-v2.md)。
 
 ## 踩坑记录
 
