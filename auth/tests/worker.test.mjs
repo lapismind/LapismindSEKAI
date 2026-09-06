@@ -248,7 +248,7 @@ function cookieOf(res) {
 
 console.log('worker smoke tests passed')
 
-// ---- 成就展馆：/api/achievements 返回全量目录 + 解锁标记；未登录 401 ----
+// ---- 成就展馆：active 全量、legacy 仅已解锁、hidden 通用遮罩；未登录 401 ----
 {
   const env = makeEnv()
 
@@ -271,14 +271,20 @@ console.log('worker smoke tests passed')
   )
   assert.equal(empty.status, 200)
   const emptyData = await empty.json()
-  assert.equal(emptyData.total, ACHIEVEMENT_DEFS.length, '全量目录随返回')
+  const activeDefs = ACHIEVEMENT_DEFS.filter((definition) => definition.status === 'active')
+  assert.equal(emptyData.total, activeDefs.length, 'total 只统计本次返回的 active 目录')
   assert.equal(emptyData.unlockedCount, 0, '新游客零解锁')
+  assert.deepEqual(emptyData.achievements.map((achievement) => achievement.key).sort(), activeDefs.map((definition) => definition.key).sort())
   assert.ok(emptyData.achievements.every((a) => a.unlocked === false), '未解锁标记一致')
+  assert.ok(emptyData.achievements.every((a) => a.status === 'active'), 'active 状态显式返回')
+  assert.ok(emptyData.achievements.every((a) => a.difficulty === a.stars), 'stars 仅作为 difficulty 的等值过渡别名')
+  assert.ok(emptyData.achievements.every((a) => !('legacy' in a)), 'active 不伪装成 legacy')
+  assert.ok(emptyData.achievements.every((a) => !('target' in a) && !('progress' in a)), '传奇目录不暴露旧累计进度')
 
-  // 手工塞两条解锁记录后回读
+  // 旧版解锁仅在本人确实解锁且关联比赛 complete 时返回；pending 仍隔离。
   env.DB.achievements.push(
     { player_id: guestData.user.playerId, achievement_key: 'first_cast', unlocked_at: '2026-08-27 10:00:00' },
-    { player_id: guestData.user.playerId, achievement_key: 'first_kill', unlocked_at: '2026-08-27 10:05:00', match_id: 1, report_status: 'complete' },
+    { player_id: guestData.user.playerId, achievement_key: 'last_breath', unlocked_at: '2026-08-27 10:05:00', match_id: 1, report_status: 'complete' },
     { player_id: guestData.user.playerId, achievement_key: 'dragon_veteran', unlocked_at: '2026-08-27 10:10:00', match_id: 2, report_status: 'pending' },
   )
   const unlocked = await worker.fetch(
@@ -289,9 +295,48 @@ console.log('worker smoke tests passed')
   assert.equal(unlockedData.unlockedCount, 2)
   const byKey = Object.fromEntries(unlockedData.achievements.map((a) => [a.key, a]))
   assert.equal(byKey.first_cast.unlocked, true, 'first_cast 已解锁')
-  assert.equal(byKey.first_kill.unlocked, true, 'first_kill 已解锁')
-  assert.equal(byKey.dragon_veteran.unlocked, false, 'pending match 关联成就保持隐藏')
+  assert.equal(byKey.first_cast.legacy, true, '旧解锁标记为 legacy')
+  assert.equal(byKey.first_cast.status, 'legacy')
+  assert.equal(byKey.first_cast.difficulty, byKey.first_cast.stars)
+  assert.ok(!('target' in byKey.first_cast) && !('progress' in byKey.first_cast), 'legacy 不暴露未完成进度或目标')
+  assert.equal(byKey.last_breath.unlocked, true, 'active 解锁正常返回')
+  assert.equal('dragon_veteran' in byKey, false, 'pending match 关联 legacy 成就保持不可见')
   assert.equal(byKey.first_cast.unlockedAt, '2026-08-27 10:00:00', '带回解锁时间')
+
+  const hiddenDefinition = { key: 'test_hidden', game: 'abracadawhat', name: '隐藏真名', desc: '隐藏真描述', difficulty: 4, status: 'hidden' }
+  ACHIEVEMENT_DEFS.push(hiddenDefinition)
+  try {
+    const lockedHidden = await worker.fetch(
+      new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
+      env,
+    ).then((response) => response.json())
+    assert.deepEqual(lockedHidden.achievements.find((achievement) => achievement.key === 'test_hidden'), {
+      key: 'test_hidden',
+      status: 'hidden',
+      unlocked: false,
+      name: '？？？',
+      desc: '？？？',
+    })
+
+    env.DB.achievements.push({ player_id: guestData.user.playerId, achievement_key: 'test_hidden', unlocked_at: '2026-08-27 10:15:00' })
+    const revealedHidden = await worker.fetch(
+      new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
+      env,
+    ).then((response) => response.json())
+    assert.deepEqual(revealedHidden.achievements.find((achievement) => achievement.key === 'test_hidden'), {
+      key: 'test_hidden',
+      game: 'abracadawhat',
+      name: '隐藏真名',
+      desc: '隐藏真描述',
+      difficulty: 4,
+      stars: 4,
+      status: 'hidden',
+      unlocked: true,
+      unlockedAt: '2026-08-27 10:15:00',
+    })
+  } finally {
+    ACHIEVEMENT_DEFS.pop()
+  }
 }
 
 console.log('worker achievements tests passed')

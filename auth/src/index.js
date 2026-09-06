@@ -14,7 +14,7 @@
 
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
-import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, ACHIEVEMENT_TARGETS, progressFromCareer } from './achievements.js'
+import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES } from './achievements.js'
 import { sanitizeMatchReport } from './matchReports.js'
 import { persistV2MatchReport, ReportConflictError } from './matchPersistence.js'
 
@@ -485,7 +485,7 @@ async function handleSetNickname(request, env, cors = {}) {
 }
 // ---------- 成就展馆查询 ----------
 
-// 当前会话玩家的成就列表：全量目录 + 解锁标记 + 累计型进度，一次请求拿全
+// 当前会话玩家的成就列表：active 全量、legacy 仅已解锁、hidden 锁定遮罩。
 async function handleAchievements(request, env, cors = {}) {
   const session = await getSession(request, env)
   if (!session) return json({ error: 'login required' }, 401, cors)
@@ -498,30 +498,31 @@ async function handleAchievements(request, env, cors = {}) {
   ).bind(session.playerId).all()
 
   const unlockedAt = new Map(results.map(r => [r.achievement_key, r.unlocked_at]))
-  const career = await computeCareer(session.playerId, env)
-
-  const achievements = ACHIEVEMENT_DEFS.map(def => {
+  const achievements = ACHIEVEMENT_DEFS.flatMap(def => {
     const unlocked = unlockedAt.has(def.key)
+    if (def.status === 'legacy' && !unlocked) return []
+    if (def.status === 'hidden' && !unlocked) {
+      return [{ key: def.key, status: 'hidden', unlocked: false, name: '？？？', desc: '？？？' }]
+    }
     const entry = {
       key: def.key,
       name: def.name,
       desc: def.desc,
-      stars: def.stars,
+      difficulty: def.difficulty,
+      stars: def.difficulty,
       game: def.game,
+      status: def.status,
       unlocked,
       unlockedAt: unlockedAt.get(def.key) || null,
     }
-    if (ACHIEVEMENT_TARGETS[def.key]) {
-      entry.target = ACHIEVEMENT_TARGETS[def.key]
-      entry.progress = progressFromCareer(def.key, career)
-    }
-    return entry
+    if (def.status === 'legacy') entry.legacy = true
+    return [entry]
   })
 
   return json({
     achievements,
     unlockedCount: unlockedAt.size,
-    total: ACHIEVEMENT_DEFS.length,
+    total: achievements.length,
   }, 200, cors)
 }
 

@@ -2,189 +2,112 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { evaluateAchievements, ACHIEVEMENT_DEFS } from '../src/achievements.js'
 
+const ACTIVE_KEYS = [
+  'magic_staircase',
+  'one_breath',
+  'eight_facets',
+  'last_breath',
+  'weak_over_strong',
+  'pincer_finish',
+  'dragon_sweep',
+  'refuse_ending',
+  'secret_investor',
+  'different_paths',
+]
+
+const OLD_KEYS = [
+  'first_cast', 'first_kill', 'potion_addict', 'spell_collector',
+  'meteor', 'frost', 'weather_child', 'night_walker', 'last_breath', 'secret_rich',
+  'comeback', 'double_kill', 'pacifist_king', 'untouchable', 'hundred_casts',
+  'dragon_clown', 'all_rounded', 'dragon_triple_total',
+  'not_approved', 'opening_blast', 'elemental', 'dragon_veteran', 'god_of_kill',
+  'match_master', 'dragon_triple_one',
+  'egg_first_round_suicide', 'egg_gentle', 'egg_full_then_dead',
+  'egg_social_death', 'egg_no_secret_win',
+]
+
+const CANDIDATE_KEYS = ['self_made', 'five_spell_champion', 'full_table_school']
 const emptyCareer = () => ({ totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0, spellCounts: {} })
 
-test('成就定义 key 无重复', () => {
-  const keys = ACHIEVEMENT_DEFS.map(d => d.key)
+test('成就定义 key 无重复且字段固定', () => {
+  const keys = ACHIEVEMENT_DEFS.map((definition) => definition.key)
   assert.equal(new Set(keys).size, keys.length)
-})
-
-test('仅奶龙大王和社死现场标为 legacy，其余定义显式 active', () => {
-  const legacyKeys = ACHIEVEMENT_DEFS.filter(d => d.status === 'legacy').map(d => d.key).sort()
-  assert.deepEqual(legacyKeys, ['dragon_clown', 'egg_social_death'])
-  assert.ok(ACHIEVEMENT_DEFS.every(d => d.status === 'active' || d.status === 'legacy'))
-})
-
-test('龙来：单次龙息击杀 >= 3 触发', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', kills: 3, dragonKills: 3, dragonOneCastKills: 3,
-      spellsCast: { 1: 1 }, deaths: 0, roundsSurvived: 1,
-    }],
+  for (const definition of ACHIEVEMENT_DEFS) {
+    assert.deepEqual(Object.keys(definition).sort(), ['desc', 'difficulty', 'game', 'key', 'name', 'status'])
+    assert.equal(definition.game, 'abracadawhat')
+    assert.ok(Number.isInteger(definition.difficulty) && definition.difficulty >= 1 && definition.difficulty <= 4)
+    assert.ok(['active', 'legacy', 'hidden'].includes(definition.status))
   }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  const keys = out.filter(u => u.playerId === 'p1').map(u => u.key)
-  assert.ok(keys.includes('dragon_triple_one'), '应触发龙来')
-  assert.ok(keys.includes('first_cast'), '首次施法也应触发')
-  assert.ok(keys.includes('first_kill'), '首次击杀也应触发')
 })
 
-test('三星龙：分多次累计击杀 3 人触发，但不触发龙来', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', kills: 3, dragonKills: 3, dragonOneCastKills: 1,
-      spellsCast: { 1: 3 }, deaths: 0, roundsSurvived: 3,
-    }],
+test('active 恰好是批准的 10 个传奇成就且本次没有 hidden', () => {
+  const activeKeys = ACHIEVEMENT_DEFS.filter((definition) => definition.status === 'active').map((definition) => definition.key).sort()
+  assert.deepEqual(activeKeys, [...ACTIVE_KEYS].sort())
+  assert.equal(activeKeys.length, 10)
+  assert.equal(ACHIEVEMENT_DEFS.some((definition) => definition.status === 'hidden'), false)
+})
+
+test('所有旧定义元数据保留，除一线生机外均转为 legacy', () => {
+  const byKey = new Map(ACHIEVEMENT_DEFS.map((definition) => [definition.key, definition]))
+  for (const key of OLD_KEYS) {
+    const definition = byKey.get(key)
+    assert.ok(definition, `旧定义 ${key} 必须保留`)
+    assert.ok(definition.name.length > 0, `${key} 保留名称`)
+    assert.ok(definition.desc.length > 0, `${key} 保留描述`)
+    assert.equal(definition.status, key === 'last_breath' ? 'active' : 'legacy')
   }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  const keys = out.map(u => u.key)
-  assert.ok(keys.includes('dragon_triple_total'))
-  assert.ok(!keys.includes('dragon_triple_one'), '单次只有 1 杀不应触发龙来')
 })
 
-test('流星火雨：火球连续成功 3 次', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', spellsCast: { 7: 3 }, castStreaks: { 7: [true, true, true] },
-      deaths: 0, roundsSurvived: 1,
-    }],
+test('累计成就、坏激励成就和候选替补均不 active 且候选不占位', () => {
+  const byKey = new Map(ACHIEVEMENT_DEFS.map((definition) => [definition.key, definition]))
+  for (const key of ['first_cast', 'first_kill', 'potion_addict', 'spell_collector', 'night_walker', 'hundred_casts', 'dragon_veteran', 'god_of_kill', 'match_master', 'dragon_clown', 'egg_social_death']) {
+    assert.equal(byKey.get(key)?.status, 'legacy', `${key} 不得继续 active`)
   }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'meteor'))
+  for (const key of CANDIDATE_KEYS) assert.equal(byKey.has(key), false, `${key} 不得加入定义或预留占位`)
 })
 
-test('霜天：暴风雪连续 2 次成功 + 1 次失败不触发', async () => {
+test('C1 未完成的新 checker 保持不触发，已有一线生机 checker 可继续触发', async () => {
   const match = {
     players: [{
-      playerId: 'p1', spellsCast: { 6: 3 }, castStreaks: { 6: [true, true, false] },
-      deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(!out.some(u => u.key === 'frost'))
-})
-
-test('绝地反击：1 血击杀死前血量 >=3 的目标', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', kills: 1, killedHighHpTarget: true, spellsCast: { 7: 1 },
-      deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'comeback'))
-})
-
-test('卡牌大师：0 击杀夺冠', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', isChampion: true, kills: 0, deaths: 1, score: 8,
-      spellsCast: { 3: 2 }, roundsSurvived: 3,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'pacifist_king'))
-})
-
-test('奶龙大王：达到旧触发条件也不再触发', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', dragonFails: 4, suicides: 4, spellsCast: {},
-      deaths: 4, roundsSurvived: 0,
-    }],
-  }
-  const career = { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 6, suicides: 6, spellCounts: {} }
-  const out = await evaluateAchievements(match, async () => career)
-  assert.ok(!out.some(u => u.key === 'dragon_clown'))
-})
-
-test('社死现场：单回合失败 3 次也不再触发', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', maxFailsInRound: 3, spellsCast: {}, deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(!out.some(u => u.key === 'egg_social_death'))
-})
-
-test('元素反应：单回合集齐雷雪火', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', spellsCast: { 5: 1, 6: 1, 7: 1 },
+      playerId: 'p1',
+      roundWonAtHp1: true,
+      spellsCast: { 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 },
       turnSpellSets: { 0: [5, 6, 7] },
-      deaths: 0, roundsSurvived: 1,
+      dragonOneCastKills: 3,
+      comebackFromBehind: true,
+      roundEndSecrets: 3,
     }],
   }
   const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'elemental'))
+  assert.deepEqual(out, [{ playerId: 'p1', key: 'last_breath' }])
 })
 
-test('我不同意：对手曾到 7 分自己 <=3 最终夺冠', async () => {
+test('evaluateAchievements 不执行 legacy checker', async () => {
   const match = {
     players: [{
-      playerId: 'p1', isChampion: true, comebackFromBehind: true, score: 9,
-      spellsCast: {}, deaths: 0, roundsSurvived: 5,
+      playerId: 'p1',
+      kills: 50,
+      isChampion: true,
+      deaths: 0,
+      dragonFails: 10,
+      suicides: 10,
+      maxFailsInRound: 3,
+      spellsCast: { 1: 30, 2: 20, 3: 10, 4: 10, 5: 10, 6: 10, 7: 10, 8: 10 },
     }],
   }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'not_approved'))
-})
-
-test('白板登基：轮胜时 0 秘密牌且从未放过猫头鹰', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', roundWonNoSecrets: true, spellsCast: { 7: 1 },
-      deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'egg_no_secret_win'))
-})
-
-test('稳如老狗：0 死亡 + 冠军', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', isChampion: true, deaths: 0, finalHp: 3, score: 9,
-      spellsCast: {}, roundsSurvived: 3,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'untouchable'))
-})
-
-test('彩蛋出生即退场：第 1 轮自杀', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', firstRoundSuicide: true, deaths: 1,
-      spellsCast: {}, roundsSurvived: 0,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'egg_first_round_suicide'))
-})
-
-test('天气之子：同轮 5/6/7 各一次', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', spellsCast: { 5: 1, 6: 1, 7: 1 },
-      roundSpellCasts: [{ round: 1, spellId: 5 }, { round: 1, spellId: 6 }, { round: 1, spellId: 7 }],
-      deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const out = await evaluateAchievements(match, async () => emptyCareer())
-  assert.ok(out.some(u => u.key === 'weather_child'))
-})
-
-test('跨场次累计：career + 当前场相加判定', async () => {
-  const match = {
-    players: [{
-      playerId: 'p1', kills: 1, spellsCast: { 2: 5 }, deaths: 0, roundsSurvived: 1,
-    }],
-  }
-  const career = { totalCasts: 95, totalKills: 0, totalWins: 0, spellCounts: { 2: 18 } }
+  const career = { totalCasts: 100, totalKills: 50, totalWins: 50, dragonFails: 10, suicides: 10, spellCounts: { 1: 30, 2: 20, 3: 10, 4: 10, 5: 10, 6: 10, 7: 10, 8: 10 } }
   const out = await evaluateAchievements(match, async () => career)
-  const keys = out.map(u => u.key)
-  assert.ok(keys.includes('hundred_casts'), '95 + 5 = 100 应触发百法齐鸣')
-  assert.ok(keys.includes('night_walker'), '18 + 5 = 23 >= 20 应触发夜行侠')
+  assert.equal(out.some(({ key }) => OLD_KEYS.includes(key) && key !== 'last_breath'), false)
+})
+
+test('evaluateAchievements 可遍历未来明确标为 hidden 的 checker', async () => {
+  const lastBreath = ACHIEVEMENT_DEFS.find((definition) => definition.key === 'last_breath')
+  const originalStatus = lastBreath.status
+  lastBreath.status = 'hidden'
+  try {
+    const out = await evaluateAchievements({ players: [{ playerId: 'p1', roundWonAtHp1: true }] }, async () => emptyCareer())
+    assert.deepEqual(out, [{ playerId: 'p1', key: 'last_breath' }])
+  } finally {
+    lastBreath.status = originalStatus
+  }
 })

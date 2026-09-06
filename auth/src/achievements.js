@@ -1,7 +1,7 @@
 /**
- * achievements.js —— 出包魔法师成就判定引擎 v2（纯函数，可单测）。
+ * achievements.js —— 出包魔法师成就定义与判定引擎（纯函数，可单测）。
  *
- * 30 个成就：星级 24 + 彩蛋 6（一滴血王朝已移除）。
+ * 新版只触发 10 个传奇成就；旧定义保留为 legacy 元数据。
  * 输入上下文：
  *   match  —— 单场聚合（rounds / players / events 由 DO 上报）
  *   p      —— 该玩家的本场数据
@@ -10,54 +10,53 @@
  */
 
 export const ACHIEVEMENT_DEFS = [
-  // ---------- 一星（4）----------
-  { key: 'first_cast', status: 'active', stars: 1, name: '初试啼声', desc: '累计施法达到 1 次（完成首次成功施法即解锁）' },
-  { key: 'first_kill', status: 'active', stars: 1, name: '开张', desc: '累计击杀达到 1 次' },
-  { key: 'potion_addict', status: 'active', stars: 1, name: '药罐子', desc: '累计施放增益/治疗类魔法（8 系）达到 10 次' },
-  { key: 'spell_collector', status: 'active', stars: 1, name: '图鉴收集家', desc: '累计使用过 8 个不同系别的魔法各至少 1 次' },
+  { key: 'magic_staircase', game: 'abracadawhat', name: '魔法阶梯', desc: '同一次行动连续成功施放至少 3 种不同魔法', difficulty: 1, status: 'active' },
+  { key: 'one_breath', game: 'abracadawhat', name: '一气呵成', desc: '同一次行动连续成功至少 4 次，并以清空手牌结束该轮', difficulty: 3, status: 'active' },
+  { key: 'eight_facets', game: 'abracadawhat', name: '八面玲珑', desc: '一场完整比赛成功使用全部 8 种魔法', difficulty: 2, status: 'active' },
+  { key: 'last_breath', game: 'abracadawhat', name: '一线生机', desc: '只剩 1 点生命时赢下一轮', difficulty: 3, status: 'active' },
+  { key: 'weak_over_strong', game: 'abracadawhat', name: '以弱胜强', desc: '自己 1 血时，击杀受击前至少 3 血的玩家', difficulty: 3, status: 'active' },
+  { key: 'pincer_finish', game: 'abracadawhat', name: '夹击收网', desc: '一次非巨龙法术同时击杀两名玩家', difficulty: 3, status: 'active' },
+  { key: 'dragon_sweep', game: 'abracadawhat', name: '龙息清场', desc: '一次古代巨龙成功击杀至少 3 名玩家', difficulty: 4, status: 'active' },
+  { key: 'refuse_ending', game: 'abracadawhat', name: '拒绝结局', desc: '曾在自己不超过 3 分、对手至少 7 分时落后，最终夺冠', difficulty: 4, status: 'active' },
+  { key: 'secret_investor', game: 'abracadawhat', name: '秘密投资人', desc: '任意玩家持有至少 3 张秘密牌并活到轮末', difficulty: 2, status: 'active' },
+  { key: 'different_paths', game: 'abracadawhat', name: '殊途同归', desc: '同一场至少一次靠击杀赢轮、一次靠清空手牌赢轮', difficulty: 2, status: 'active' },
 
-  // ---------- 二星（6）----------
-  { key: 'meteor', status: 'active', stars: 2, name: '流星火雨', desc: '单局内连续 3 轮施放火系魔法（7 系）' },
-  { key: 'frost', status: 'active', stars: 2, name: '霜天', desc: '单局内连续 3 轮施放冰系魔法（6 系）' },
-  { key: 'weather_child', status: 'active', stars: 2, name: '天气之子', desc: '同一回合内同时施放雷、雪、火三系魔法（5/6/7 系）' },
-  { key: 'night_walker', status: 'active', stars: 2, name: '夜行侠', desc: '累计施放暗影/夜行类魔法（2 系）达到 20 次' },
-  { key: 'last_breath', status: 'active', stars: 2, name: '一线生机', desc: '在仅剩 1 点生命值时赢下当前回合' },
-  { key: 'secret_rich', status: 'active', stars: 2, name: '秘密富翁', desc: '单回合结束时同时持有至少 3 张秘密牌' },
-
-  // ---------- 三星（7）----------
-  { key: 'comeback', status: 'active', stars: 3, name: '绝地反击', desc: '击败一名生命值明显高于你的目标（以弱胜强）' },
-  { key: 'double_kill', status: 'active', stars: 3, name: '双杀现场', desc: '单次施法（非龙息）在同一回合造成 2 次击杀' },
-  { key: 'pacifist_king', status: 'active', stars: 3, name: '卡牌大师', desc: '全程未造成任何击杀却获得最终冠军' },
-  { key: 'untouchable', status: 'active', stars: 3, name: '稳如老狗', desc: '全程未被击倒（0 次阵亡）并夺得冠军' },
-  { key: 'hundred_casts', status: 'active', stars: 3, name: '百法齐鸣', desc: '累计施法达到 100 次' },
-  { key: 'dragon_clown', status: 'legacy', stars: 3, name: '奶龙大王', desc: '累计龙息失败与自杀各达到 10 次' },
-  { key: 'all_rounded', status: 'active', stars: 3, name: '齿轮全转', desc: '8 个系别每个累计施放均达到 5 次' },
-  { key: 'dragon_triple_total', status: 'active', stars: 3, name: '三星龙', desc: '单场对局中累计击杀 3 条龙' },
-
-  // ---------- 四星（7）----------
-  { key: 'not_approved', status: 'active', stars: 4, name: '我不同意', desc: '在明显落后局面下完成翻盘逆转' },
-  { key: 'opening_blast', status: 'active', stars: 4, name: '开幕雷击', desc: '开幕回合即召唤 3 连龙息' },
-  { key: 'elemental', status: 'active', stars: 4, name: '元素反应', desc: '任意回合内同时凑齐雷、雪、火三系魔法（5/6/7 系）' },
-  { key: 'dragon_veteran', status: 'active', stars: 4, name: '驭龙老炮', desc: '累计施放龙息类魔法（1 系）达到 30 次' },
-  { key: 'god_of_kill', status: 'active', stars: 4, name: '杀神', desc: '累计击杀达到 50 次' },
-  { key: 'match_master', status: 'active', stars: 4, name: '常胜将军', desc: '累计夺冠达到 50 次' },
-  { key: 'dragon_triple_one', status: 'active', stars: 4, name: '龙来', desc: '单次施法（龙息）在同一回合造成 3 次击杀' },
-
-  // ---------- 彩蛋（6）----------
-  { key: 'egg_first_round_suicide', status: 'active', stars: 0, name: '出生即退场', desc: '开局首回合即阵亡退场' },
-  { key: 'egg_gentle', status: 'active', stars: 0, name: '独善其身', desc: '全程只施放增益/治疗魔法（3、8 系）且 0 击杀' },
-  { key: 'egg_full_then_dead', status: 'active', stars: 0, name: '回光返照', desc: '经历残血→满血复活后，紧接着在同一局内被击杀' },
-  { key: 'egg_social_death', status: 'legacy', stars: 0, name: '社死现场', desc: '单回合内施法失败次数达到 3 次' },
-  { key: 'egg_no_secret_win', status: 'active', stars: 0, name: '白板登基', desc: '一张秘密牌都没摸到却夺得冠军' },
+  // 旧版定义只用于展示已经存在的解锁记录，不再触发。
+  { key: 'first_cast', game: 'abracadawhat', name: '初试啼声', desc: '累计施法达到 1 次（完成首次成功施法即解锁）', difficulty: 1, status: 'legacy' },
+  { key: 'first_kill', game: 'abracadawhat', name: '开张', desc: '累计击杀达到 1 次', difficulty: 1, status: 'legacy' },
+  { key: 'potion_addict', game: 'abracadawhat', name: '药罐子', desc: '累计施放增益/治疗类魔法（8 系）达到 10 次', difficulty: 1, status: 'legacy' },
+  { key: 'spell_collector', game: 'abracadawhat', name: '图鉴收集家', desc: '累计使用过 8 个不同系别的魔法各至少 1 次', difficulty: 1, status: 'legacy' },
+  { key: 'meteor', game: 'abracadawhat', name: '流星火雨', desc: '单局内连续 3 轮施放火系魔法（7 系）', difficulty: 2, status: 'legacy' },
+  { key: 'frost', game: 'abracadawhat', name: '霜天', desc: '单局内连续 3 轮施放冰系魔法（6 系）', difficulty: 2, status: 'legacy' },
+  { key: 'weather_child', game: 'abracadawhat', name: '天气之子', desc: '同一回合内同时施放雷、雪、火三系魔法（5/6/7 系）', difficulty: 2, status: 'legacy' },
+  { key: 'night_walker', game: 'abracadawhat', name: '夜行侠', desc: '累计施放暗影/夜行类魔法（2 系）达到 20 次', difficulty: 2, status: 'legacy' },
+  { key: 'secret_rich', game: 'abracadawhat', name: '秘密富翁', desc: '单回合结束时同时持有至少 3 张秘密牌', difficulty: 2, status: 'legacy' },
+  { key: 'comeback', game: 'abracadawhat', name: '绝地反击', desc: '击败一名生命值明显高于你的目标（以弱胜强）', difficulty: 3, status: 'legacy' },
+  { key: 'double_kill', game: 'abracadawhat', name: '双杀现场', desc: '单次施法（非龙息）在同一回合造成 2 次击杀', difficulty: 3, status: 'legacy' },
+  { key: 'pacifist_king', game: 'abracadawhat', name: '卡牌大师', desc: '全程未造成任何击杀却获得最终冠军', difficulty: 3, status: 'legacy' },
+  { key: 'untouchable', game: 'abracadawhat', name: '稳如老狗', desc: '全程未被击倒（0 次阵亡）并夺得冠军', difficulty: 3, status: 'legacy' },
+  { key: 'hundred_casts', game: 'abracadawhat', name: '百法齐鸣', desc: '累计施法达到 100 次', difficulty: 3, status: 'legacy' },
+  { key: 'dragon_clown', game: 'abracadawhat', name: '奶龙大王', desc: '累计龙息失败与自杀各达到 10 次', difficulty: 3, status: 'legacy' },
+  { key: 'all_rounded', game: 'abracadawhat', name: '齿轮全转', desc: '8 个系别每个累计施放均达到 5 次', difficulty: 3, status: 'legacy' },
+  { key: 'dragon_triple_total', game: 'abracadawhat', name: '三星龙', desc: '单场对局中累计击杀 3 条龙', difficulty: 3, status: 'legacy' },
+  { key: 'not_approved', game: 'abracadawhat', name: '我不同意', desc: '在明显落后局面下完成翻盘逆转', difficulty: 4, status: 'legacy' },
+  { key: 'opening_blast', game: 'abracadawhat', name: '开幕雷击', desc: '开幕回合即召唤 3 连龙息', difficulty: 4, status: 'legacy' },
+  { key: 'elemental', game: 'abracadawhat', name: '元素反应', desc: '任意回合内同时凑齐雷、雪、火三系魔法（5/6/7 系）', difficulty: 4, status: 'legacy' },
+  { key: 'dragon_veteran', game: 'abracadawhat', name: '驭龙老炮', desc: '累计施放龙息类魔法（1 系）达到 30 次', difficulty: 4, status: 'legacy' },
+  { key: 'god_of_kill', game: 'abracadawhat', name: '杀神', desc: '累计击杀达到 50 次', difficulty: 4, status: 'legacy' },
+  { key: 'match_master', game: 'abracadawhat', name: '常胜将军', desc: '累计夺冠达到 50 次', difficulty: 4, status: 'legacy' },
+  { key: 'dragon_triple_one', game: 'abracadawhat', name: '龙来', desc: '单次施法（龙息）在同一回合造成 3 次击杀', difficulty: 4, status: 'legacy' },
+  { key: 'egg_first_round_suicide', game: 'abracadawhat', name: '出生即退场', desc: '开局首回合即阵亡退场', difficulty: 1, status: 'legacy' },
+  { key: 'egg_gentle', game: 'abracadawhat', name: '独善其身', desc: '全程只施放增益/治疗魔法（3、8 系）且 0 击杀', difficulty: 1, status: 'legacy' },
+  { key: 'egg_full_then_dead', game: 'abracadawhat', name: '回光返照', desc: '经历残血→满血复活后，紧接着在同一局内被击杀', difficulty: 1, status: 'legacy' },
+  { key: 'egg_social_death', game: 'abracadawhat', name: '社死现场', desc: '单回合内施法失败次数达到 3 次', difficulty: 1, status: 'legacy' },
+  { key: 'egg_no_secret_win', game: 'abracadawhat', name: '白板登基', desc: '一张秘密牌都没摸到却夺得冠军', difficulty: 1, status: 'legacy' },
 ]
 
 // 成就所属游戏（用于展馆按游戏分组收束）
 export const GAMES = {
   abracadawhat: '出包魔法师',
 }
-
-// 给所有成就补上默认归属（后续新游戏在 ACHIEVEMENT_DEFS 里显式写 game 即可）
-ACHIEVEMENT_DEFS.forEach((d) => { if (!d.game) d.game = 'abracadawhat' })
 
 // 累计次数型成就的目标值：达到即解锁；前端据此画百分比进度。
 // 不在表内的视为「单局达成」类，不显示百分比。
@@ -170,10 +169,10 @@ export async function evaluateAchievements(match, careerLookup) {
     const career = await careerLookup(p.playerId)
     const ctx = { p, match, career }
     for (const { key, status } of ACHIEVEMENT_DEFS) {
-      if (status === 'legacy') continue
+      if (status !== 'active' && status !== 'hidden') continue
       const check = CHECKS[key]
       try {
-        if (check(ctx)) out.push({ playerId: p.playerId, key })
+        if (check?.(ctx)) out.push({ playerId: p.playerId, key })
       } catch { /* 单条判定异常不拖垮整场 */ }
     }
   }
