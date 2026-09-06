@@ -107,6 +107,22 @@ function makeFakeFetch() {
 }
 
 {
+  // getAchievements：调用方可传 AbortSignal，且畸形目录仍被客户端拒绝
+  const controller = new AbortController()
+  let receivedSignal = null
+  const auth = createAuthClient({
+    baseUrl: 'https://auth.test',
+    fetchImpl: async (_url, opts = {}) => {
+      receivedSignal = opts.signal
+      return { ok: true, json: async () => ({ achievements: null, career: {} }) }
+    },
+  })
+  const res = await auth.getAchievements({ signal: controller.signal })
+  assert.equal(receivedSignal, controller.signal, 'AbortSignal 原样传给 fetch')
+  assert.deepEqual(res, { ok: false, error: 'bad response' })
+}
+
+{
   // logout 后身份清空；loginWithGithub 拼接 redirect_to
   const fake = makeFakeFetch()
   const auth = createAuthClient({ fetchImpl: fake.fetch })

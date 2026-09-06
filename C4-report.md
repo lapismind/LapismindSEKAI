@@ -41,3 +41,34 @@ git diff --check for C4 paths: passed (line-ending warning only)
 - `@lapismind/lobby-kit` still has no TypeScript declaration file. Astro reports this as the same non-blocking hint on both login and profile imports.
 - The browser test uses intercepted Auth routes by design, so it proves deterministic Blog rendering and privacy behavior rather than production Auth availability.
 - Recent reports remain intentionally out of scope; only the guest explanation copy mentions their persistent-login requirement.
+
+## Reviewer Fixes
+
+Commit after the initial C4 delivery addresses all Medium findings and related Low test/semantic gaps:
+
+- Career wording now matches the approved domain: `法师档案`, `完成比赛数`, `冠军数`, `轮胜数`, `成功施法总数`, `击杀数`, `巨龙击杀数`, `死亡次数`, `自爆次数`, `使用过的魔法系别`, `单次行动最长连续成功施法`, `最常用魔法`, both round-win reason counts, and `八系魔法成功次数`.
+- Identity, avatar, actions, and guest copy become visible immediately after `/api/me` succeeds. Achievement loading no longer blocks the profile shell.
+- The achievement area owns explicit loading, error/retry, empty, and content states. A caller-supplied `AbortSignal` is forwarded by lobby-kit, and the profile aborts achievement loading after two seconds.
+- Browser fixtures now use the exact ten C1 active definitions, the real unlocked `first_cast` legacy projection, both locked and revealed hidden projections, the exact empty C3 career, and the exact C3 smaller-spell-ID favorite tie result.
+- Browser coverage exercises success, empty, delayed, one-error-then-retry, HTTP error, malformed payload, and hanging request behavior while proving profile isolation.
+- Achievement groups now use `ul`/`li`. Each disclosure button has a unique `aria-controls` panel, keyboard activation updates `aria-expanded`, and computed focus visibility is asserted.
+- Tier privacy scans visible and hidden DOM text plus `aria-*`, `title`, `alt`, and `value` attributes against adversarial S/A/B/C payload fields and error bodies.
+- The 375px viewport has no horizontal overflow, and disclosure/profile/retry actions meet the 44px target floor.
+
+### Reviewer Verification
+
+```text
+lobby-kit npm test: passed (7 test files)
+blog npm test: passed
+blog npm run check: 0 errors, 0 warnings, 2 existing missing-declaration hints
+blog npm run lint: passed
+blog npm run build: passed (14 pages)
+Playwright: 7/7 scenarios passed
+git diff --check for reviewer-fix paths: passed
+```
+
+### Remaining Concerns
+
+- `@lapismind/lobby-kit` still has no TypeScript declaration file; the two existing Astro hints remain non-blocking.
+- The two-second achievement timeout is intentionally page-local policy. Other lobby-kit consumers receive optional signal support but no forced timeout.
+- No D reports endpoint or reports UI was added.

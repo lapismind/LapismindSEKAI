@@ -173,8 +173,8 @@ export function createAuthClient({
     return { ok: true, user }
   }
 
-  async function getAchievements() {
-    const res = await fetchImpl(baseUrl + '/api/achievements', { credentials: 'include' })
+  async function getAchievements({ signal } = {}) {
+    const res = await fetchImpl(baseUrl + '/api/achievements', { credentials: 'include', signal })
     if (!res.ok) return { ok: false, error: 'achievements fetch failed' }
     const data = await res.json().catch(() => ({}))
     if (!Array.isArray(data.achievements)) return { ok: false, error: 'bad response' }

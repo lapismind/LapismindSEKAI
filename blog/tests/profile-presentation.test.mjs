@@ -60,14 +60,44 @@ const active = Array.from({ length: 10 }, (_, index) => ({
   const rows = buildCareerRows(career)
 
   assert.deepEqual(rows.map(row => row.label), [
-    '完成比赛', '获得冠军', '赢下回合', '成功施法', '击杀玩家', '巨龙击杀',
-    '阵亡次数', '施法自伤', '用过的魔法', '单回合最多施法', '最常用魔法',
-    '击杀获胜回合', '清空手牌获胜回合', '各魔法施放次数',
+    '完成比赛数', '冠军数', '轮胜数', '成功施法总数', '击杀数', '巨龙击杀数',
+    '死亡次数', '自爆次数', '使用过的魔法系别', '单次行动最长连续成功施法', '最常用魔法',
+    '击杀轮胜数', '清空手牌轮胜数', '八系魔法成功次数',
   ])
   assert.equal(rows.find(row => row.label === '最常用魔法').value, '暴风雪')
-  assert.equal(rows.find(row => row.label === '各魔法施放次数').value, '古代巨龙 2 · 暴风雪 20 · 魔法药水 7')
+  assert.equal(rows.find(row => row.label === '八系魔法成功次数').value, '古代巨龙 2 · 暴风雪 20 · 魔法药水 7')
   assert.deepEqual(career.spellCounts, { 1: 2, 6: 20, 8: 7 }, '输入数据不被修改')
   assert.doesNotMatch(JSON.stringify(rows), /\b[ASBC]\b/, '职业展示不泄漏故事等级字母')
+}
+
+{
+  const rows = buildCareerRows({
+    matchesCompleted: 0,
+    championships: 0,
+    roundWins: 0,
+    totalCasts: 0,
+    spellCounts: {},
+    kills: 0,
+    dragonKills: 0,
+    deaths: 0,
+    suicides: 0,
+    favoriteSpellId: null,
+    spellTypesUsed: 0,
+    maxTurnCastCount: 0,
+    roundWinsByReason: { kill: 0, all_spells: 0 },
+  })
+  assert.equal(rows.find(row => row.label === '最常用魔法').value, '暂无')
+  assert.equal(rows.find(row => row.label === '八系魔法成功次数').value, '暂无')
+  assert.equal(rows.find(row => row.label === '使用过的魔法系别').value, '0 / 8')
+}
+
+{
+  const tieRows = buildCareerRows({
+    favoriteSpellId: 1,
+    spellCounts: { 1: 4, 2: 4, 3: 4 },
+    roundWinsByReason: { kill: 0, all_spells: 0 },
+  })
+  assert.equal(tieRows.find(row => row.label === '最常用魔法').value, '古代巨龙', '展示 Auth 已按较小 spellId 选出的平局结果')
 }
 
 console.log('profile presentation tests passed')

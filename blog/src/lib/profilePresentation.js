@@ -65,19 +65,19 @@ export function buildCareerRows(career = {}) {
     .join(' · ')
 
   return [
-    { label: '完成比赛', value: numberValue(career.matchesCompleted) },
-    { label: '获得冠军', value: numberValue(career.championships) },
-    { label: '赢下回合', value: numberValue(career.roundWins) },
-    { label: '成功施法', value: numberValue(career.totalCasts) },
-    { label: '击杀玩家', value: numberValue(career.kills) },
-    { label: '巨龙击杀', value: numberValue(career.dragonKills) },
-    { label: '阵亡次数', value: numberValue(career.deaths) },
-    { label: '施法自伤', value: numberValue(career.suicides) },
-    { label: '用过的魔法', value: `${numberValue(career.spellTypesUsed)} / 8` },
-    { label: '单回合最多施法', value: numberValue(career.maxTurnCastCount) },
+    { label: '完成比赛数', value: numberValue(career.matchesCompleted) },
+    { label: '冠军数', value: numberValue(career.championships) },
+    { label: '轮胜数', value: numberValue(career.roundWins) },
+    { label: '成功施法总数', value: numberValue(career.totalCasts) },
+    { label: '击杀数', value: numberValue(career.kills) },
+    { label: '巨龙击杀数', value: numberValue(career.dragonKills) },
+    { label: '死亡次数', value: numberValue(career.deaths) },
+    { label: '自爆次数', value: numberValue(career.suicides) },
+    { label: '使用过的魔法系别', value: `${numberValue(career.spellTypesUsed)} / 8` },
+    { label: '单次行动最长连续成功施法', value: numberValue(career.maxTurnCastCount) },
     { label: '最常用魔法', value: SPELL_NAMES[career.favoriteSpellId] || '暂无' },
-    { label: '击杀获胜回合', value: numberValue(reasons.kill) },
-    { label: '清空手牌获胜回合', value: numberValue(reasons.all_spells) },
-    { label: '各魔法施放次数', value: spellBreakdown || '暂无' },
+    { label: '击杀轮胜数', value: numberValue(reasons.kill) },
+    { label: '清空手牌轮胜数', value: numberValue(reasons.all_spells) },
+    { label: '八系魔法成功次数', value: spellBreakdown || '暂无' },
   ]
 }

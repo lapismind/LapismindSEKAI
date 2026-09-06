@@ -30,7 +30,7 @@ import { SITE_TITLE } from '../consts';
 			.meta-row .label { font-family: var(--font-mono); font-size: 0.78rem; letter-spacing: 0.14em; color: var(--primary); }
 			.meta-row .text { margin: 0; font-size: 0.92rem; color: var(--ink-soft); word-break: break-all; }
 			.actions { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-top: 1.4rem; }
-			.btn { display: inline-flex; align-items: center; padding: 0.62em 1.35em; border-radius: 999px; border: 1px solid transparent; font-size: 0.92rem; font-weight: 600; text-decoration: none; cursor: var(--cursor-pointer); transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease; }
+			.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0.62em 1.35em; border-radius: 999px; border: 1px solid transparent; font-size: 0.92rem; font-weight: 600; text-decoration: none; cursor: var(--cursor-pointer); transition: transform 0.2s ease, filter 0.2s ease, border-color 0.2s ease; }
 			.btn:hover { transform: translateY(-2px); }
 			.btn-primary { background: var(--gradient); color: #fff; }
 			.btn-primary:hover { filter: brightness(1.08); color: #fff; }
@@ -89,6 +89,9 @@ import { SITE_TITLE } from '../consts';
 			.ach-mark { font-size: 1rem; color: var(--muted); }
 			.ach-row.earned .ach-mark { color: oklch(0.6 0.14 150); }
 			.ach-empty { padding: 1.4rem; text-align: center; color: var(--muted); font-size: 0.88rem; border: 1px dashed var(--line); border-radius: var(--radius); }
+			.ach-state { padding: 1.2rem; text-align: center; color: var(--muted); font-size: 0.86rem; border: 1px dashed var(--line); border-radius: var(--radius); }
+			.ach-state p { margin: 0 0 0.8rem; }
+			.ach-state[hidden], #ach-content[hidden] { display: none; }
 			.career-head { margin-bottom: 1rem; }
 			.career-head h2 { margin: 0; font-size: 1.15rem; }
 			.career-head p { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.82rem; }
@@ -155,17 +158,25 @@ import { SITE_TITLE } from '../consts';
 						</div>
 					</div>
 
-					<section id="ach-section" class="ach-shell glass" hidden>
+					<section id="ach-section" class="ach-shell glass" aria-labelledby="ach-title">
 						<div class="ach-head">
-							<h2>成就展馆</h2>
+							<h2 id="ach-title">成就展馆</h2>
 							<p id="ach-summary" class="ach-summary">正在清点奖杯……</p>
 						</div>
-						<div id="ach-hall"></div>
+						<div id="ach-loading" class="ach-state" role="status">正在读取成就与法师档案……</div>
+						<div id="ach-error" class="ach-state" role="alert" hidden>
+							<p>成就与法师档案暂时无法读取。</p>
+							<button type="button" class="btn btn-ghost" id="ach-retry">重试</button>
+						</div>
+						<div id="ach-empty" class="ach-state" hidden>还没有可展示的成就，法师档案会从完整比赛开始记录。</div>
+						<div id="ach-content" hidden>
+							<div id="ach-hall"></div>
+						</div>
 					</section>
 
 					<section id="career-section" class="career-shell glass" hidden aria-labelledby="career-title">
 						<div class="career-head">
-							<h2 id="career-title">法师生涯</h2>
+							<h2 id="career-title">法师档案</h2>
 							<p>仅展示认证服务汇总的完整比赛记录。</p>
 						</div>
 						<dl id="career-grid" class="career-grid"></dl>
@@ -211,28 +222,43 @@ import { SITE_TITLE } from '../consts';
 					const user = await auth.init();
 					if (!user) throw new Error('no user');
 					render(user);
-					await loadAchievements();
 					loading.hidden = true;
 					content.hidden = false;
+					void loadAchievements();
 				} catch {
 					loading.hidden = true;
 					errorBox.hidden = false;
 				}
 			}
 
-			// ---------- 成就展馆与法师生涯（只展示 API 数据） ----------
+			// ---------- 成就展馆与法师档案（只展示 API 数据） ----------
 
 			async function loadAchievements() {
-				const section = el('ach-section');
+				const loadingState = el('ach-loading');
+				const errorState = el('ach-error');
+				const emptyState = el('ach-empty');
+				const achievementsContent = el('ach-content');
+				const controller = new AbortController();
+				const timeout = window.setTimeout(() => controller.abort(), 2000);
+				loadingState.hidden = false;
+				errorState.hidden = true;
+				emptyState.hidden = true;
+				achievementsContent.hidden = true;
+				el('career-section').hidden = true;
 				try {
-					const res = await auth.getAchievements();
+					const res = await auth.getAchievements({ signal: controller.signal });
 					if (!res.ok) throw new Error('no achievements data');
 					renderHall(res);
 					renderCareer(res.career);
-					section.hidden = false;
+					const hasAchievements = Array.isArray(res.achievements) && res.achievements.length > 0;
+					emptyState.hidden = hasAchievements;
+					achievementsContent.hidden = !hasAchievements;
 				} catch {
-					section.hidden = true; // 成就服务不可用时整块隐藏，不打扰资料页其他功能
+					errorState.hidden = false;
 					el('career-section').hidden = true;
+				} finally {
+					window.clearTimeout(timeout);
+					loadingState.hidden = true;
 				}
 			}
 
@@ -254,11 +280,13 @@ import { SITE_TITLE } from '../consts';
 					const card = document.createElement('section');
 					card.className = 'ach-section-card';
 					card.dataset.achievementSection = section.key;
+					const panelId = 'ach-panel-' + section.key;
 
 					const head = document.createElement('button');
 					head.type = 'button';
 					head.className = 'ach-section-toggle';
 					head.setAttribute('aria-expanded', String(first));
+					head.setAttribute('aria-controls', panelId);
 					const info = document.createElement('div');
 					info.className = 'ach-section-info';
 					const title = document.createElement('span');
@@ -279,8 +307,9 @@ import { SITE_TITLE } from '../consts';
 					caret.textContent = first ? '▾' : '▸';
 					head.append(info, count, caret);
 
-					const body = document.createElement('div');
+					const body = document.createElement('ul');
 					body.className = 'ach-section-body';
+					body.id = panelId;
 					body.hidden = !first;
 					for (const achievement of section.items) body.appendChild(renderAchRow(achievement));
 
@@ -301,8 +330,9 @@ import { SITE_TITLE } from '../consts';
 			}
 
 			function renderAchRow(a: any) {
-				const row = document.createElement('div');
+				const row = document.createElement('li');
 				row.className = 'ach-row ' + (a.unlocked ? 'earned' : 'locked');
+				row.dataset.achievementKey = a.key;
 
 				const txt = document.createElement('div');
 				txt.className = 'ach-row-text';
@@ -342,7 +372,7 @@ import { SITE_TITLE } from '../consts';
 				}
 				for (const row of buildCareerRows(career)) {
 					const item = document.createElement('div');
-					item.className = 'career-row' + (row.label === '各魔法施放次数' ? ' wide' : '');
+					item.className = 'career-row' + (row.label === '八系魔法成功次数' ? ' wide' : '');
 					const label = document.createElement('dt');
 					label.textContent = row.label;
 					const value = document.createElement('dd');
@@ -501,6 +531,7 @@ import { SITE_TITLE } from '../consts';
 
 			loadProfile();
 			el('pf-retry').addEventListener('click', loadProfile);
+			el('ach-retry').addEventListener('click', loadAchievements);
 
 		</script>
 	</body>
