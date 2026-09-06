@@ -58,6 +58,30 @@ export const GAMES = {
   abracadawhat: '出包魔法师',
 }
 
+/** Build the public achievement shape shared by catalog and match responses. */
+export function projectAchievement(definition, { unlocked = false, unlockedAt = null, includeUnlockState = true } = {}) {
+  if (!definition || definition.status === 'legacy' && !unlocked) return null
+  if (definition.status === 'hidden' && !unlocked) {
+    return { key: definition.key, status: 'hidden', unlocked: false, name: '？？？', desc: '？？？' }
+  }
+
+  const projected = {
+    key: definition.key,
+    game: definition.game,
+    name: definition.name,
+    desc: definition.desc,
+    difficulty: definition.difficulty,
+    stars: definition.difficulty,
+    status: definition.status,
+  }
+  if (definition.status === 'legacy') projected.legacy = true
+  if (includeUnlockState) {
+    projected.unlocked = unlocked
+    projected.unlockedAt = unlockedAt
+  }
+  return projected
+}
+
 // 累计次数型成就的目标值：达到即解锁；前端据此画百分比进度。
 // 不在表内的视为「单局达成」类，不显示百分比。
 export const ACHIEVEMENT_TARGETS = {

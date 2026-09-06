@@ -14,7 +14,7 @@
 
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
-import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES } from './achievements.js'
+import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, projectAchievement } from './achievements.js'
 import { sanitizeMatchReport } from './matchReports.js'
 import { persistV2MatchReport, ReportConflictError } from './matchPersistence.js'
 
@@ -498,31 +498,21 @@ async function handleAchievements(request, env, cors = {}) {
   ).bind(session.playerId).all()
 
   const unlockedAt = new Map(results.map(r => [r.achievement_key, r.unlocked_at]))
-  const achievements = ACHIEVEMENT_DEFS.flatMap(def => {
-    const unlocked = unlockedAt.has(def.key)
-    if (def.status === 'legacy' && !unlocked) return []
-    if (def.status === 'hidden' && !unlocked) {
-      return [{ key: def.key, status: 'hidden', unlocked: false, name: '？？？', desc: '？？？' }]
-    }
-    const entry = {
-      key: def.key,
-      name: def.name,
-      desc: def.desc,
-      difficulty: def.difficulty,
-      stars: def.difficulty,
-      game: def.game,
-      status: def.status,
-      unlocked,
-      unlockedAt: unlockedAt.get(def.key) || null,
-    }
-    if (def.status === 'legacy') entry.legacy = true
-    return [entry]
+  const activeDefinitions = ACHIEVEMENT_DEFS.filter(definition => definition.status === 'active')
+  const achievements = ACHIEVEMENT_DEFS.flatMap(definition => {
+    const projected = projectAchievement(definition, {
+      unlocked: unlockedAt.has(definition.key),
+      unlockedAt: unlockedAt.get(definition.key) || null,
+    })
+    return projected ? [projected] : []
   })
 
   return json({
     achievements,
-    unlockedCount: unlockedAt.size,
-    total: achievements.length,
+    // Hidden remains triggerable/visible but is not counted as an active legendary achievement.
+    unlockedCount: activeDefinitions.filter(definition => unlockedAt.has(definition.key)).length,
+    total: activeDefinitions.length,
+    legacyUnlockedCount: ACHIEVEMENT_DEFS.filter(definition => definition.status === 'legacy' && unlockedAt.has(definition.key)).length,
   }, 200, cors)
 }
 
@@ -774,9 +764,12 @@ async function postMatch(request, env, cors = {}) {
   return json({
     ok: true,
     matchId,
-    newAchievements: newUnlocked.map(u => ({
-      playerId: u.playerId,
-      ...ACHIEVEMENT_DEFS.find(d => d.key === u.key) || { key: u.key, name: u.key },
-    })),
+    newAchievements: newUnlocked.flatMap(u => {
+      const projected = projectAchievement(ACHIEVEMENT_DEFS.find(d => d.key === u.key), {
+        unlocked: true,
+        includeUnlockState: false,
+      })
+      return projected ? [{ playerId: u.playerId, ...projected }] : []
+    }),
   }, 200, cors)
 }

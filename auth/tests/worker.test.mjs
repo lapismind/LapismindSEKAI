@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import worker from '../src/index.js'
 import { ACHIEVEMENT_DEFS } from '../src/achievements.js'
+import { C1_ACTIVE_ACHIEVEMENT_RESPONSE } from './fixtures/c1-achievement-response.mjs'
 
 // ---- 假 D1：只覆盖 worker 用到的 SQL 形状 ----
 function makeFakeDB() {
@@ -273,7 +274,9 @@ console.log('worker smoke tests passed')
   const emptyData = await empty.json()
   const activeDefs = ACHIEVEMENT_DEFS.filter((definition) => definition.status === 'active')
   assert.equal(emptyData.total, activeDefs.length, 'total 只统计本次返回的 active 目录')
+  assert.equal(emptyData.total, 10, 'active 传奇总数稳定为 10')
   assert.equal(emptyData.unlockedCount, 0, '新游客零解锁')
+  assert.equal(emptyData.legacyUnlockedCount, 0, '新游客零旧版纪念')
   assert.deepEqual(emptyData.achievements.map((achievement) => achievement.key).sort(), activeDefs.map((definition) => definition.key).sort())
   assert.ok(emptyData.achievements.every((a) => a.unlocked === false), '未解锁标记一致')
   assert.ok(emptyData.achievements.every((a) => a.status === 'active'), 'active 状态显式返回')
@@ -286,13 +289,17 @@ console.log('worker smoke tests passed')
     { player_id: guestData.user.playerId, achievement_key: 'first_cast', unlocked_at: '2026-08-27 10:00:00' },
     { player_id: guestData.user.playerId, achievement_key: 'last_breath', unlocked_at: '2026-08-27 10:05:00', match_id: 1, report_status: 'complete' },
     { player_id: guestData.user.playerId, achievement_key: 'dragon_veteran', unlocked_at: '2026-08-27 10:10:00', match_id: 2, report_status: 'pending' },
+    { player_id: guestData.user.playerId, achievement_key: 'magic_staircase', unlocked_at: '2026-08-27 10:11:00', match_id: 3, report_status: 'pending' },
+    { player_id: guestData.user.playerId, achievement_key: 'stale_unknown', unlocked_at: '2026-08-27 10:12:00' },
   )
   const unlocked = await worker.fetch(
     new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
     env,
   )
   const unlockedData = await unlocked.json()
-  assert.equal(unlockedData.unlockedCount, 2)
+  assert.equal(unlockedData.total, 10, 'legacy 和未知行不改变 active 总数')
+  assert.equal(unlockedData.unlockedCount, 1, '只统计已解锁 active 传奇')
+  assert.equal(unlockedData.legacyUnlockedCount, 1, '单独统计已返回的已解锁 legacy')
   const byKey = Object.fromEntries(unlockedData.achievements.map((a) => [a.key, a]))
   assert.equal(byKey.first_cast.unlocked, true, 'first_cast 已解锁')
   assert.equal(byKey.first_cast.legacy, true, '旧解锁标记为 legacy')
@@ -300,7 +307,9 @@ console.log('worker smoke tests passed')
   assert.equal(byKey.first_cast.difficulty, byKey.first_cast.stars)
   assert.ok(!('target' in byKey.first_cast) && !('progress' in byKey.first_cast), 'legacy 不暴露未完成进度或目标')
   assert.equal(byKey.last_breath.unlocked, true, 'active 解锁正常返回')
+  assert.equal(byKey.magic_staircase.unlocked, false, 'pending match 关联 active 成就保持锁定')
   assert.equal('dragon_veteran' in byKey, false, 'pending match 关联 legacy 成就保持不可见')
+  assert.equal('stale_unknown' in byKey, false, '未知数据库 key 不进入目录投影')
   assert.equal(byKey.first_cast.unlockedAt, '2026-08-27 10:00:00', '带回解锁时间')
 
   const hiddenDefinition = { key: 'test_hidden', game: 'abracadawhat', name: '隐藏真名', desc: '隐藏真描述', difficulty: 4, status: 'hidden' }
@@ -310,6 +319,9 @@ console.log('worker smoke tests passed')
       new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
       env,
     ).then((response) => response.json())
+    assert.equal(lockedHidden.total, 10, '未来 hidden 不计入 active 传奇总数')
+    assert.equal(lockedHidden.unlockedCount, 1, '锁定 hidden 不计入 active 解锁数')
+    assert.equal(lockedHidden.legacyUnlockedCount, 1)
     assert.deepEqual(lockedHidden.achievements.find((achievement) => achievement.key === 'test_hidden'), {
       key: 'test_hidden',
       status: 'hidden',
@@ -323,6 +335,9 @@ console.log('worker smoke tests passed')
       new Request('https://auth.qmzhj.top/api/achievements', { headers: { cookie } }),
       env,
     ).then((response) => response.json())
+    assert.equal(revealedHidden.total, 10, '已解锁 hidden 仍不改变 active 传奇总数')
+    assert.equal(revealedHidden.unlockedCount, 1, '已解锁 hidden 仍不计入 active 解锁数')
+    assert.equal(revealedHidden.legacyUnlockedCount, 1)
     assert.deepEqual(revealedHidden.achievements.find((achievement) => achievement.key === 'test_hidden'), {
       key: 'test_hidden',
       game: 'abracadawhat',
@@ -340,6 +355,61 @@ console.log('worker smoke tests passed')
 }
 
 console.log('worker achievements tests passed')
+
+// ---- v1 postMatch 新解锁使用与 GET 相同的外部成就投影，供 B5 直接渲染 stars ----
+{
+  const env = makeEnv()
+  const achievementInserts = []
+  env.DB = {
+    prepare(sql) {
+      const statement = {
+        args: [],
+        bind(...args) { statement.args = args; return statement },
+        async run() {
+          if (sql.startsWith('INSERT INTO matches')) return { meta: { last_row_id: 1, changes: 1 } }
+          if (sql.startsWith('INSERT INTO match_players')) return { meta: { changes: 1 } }
+          if (sql.startsWith('INSERT OR IGNORE INTO achievements')) {
+            achievementInserts.push([...statement.args])
+            return { meta: { changes: 1 } }
+          }
+          throw new Error('achievement projection fake db: unsupported run: ' + sql)
+        },
+        async first() {
+          if (sql.includes('SUM(') && sql.includes('match_players')) {
+            return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
+          }
+          throw new Error('achievement projection fake db: unsupported first: ' + sql)
+        },
+        async all() {
+          if (sql.includes('json_each')) return { results: [] }
+          throw new Error('achievement projection fake db: unsupported all: ' + sql)
+        },
+      }
+      return statement
+    },
+  }
+
+  const response = await worker.fetch(new Request('https://auth.qmzhj.top/api/matches', {
+    method: 'POST',
+    headers: { authorization: 'Bearer match-report-secret', 'content-type': 'application/json' },
+    body: JSON.stringify({
+      game: 'abracadawhat',
+      roomId: 'R-C1',
+      rounds: 1,
+      players: [
+        { playerId: 'p1', nickname: '一号', roundWonAtHp1: true, spellsCast: {} },
+        { playerId: 'p2', nickname: '二号', spellsCast: {} },
+      ],
+    }),
+  }), env)
+  const body = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(achievementInserts, [['p1', 'last_breath', 1]])
+  assert.deepEqual(body.newAchievements, [C1_ACTIVE_ACHIEVEMENT_RESPONSE])
+}
+
+console.log('worker postMatch achievement projection tests passed')
 
 // ---- /login：state cookie + redirect 目的地 cookie + 开放重定向防护 ----
 {

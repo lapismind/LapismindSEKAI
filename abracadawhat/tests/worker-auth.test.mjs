@@ -8,6 +8,7 @@
  */
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { C1_ACTIVE_ACHIEVEMENT_RESPONSE } from '../../auth/tests/fixtures/c1-achievement-response.mjs'
 import './helpers/workerLoader.mjs'
 
 const { default: worker } = await import('../src/worker/index.js')
@@ -561,7 +562,7 @@ test('reportMatch 200 broadcasts report-scoped achievements and saved true even 
     reportId: state.matchStats.reportId,
     savedReports: [],
     newAchievements: [
-      { playerId: 'p1', key: 'spell_ladder' },
+      C1_ACTIVE_ACHIEVEMENT_RESPONSE,
       null,
       'invalid',
       [],
@@ -571,7 +572,7 @@ test('reportMatch 200 broadcasts report-scoped achievements and saved true even 
   })
 
   assert.deepEqual(harness.sent, [
-    { type: 'achievements_unlocked', data: { reportId: state.matchStats.reportId, achievements: [{ playerId: 'p1', key: 'spell_ladder' }] } },
+    { type: 'achievements_unlocked', data: { reportId: state.matchStats.reportId, achievements: [C1_ACTIVE_ACHIEVEMENT_RESPONSE] } },
     { type: 'match_report_status', data: { reportId: state.matchStats.reportId, saved: true } },
   ])
 })
