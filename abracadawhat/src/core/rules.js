@@ -104,27 +104,27 @@ function aliveOthers(state, playerId) {
   return state.players.filter((p) => p.id !== playerId && p.alive)
 }
 
-function finishRound(state, reason, winnerId = null) {
+function finishRound(state, reason, winnerId = null, decisiveSpellId = null) {
   if (state.phase === 'round_end') return
 
   const roundGains = {}
+  const scoreBySource = {}
   for (const player of state.players) {
-    let gained = 0
+    const sources = { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 }
     // 规则：清空手牌者获胜时，其余玩家按死亡处理。
     if (reason === 'all_spells' && player.id !== winnerId) player.alive = false
-    if (!player.alive) {
-      gained = 0
-    } else if (player.id === winnerId && (reason === 'all_spells' || reason === 'kill')) {
-      gained = 3
-    } else if (reason === 'all_spells') {
-      gained = 0
-    } else {
-      gained = 1
+    if (player.alive) {
+      if (player.id === winnerId && (reason === 'all_spells' || reason === 'kill')) {
+        sources.roundWinPoints = 3
+      } else if (reason !== 'all_spells') {
+        sources.survivalPoints = 1
+      }
+      sources.secretPoints = player.secrets.length
     }
-    // 秘密牌只在存活到本轮结束时才有加分。
-    if (player.alive) gained += player.secrets.length
+    const gained = Object.values(sources).reduce((sum, points) => sum + points, 0)
     player.score += gained
     roundGains[player.id] = gained
+    scoreBySource[player.id] = sources
   }
 
   state.phase = 'round_end'
@@ -133,6 +133,7 @@ function finishRound(state, reason, winnerId = null) {
   state.summary = {
     reason,
     winnerId,
+    decisiveSpellId,
     standings: [...state.players]
       .sort((a, b) => b.score - a.score)
       .map((p) => ({
@@ -141,6 +142,7 @@ function finishRound(state, reason, winnerId = null) {
         avatarId: p.avatarId,
         score: p.score,
         gained: roundGains[p.id],
+        scoreBySource: scoreBySource[p.id],
       })),
   }
 }
@@ -184,7 +186,7 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
     }
 
     if (!caster.alive) {
-      finishRound(state, 'self_destruct')
+      finishRound(state, 'self_destruct', null, spell.id)
       return { ok: false, ...event, roundEnded: true }
     }
 
@@ -272,11 +274,11 @@ export function applyCast(state, playerId, spellId, rng = Math.random) {
 
   const killedSomeone = state.players.some((p) => p.id !== playerId && !p.alive)
   if (killedSomeone) {
-    finishRound(state, 'kill', playerId)
+    finishRound(state, 'kill', playerId, spell.id)
     return { ok: true, ...event, roundEnded: true }
   }
   if (caster.hand.length === 0) {
-    finishRound(state, 'all_spells', playerId)
+    finishRound(state, 'all_spells', playerId, spell.id)
     return { ok: true, ...event, roundEnded: true }
   }
 

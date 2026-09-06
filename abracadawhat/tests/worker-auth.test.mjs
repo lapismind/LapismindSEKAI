@@ -226,7 +226,7 @@ const env = {
   }]))
   const room = new AbracaRoom({ name: 'ROOM-1' }, {})
   const reportId = 'abracadawhat:123e4567-e89b-42d3-a456-426614174000'
-  const report = room.buildMatchReport({ round: 3, players, matchStats: { reportId, startAt: '2026-01-01T00:00:00.000Z', finishedAt: '2026-01-01T00:20:00.000Z', players: stats } }, players[0])
+  const report = room.buildMatchReport({ round: 3, players, matchStats: { reportId, factsVersion: 2, startAt: '2026-01-01T00:00:00.000Z', finishedAt: '2026-01-01T00:20:00.000Z', players: stats } }, players[0])
   const sanitized = sanitizeMatchReport(report)
 
   assert.equal(report.schemaVersion, 2)
@@ -295,7 +295,7 @@ const env = {
   const room = new AbracaRoom(ctx, {})
   const state = {
     phase: 'round_end', round: 3, targetScore: 8, players,
-    matchStats: { reportId: 'abracadawhat:123e4567-e89b-42d3-a456-426614174000', startAt: '2026-01-01T00:00:00.000Z', players: stats },
+    matchStats: { reportId: 'abracadawhat:123e4567-e89b-42d3-a456-426614174000', factsVersion: 2, startAt: '2026-01-01T00:00:00.000Z', players: stats },
     matchHistory: [],
   }
 

@@ -121,6 +121,15 @@ test('火球击败下家立即结算：施法者三分、存活者一分', () =>
     Object.fromEntries(state.summary.standings.map((row) => [row.id, row.gained])),
     { caster: 3, next: 0, prev: 1 },
   )
+  assert.equal(state.summary.decisiveSpellId, 7)
+  assert.deepEqual(
+    Object.fromEntries(state.summary.standings.map((row) => [row.id, row.scoreBySource])),
+    {
+      caster: { roundWinPoints: 3, survivalPoints: 0, secretPoints: 0 },
+      next: { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 },
+      prev: { roundWinPoints: 0, survivalPoints: 1, secretPoints: 0 },
+    },
+  )
 })
 
 test('双人局闪电暴风雨只对唯一对手造成一点伤害', () => {
@@ -238,6 +247,41 @@ test('清空全部魔法立即获胜，其他玩家按死亡处理', () => {
   assert.equal(state.players[0].score, 4)
   assert.equal(state.players[1].score, 0)
   assert.equal(state.players[2].score, 0)
+  assert.equal(state.summary.decisiveSpellId, 8)
+  assert.deepEqual(state.summary.standings.find((row) => row.id === 'caster').scoreBySource, {
+    roundWinPoints: 3,
+    survivalPoints: 0,
+    secretPoints: 1,
+  })
+  assert.equal(
+    state.summary.standings.find((row) => row.id === 'caster').gained,
+    Object.values(state.summary.standings.find((row) => row.id === 'caster').scoreBySource)
+      .reduce((sum, points) => sum + points, 0),
+  )
+})
+
+test('自爆结算拆分存活分与秘密分并记录决定性魔法', () => {
+  const state = makeStartedState()
+  state.players[0].hand = []
+  state.players[0].health = 1
+  state.players[1].secrets = [2, 3]
+
+  const result = applyCast(state, 'caster', 6, fixedRng)
+
+  assert.equal(result.ok, false)
+  assert.equal(state.summary.reason, 'self_destruct')
+  assert.equal(state.summary.decisiveSpellId, 6)
+  assert.deepEqual(
+    Object.fromEntries(state.summary.standings.map((row) => [row.id, row.scoreBySource])),
+    {
+      caster: { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 },
+      next: { roundWinPoints: 0, survivalPoints: 1, secretPoints: 2 },
+      prev: { roundWinPoints: 0, survivalPoints: 1, secretPoints: 0 },
+    },
+  )
+  for (const row of state.summary.standings) {
+    assert.equal(row.gained, Object.values(row.scoreBySource).reduce((sum, points) => sum + points, 0))
+  }
 })
 
 test('结束回合会补齐手牌并轮到下一位', () => {

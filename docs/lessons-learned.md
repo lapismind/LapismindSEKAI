@@ -1,5 +1,11 @@
 # Lessons Learned
 
+## 2026-09-07 B2 pre-damage patch review
+
+- 在把受击前状态改为 `Map` 后，局部循环仍残留一行旧 `d.playerId` 变量引用，并重复声明 `victim`，形成语法错误。涉及循环变量替换的补丁应用后必须立即读取修改片段或运行语法/聚焦测试，不能直接继续叠加实现。
+- `endTurn()` 会把 `castFailed[playerId]` 复位；“主动收手”是否自愿必须在调用规则函数前快照。凡是生产事实依赖转移前状态，都应在状态机动作前采集，而不是从动作后的状态反推。
+- 为区分可证明完整来源的 B2 v2 比赛和部署前已进行的 B1 房间，生产状态增加版本标记后，所有手工构造“当前 v2 比赛”的测试夹具也必须显式带同一标记；旧房间 fixture 则故意不带，用来验证 v1 fallback。
+
 ## 2026-09-07 B1 final foundation test patch context
 
 - 跨文件 RED 补丁假定 `worker-auth.test.mjs` 使用 named import，但实际文件通过动态 import 后解构，导致整批补丁未应用。高风险多文件测试改动必须先按文件读取精确 import/尾部上下文，再拆分应用，避免一个上下文错误取消全部 RED。

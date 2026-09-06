@@ -262,8 +262,15 @@ export class AbracaRoom {
         hadLowThenFullThenDied: false, // hp 曾 <=2 后回到 6 再死亡
         lowHpSeen: false,         // 内部标记
         castOwlThisMatch: false,  // 本场是否放过猫头鹰
+        scoreBySource: { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 },
+        roundWins: 0,
+        roundWinsByReason: { kill: 0, all_spells: 0 },
+        maxTurnCastCount: 0,
+        maxTurnDistinctSpells: 0,
       }])),
       round: 0,
+      facts: [],
+      factsVersion: 2,
     }
     await this.beginRound(state)
   }
@@ -322,7 +329,7 @@ export class AbracaRoom {
 
   buildMatchReport(state, champion) {
     const snapshots = state.matchStats?.scoreSnapshots || []
-    if (!state.matchStats?.reportId) {
+    if (!state.matchStats?.reportId || state.matchStats?.factsVersion !== 2) {
       return {
         game: 'abracadawhat',
         roomId: this.roomId,
@@ -374,6 +381,27 @@ export class AbracaRoom {
           maxTurnDistinctSpells: ms.maxTurnDistinctSpells ?? 0,
         }
       })
+    const facts = [...(state.matchStats?.facts ?? [])]
+    const championSnapshot = snapshots.find(snap => {
+      const opponentScoreBefore = Math.max(0, ...Object.entries(snap)
+        .filter(([id]) => id !== champion.id)
+        .map(([, value]) => value))
+      return opponentScoreBefore >= 7
+        && (snap[champion.id] || 0) <= 3
+        && champion.score > opponentScoreBefore
+    })
+    if (championSnapshot) {
+      const data = {
+        playerScoreBefore: championSnapshot[champion.id] || 0,
+        opponentScoreBefore: Math.max(0, ...Object.entries(championSnapshot)
+          .filter(([id]) => id !== champion.id)
+          .map(([, value]) => value)),
+        finalScore: champion.score,
+      }
+      if (!facts.some(fact => fact.key === 'comeback_win' && fact.playerId === champion.id)) {
+        facts.push({ key: 'comeback_win', playerId: champion.id, data })
+      }
+    }
     return {
       schemaVersion: 2,
       reportId: state.matchStats?.reportId,
@@ -383,7 +411,7 @@ export class AbracaRoom {
       finishedAt: state.matchStats?.finishedAt,
       rounds: state.round,
       standings,
-      facts: state.matchStats?.facts ?? [],
+      facts,
       stories: [],
     }
   }
@@ -432,6 +460,7 @@ export class AbracaRoom {
     state.castSucceeded = {}
     state.castFailed = {}
     state.summary = null
+    state.startingHands = Object.fromEntries(state.players.map(p => [p.id, [...p.hand]]))
 
     await this.saveState(state)
     this.broadcast(state, {
@@ -448,6 +477,9 @@ export class AbracaRoom {
   async doCast(state, playerId, data) {
     if (state.phase !== 'playing') return
     const spellId = Number(data?.spellId)
+    const actorHpBefore = state.players.find(p => p.id === playerId)?.health ?? null
+    const healthBefore = new Map(state.players.map(p => [p.id, p.health]))
+    const aliveBefore = new Set(state.players.filter(p => p.alive).map(p => p.id))
     const result = applyCast(state, playerId, spellId)
     // 累积施法事件到战绩（无论成败都记，成就判定需要失败次数）
     if (state.matchStats && state.matchStats.players[playerId]) {
@@ -466,15 +498,24 @@ export class AbracaRoom {
         if (spellId === 1) ms.dragonFails += 1
       }
       // 伤害/击杀明细
-      let killsThisCast = 0
-      for (const d of result.damaged || []) {
-        const victim = state.players.find(p => p.id === d.playerId)
-        if (victim && !victim.alive) {
-          killsThisCast += 1
-          // 绝地反击：自己 1 血时击杀过死前血量 >= 3 的目标
-          const preKillHp = victim.health + d.amount
-          const me = state.players.find(p => p.id === playerId)
-          if (preKillHp >= 3 && me?.health === 1) ms.killedHighHpTarget = true
+      const damagedPlayerIds = [...new Set((result.damaged || []).map(d => d.playerId))]
+      const killedPlayerIds = damagedPlayerIds.filter((targetId) => {
+        const victim = state.players.find(p => p.id === targetId)
+        return aliveBefore.has(targetId) && victim && !victim.alive
+      })
+      const killsThisCast = killedPlayerIds.length
+      for (const targetId of killedPlayerIds) {
+        const victim = state.players.find(p => p.id === targetId)
+        const targetHpBefore = healthBefore.get(targetId)
+        if (victim && actorHpBefore === 1 && targetHpBefore >= 3) {
+          ms.killedHighHpTarget = true
+          this.addMatchFact(state, 'low_hp_kill', playerId, {
+            round: state.round,
+            spellId,
+            actorHp: 1,
+            targetHpBefore,
+            targetPlayerId: targetId,
+          })
         }
       }
       ms.kills += killsThisCast
@@ -484,15 +525,20 @@ export class AbracaRoom {
       } else {
         if (killsThisCast >= 2) {
           ms.singleCastMultiKillNonDragon = Math.max(ms.singleCastMultiKillNonDragon, killsThisCast)
+          this.addMatchFact(state, 'multi_kill_non_dragon', playerId, {
+            round: state.round, spellId, killCount: killsThisCast,
+          })
         }
       }
+      if (spellId === 1 && killsThisCast >= 3) {
+        this.addMatchFact(state, 'dragon_multi_kill', playerId, {
+          round: state.round, spellId: 1, killCount: killsThisCast,
+        })
+      }
       // 受击方死亡计数
-      for (const d of result.damaged || []) {
-        const vStats = state.matchStats.players[d.playerId]
-        const vState = state.players.find(p => p.id === d.playerId)
-        if (vStats && vState && !vState.alive) {
-          vStats.deaths += 1
-        }
+      for (const targetId of killedPlayerIds) {
+        const vStats = state.matchStats.players[targetId]
+        if (vStats) vStats.deaths += 1
       }
       // 开幕雷击：第 1 轮本人首个有施法的回合，放龙掷出 3
       if (spellId === 1 && result.ok && result.dice === 3 && state.round === 1
@@ -504,6 +550,10 @@ export class AbracaRoom {
         ms.suicides += 1
         ms.deaths += 1
         if (state.round === 1) ms.firstRoundSuicide = true
+      }
+      if (result.ok) {
+        const spellIds = Object.keys(ms.spellsCast).filter(id => ms.spellsCast[id] > 0).map(Number).sort((a, b) => a - b)
+        if (spellIds.length === 8) this.addMatchFact(state, 'all_spell_types', playerId, { spellIds })
       }
     }
     // 轮结束时的成就字段
@@ -520,6 +570,7 @@ export class AbracaRoom {
         const ms = state.matchStats.players[p.id]
         if (ms && p.alive) ms.roundsSurvived += 1
       }
+      this.captureCompletedRound(state, playerId)
       // 记录本轮结束时的分数快照（"我不同意"逆转判定用）
       ;(state.matchStats.scoreSnapshots ??= []).push(
         Object.fromEntries(state.players.map(p => [p.id, p.score]))
@@ -539,11 +590,15 @@ export class AbracaRoom {
 
   async doEndTurn(state, playerId) {
     if (state.phase !== 'playing') return
+    const ms = state.matchStats?.players?.[playerId]
+    const turnSpells = ms?.turnSpellSets?.[ms.currentTurnIndex] ?? []
+    const deliberatelyStopped = turnSpells.length >= 2 && !state.castFailed?.[playerId]
     const result = endTurn(state, playerId)
     if (!result.ok) {
       this.errorTo(this.socketFor(playerId), result.error || '无法结束回合')
       return
     }
+    this.captureTurnFacts(state, playerId, turnSpells, deliberatelyStopped)
     await this.saveState(state)
     // 回合切换：所有玩家 currentTurnIndex +1（用于元素反应的"单回合"界定）
     if (state.matchStats) {
@@ -580,6 +635,9 @@ export class AbracaRoom {
       secretPileRemaining: state.secretPile?.length ?? 0,
       matchHistory: state.matchHistory ?? [],
       summary: state.summary,
+      ...(state.phase === 'round_end' && viewerId && state.startingHands?.[viewerId]
+        ? { startingHand: [...state.startingHands[viewerId]] }
+        : {}),
       players: state.players.map(p => ({
         id: p.id,
         nickname: p.nickname,
@@ -596,6 +654,81 @@ export class AbracaRoom {
         // 轮结束时秘密牌也公开
         ...(state.phase === 'round_end' ? { secrets: [...p.secrets] } : {}),
       })),
+    }
+  }
+
+  addMatchFact(state, key, playerId, data) {
+    const facts = (state.matchStats.facts ??= [])
+    const serialized = JSON.stringify(data)
+    if (facts.some(fact => fact.key === key && fact.playerId === playerId && JSON.stringify(fact.data) === serialized)) return
+    if (facts.length >= 100) return
+    facts.push({ key, playerId, data })
+  }
+
+  captureTurnFacts(state, playerId, turnSpells, voluntary) {
+    const ms = state.matchStats?.players?.[playerId]
+    if (!ms || turnSpells.length === 0) return
+    const spellIds = [...new Set(turnSpells)].sort((a, b) => a - b)
+    ms.maxTurnCastCount = Math.max(ms.maxTurnCastCount ?? 0, turnSpells.length)
+    ms.maxTurnDistinctSpells = Math.max(ms.maxTurnDistinctSpells ?? 0, spellIds.length)
+    if (spellIds.length >= 3) {
+      this.addMatchFact(state, 'turn_distinct_spells', playerId, {
+        round: state.round, spellIds, castCount: turnSpells.length,
+      })
+    }
+    if (voluntary) {
+      this.addMatchFact(state, 'voluntary_stop', playerId, {
+        round: state.round, successCount: turnSpells.length, distinctCount: spellIds.length,
+      })
+    }
+  }
+
+  captureCompletedRound(state, actingPlayerId) {
+    if (!state.summary || state.matchStats.completedRound === state.round) return
+    state.matchStats.completedRound = state.round
+    for (const row of state.summary.standings) {
+      const ms = state.matchStats.players[row.id]
+      if (!ms) continue
+      ms.scoreBySource ??= { roundWinPoints: 0, survivalPoints: 0, secretPoints: 0 }
+      ms.roundWins ??= 0
+      ms.roundWinsByReason ??= { kill: 0, all_spells: 0 }
+      ms.maxTurnCastCount ??= 0
+      ms.maxTurnDistinctSpells ??= 0
+      for (const source of ['roundWinPoints', 'survivalPoints', 'secretPoints']) {
+        ms.scoreBySource[source] += row.scoreBySource[source]
+      }
+      const player = state.players.find(p => p.id === row.id)
+      if (state.summary.reason === 'all_spells' && row.id !== state.summary.winnerId) ms.deaths += 1
+      if (player?.alive && player.secrets.length >= 3) {
+        this.addMatchFact(state, 'survivor_secret_stack', row.id, {
+          round: state.round, secretCount: player.secrets.length,
+        })
+      }
+    }
+    const winnerId = state.summary.winnerId
+    if (!winnerId) return
+    const winnerStats = state.matchStats.players[winnerId]
+    const winner = state.players.find(p => p.id === winnerId)
+    if (!winnerStats || !winner) return
+    winnerStats.roundWins += 1
+    winnerStats.roundWinsByReason[state.summary.reason] += 1
+    if (winner.health === 1) {
+      this.addMatchFact(state, 'round_win_low_hp', winnerId, {
+        round: state.round, actorHp: 1, reason: state.summary.reason,
+      })
+    }
+    if (winnerStats.roundWinsByReason.kill >= 1 && winnerStats.roundWinsByReason.all_spells >= 1) {
+      this.addMatchFact(state, 'round_win_routes', winnerId, {
+        kill: winnerStats.roundWinsByReason.kill,
+        allSpells: winnerStats.roundWinsByReason.all_spells,
+      })
+    }
+    const turnSpells = winnerStats.turnSpellSets[winnerStats.currentTurnIndex] ?? []
+    this.captureTurnFacts(state, actingPlayerId, turnSpells, false)
+    if (state.summary.reason === 'all_spells' && turnSpells.length >= 4) {
+      this.addMatchFact(state, 'turn_clear_streak', winnerId, {
+        round: state.round, successCount: turnSpells.length, reason: 'all_spells',
+      })
     }
   }
 
