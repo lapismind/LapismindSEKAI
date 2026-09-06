@@ -102,6 +102,19 @@ function makeRoom(sockets = []) {
   }, {})
 }
 
+function makePersistedRoom(initialState) {
+  let persisted = structuredClone(initialState)
+  const room = new AbracaRoom({
+    name: 'PERSISTED-FACT-ROOM',
+    storage: {
+      get: async () => structuredClone(persisted),
+      put: async (_key, state) => { persisted = structuredClone(state) },
+    },
+    getWebSockets: () => [],
+  }, {})
+  return { room, reload: () => structuredClone(persisted) }
+}
+
 function fact(state, key, playerId) {
   return state.matchStats.facts.filter((entry) => entry.key === key && entry.playerId === playerId)
 }
@@ -158,6 +171,76 @@ test('successful deliberate stop records turn maxima and voluntary_stop but forc
   assert.equal(fact(state, 'voluntary_stop', 'p2').length, 0)
 })
 
+test('doEndTurn persists the next action index before a reload', async () => {
+  const players = [player('p1', 0, { hand: [5, 6, 7, 8, 8] }), player('p2', 1)]
+  const initial = makeState(players, { deck: [1, 2, 3, 4] })
+  const { room, reload } = makePersistedRoom(initial)
+
+  let state = reload()
+  await room.doCast(state, 'p1', { spellId: 5 })
+  state = reload()
+  await room.doCast(state, 'p1', { spellId: 6 })
+  state = reload()
+  await room.doEndTurn(state, 'p1')
+  state = reload()
+
+  assert.equal(state.matchStats.players.p1.currentTurnIndex, 1)
+  assert.deepEqual(state.matchStats.players.p1.turnSpellSets, { 0: [5, 6] })
+
+  state.currentPlayerId = 'p1'
+  state.lastCastLevel = null
+  state.castSucceeded = {}
+  state.castFailed = {}
+  state.players[0].hand = [6, 7, 8, 8]
+  await room.doCast(state, 'p1', { spellId: 6 })
+  state = reload()
+  await room.doCast(state, 'p1', { spellId: 7 })
+  state = reload()
+  await room.doCast(state, 'p1', { spellId: 8 })
+  state = reload()
+  await room.doEndTurn(state, 'p1')
+  state = reload()
+
+  assert.deepEqual(state.matchStats.players.p1.turnSpellSets, { 0: [5, 6], 1: [6, 7, 8] })
+  assert.equal(state.matchStats.players.p1.maxTurnCastCount, 3)
+  assert.equal(state.matchStats.players.p1.maxTurnDistinctSpells, 3)
+  assert.deepEqual(fact(state, 'voluntary_stop', 'p1').map((entry) => entry.data), [
+    { round: 1, successCount: 2, distinctCount: 2 },
+    { round: 1, successCount: 3, distinctCount: 3 },
+  ])
+  const report = room.buildMatchReport(state, state.players[0])
+  assert.equal(sanitizeMatchReport(report).ok, true)
+})
+
+test('real beginRound gives terminal actions from different rounds separate buckets and facts', async () => {
+  const players = [player('p1', 0, { hand: [5, 6, 7, 8] }), player('p2', 1)]
+  const state = makeState(players, { targetScore: 99 })
+  const room = makeRoom()
+
+  for (const spellId of [5, 6, 7, 8]) await room.doCast(state, 'p1', { spellId })
+  assert.equal(state.phase, 'round_end')
+  await room.beginRound(state)
+
+  state.currentPlayerId = 'p1'
+  state.players[0].hand = [5, 6, 7, 8]
+  for (const spellId of [5, 6, 7, 8]) await room.doCast(state, 'p1', { spellId })
+
+  assert.deepEqual(state.matchStats.players.p1.turnSpellSets, {
+    0: [5, 6, 7, 8],
+    1: [5, 6, 7, 8],
+  })
+  assert.equal(state.matchStats.players.p1.maxTurnCastCount, 4)
+  assert.equal(state.matchStats.players.p1.maxTurnDistinctSpells, 4)
+  assert.deepEqual(fact(state, 'turn_distinct_spells', 'p1').map((entry) => entry.data), [
+    { round: 1, spellIds: [5, 6, 7, 8], castCount: 4 },
+    { round: 2, spellIds: [5, 6, 7, 8], castCount: 4 },
+  ])
+  assert.deepEqual(fact(state, 'turn_clear_streak', 'p1').map((entry) => entry.data), [
+    { round: 1, successCount: 4, reason: 'all_spells' },
+    { round: 2, successCount: 4, reason: 'all_spells' },
+  ])
+})
+
 test('terminal four-cast clear records turn streak, exact round win and cumulative score sources', async () => {
   const players = [player('p1', 0, { hand: [5, 6, 7, 8], secrets: [2] }), player('p2', 1)]
   const state = makeState(players)
@@ -180,6 +263,33 @@ test('terminal four-cast clear records turn streak, exact round win and cumulati
     playerId: 'p1',
     data: { round: 1, successCount: 4, reason: 'all_spells' },
   }])
+})
+
+test('fatal miss captures only the preceding successful action and never voluntary_stop', async () => {
+  for (const successfulSpells of [[5, 6], [5, 6, 7]]) {
+    const players = [
+      player('p1', 0, { health: 1, hand: [...successfulSpells, 5] }),
+      player('p2', 1),
+    ]
+    const state = makeState(players)
+    const room = makeRoom()
+
+    for (const spellId of successfulSpells) await room.doCast(state, 'p1', { spellId })
+    await room.doCast(state, 'p1', { spellId: 8 })
+
+    assert.equal(state.summary.reason, 'self_destruct')
+    assert.equal(state.matchStats.players.p1.maxTurnCastCount, successfulSpells.length)
+    assert.equal(state.matchStats.players.p1.maxTurnDistinctSpells, successfulSpells.length)
+    assert.equal(fact(state, 'voluntary_stop', 'p1').length, 0)
+    assert.equal(fact(state, 'turn_distinct_spells', 'p1').length, successfulSpells.length === 3 ? 1 : 0)
+    if (successfulSpells.length === 3) {
+      assert.deepEqual(fact(state, 'turn_distinct_spells', 'p1')[0].data, {
+        round: 1,
+        spellIds: [5, 6, 7],
+        castCount: 3,
+      })
+    }
+  }
 })
 
 test('low-hp kill captures actor decision HP and target pre-damage HP', async () => {
@@ -421,5 +531,60 @@ test('buildMatchReport does not emit an invalid comeback fact when final score o
   const report = makeRoom().buildMatchReport(state, players[0])
 
   assert.equal(report.facts.some((entry) => entry.key === 'comeback_win'), false)
+  assert.equal(sanitizeMatchReport(report).ok, true)
+})
+
+test('comeback fact deterministically displaces a lower-priority fact at the 100-fact cap', () => {
+  const players = [player('p1', 0, { score: 8 }), player('p2', 1, { score: 7 })]
+  const state = makeState(players, { round: 100 })
+  state.matchStats.scoreSnapshots = [{ p1: 3, p2: 7 }]
+  state.matchStats.players.p1.scoreBySource = { roundWinPoints: 6, survivalPoints: 2, secretPoints: 0 }
+  state.matchStats.players.p1.roundWins = 2
+  state.matchStats.players.p1.roundWinsByReason = { kill: 2, all_spells: 0 }
+  state.matchStats.players.p2.scoreBySource = { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 }
+  state.matchStats.players.p2.roundWins = 2
+  state.matchStats.players.p2.roundWinsByReason = { kill: 2, all_spells: 0 }
+  state.matchStats.facts = Array.from({ length: 100 }, (_, index) => ({
+    key: 'survivor_secret_stack',
+    playerId: index % 2 === 0 ? 'p1' : 'p2',
+    data: { round: index + 1, secretCount: 3 },
+  }))
+
+  const room = makeRoom()
+  const first = room.buildMatchReport(state, players[0])
+  const second = room.buildMatchReport(state, players[0])
+
+  assert.equal(first.facts.length, 100)
+  assert.deepEqual(first.facts, second.facts)
+  assert.equal(first.facts.filter((entry) => entry.key === 'comeback_win').length, 1)
+  assert.equal(first.facts.filter((entry) => entry.key === 'survivor_secret_stack').length, 99)
+  assert.equal(state.matchStats.facts.length, 100, '构建报告不改写持久化事实')
+  assert.equal(sanitizeMatchReport(first).ok, true)
+})
+
+test('capped canonical fact insertion suppresses an existing comeback duplicate', () => {
+  const players = [player('p1', 0, { score: 8 }), player('p2', 1, { score: 7 })]
+  const state = makeState(players, { round: 100 })
+  state.matchStats.scoreSnapshots = [{ p1: 3, p2: 7 }]
+  state.matchStats.players.p1.scoreBySource = { roundWinPoints: 6, survivalPoints: 2, secretPoints: 0 }
+  state.matchStats.players.p1.roundWins = 2
+  state.matchStats.players.p1.roundWinsByReason = { kill: 2, all_spells: 0 }
+  state.matchStats.players.p2.scoreBySource = { roundWinPoints: 6, survivalPoints: 1, secretPoints: 0 }
+  state.matchStats.players.p2.roundWins = 2
+  state.matchStats.players.p2.roundWinsByReason = { kill: 2, all_spells: 0 }
+  state.matchStats.facts = [{
+    key: 'comeback_win',
+    playerId: 'p1',
+    data: { playerScoreBefore: 3, opponentScoreBefore: 7, finalScore: 8 },
+  }, ...Array.from({ length: 99 }, (_, index) => ({
+    key: 'survivor_secret_stack',
+    playerId: index % 2 === 0 ? 'p1' : 'p2',
+    data: { round: index + 1, secretCount: 3 },
+  }))]
+
+  const report = makeRoom().buildMatchReport(state, players[0])
+
+  assert.equal(report.facts.length, 100)
+  assert.equal(report.facts.filter((entry) => entry.key === 'comeback_win').length, 1)
   assert.equal(sanitizeMatchReport(report).ok, true)
 })

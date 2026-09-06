@@ -17,6 +17,20 @@ import { verifyIdentityToken } from '@lapismind/lobby-kit'
 const MAX_PLAYERS = 5
 const MAX_PLAYER_ID_LENGTH = 64
 const MAX_NICKNAME_LENGTH = 64
+const MAX_MATCH_FACTS = 100
+const FACT_PRIORITY = {
+  comeback_win: 0,
+  dragon_multi_kill: 1,
+  low_hp_kill: 2,
+  turn_clear_streak: 3,
+  multi_kill_non_dragon: 4,
+  round_win_routes: 5,
+  round_win_low_hp: 6,
+  all_spell_types: 7,
+  turn_distinct_spells: 8,
+  survivor_secret_stack: 9,
+  voluntary_stop: 10,
+}
 
 function validPlayerId(playerId) {
   return typeof playerId === 'string' && playerId.startsWith('p') && playerId.length <= MAX_PLAYER_ID_LENGTH
@@ -381,7 +395,7 @@ export class AbracaRoom {
           maxTurnDistinctSpells: ms.maxTurnDistinctSpells ?? 0,
         }
       })
-    const facts = [...(state.matchStats?.facts ?? [])]
+    const reportFactState = { matchStats: { facts: structuredClone(state.matchStats?.facts ?? []) } }
     const championSnapshot = snapshots.find(snap => {
       const opponentScoreBefore = Math.max(0, ...Object.entries(snap)
         .filter(([id]) => id !== champion.id)
@@ -398,9 +412,7 @@ export class AbracaRoom {
           .map(([, value]) => value)),
         finalScore: champion.score,
       }
-      if (!facts.some(fact => fact.key === 'comeback_win' && fact.playerId === champion.id)) {
-        facts.push({ key: 'comeback_win', playerId: champion.id, data })
-      }
+      this.addMatchFact(reportFactState, 'comeback_win', champion.id, data)
     }
     return {
       schemaVersion: 2,
@@ -411,7 +423,7 @@ export class AbracaRoom {
       finishedAt: state.matchStats?.finishedAt,
       rounds: state.round,
       standings,
-      facts,
+      facts: reportFactState.matchStats.facts,
       stories: [],
     }
   }
@@ -461,6 +473,13 @@ export class AbracaRoom {
     state.castFailed = {}
     state.summary = null
     state.startingHands = Object.fromEntries(state.players.map(p => [p.id, [...p.hand]]))
+    if (state.matchStats) {
+      for (const ms of Object.values(state.matchStats.players)) {
+        const usedIndexes = Object.keys(ms.turnSpellSets ?? {}).map(Number)
+        const nextUnusedIndex = usedIndexes.length > 0 ? Math.max(...usedIndexes) + 1 : 0
+        ms.currentTurnIndex = Math.max(ms.currentTurnIndex ?? 0, nextUnusedIndex)
+      }
+    }
 
     await this.saveState(state)
     this.broadcast(state, {
@@ -599,11 +618,9 @@ export class AbracaRoom {
       return
     }
     this.captureTurnFacts(state, playerId, turnSpells, deliberatelyStopped)
+    // 当前玩家的行动结束后切到新的统计桶，其他玩家保持自己的行动序号。
+    this.advanceActionIndex(state, playerId)
     await this.saveState(state)
-    // 回合切换：所有玩家 currentTurnIndex +1（用于元素反应的"单回合"界定）
-    if (state.matchStats) {
-      for (const ms of Object.values(state.matchStats.players)) ms.currentTurnIndex += 1
-    }
     this.broadcast(state, { type: 'turn_to', data: { playerId: state.currentPlayerId } })
     this.broadcastStateAll(state)
     for (const ws of this.ctx.getWebSockets()) {
@@ -661,8 +678,21 @@ export class AbracaRoom {
     const facts = (state.matchStats.facts ??= [])
     const serialized = JSON.stringify(data)
     if (facts.some(fact => fact.key === key && fact.playerId === playerId && JSON.stringify(fact.data) === serialized)) return
-    if (facts.length >= 100) return
     facts.push({ key, playerId, data })
+    facts.sort((left, right) => {
+      const priority = (FACT_PRIORITY[left.key] ?? Number.MAX_SAFE_INTEGER)
+        - (FACT_PRIORITY[right.key] ?? Number.MAX_SAFE_INTEGER)
+      if (priority !== 0) return priority
+      const leftCanonical = `${left.key}\u0000${left.playerId}\u0000${JSON.stringify(left.data)}`
+      const rightCanonical = `${right.key}\u0000${right.playerId}\u0000${JSON.stringify(right.data)}`
+      return leftCanonical < rightCanonical ? -1 : leftCanonical > rightCanonical ? 1 : 0
+    })
+    if (facts.length > MAX_MATCH_FACTS) facts.length = MAX_MATCH_FACTS
+  }
+
+  advanceActionIndex(state, playerId) {
+    const ms = state.matchStats?.players?.[playerId]
+    if (ms) ms.currentTurnIndex = (ms.currentTurnIndex ?? 0) + 1
   }
 
   captureTurnFacts(state, playerId, turnSpells, voluntary) {
@@ -705,8 +735,14 @@ export class AbracaRoom {
         })
       }
     }
+    const actingStats = state.matchStats.players[actingPlayerId]
+    const turnSpells = actingStats?.turnSpellSets?.[actingStats.currentTurnIndex] ?? []
+    this.captureTurnFacts(state, actingPlayerId, turnSpells, false)
     const winnerId = state.summary.winnerId
-    if (!winnerId) return
+    if (!winnerId) {
+      this.advanceActionIndex(state, actingPlayerId)
+      return
+    }
     const winnerStats = state.matchStats.players[winnerId]
     const winner = state.players.find(p => p.id === winnerId)
     if (!winnerStats || !winner) return
@@ -723,13 +759,12 @@ export class AbracaRoom {
         allSpells: winnerStats.roundWinsByReason.all_spells,
       })
     }
-    const turnSpells = winnerStats.turnSpellSets[winnerStats.currentTurnIndex] ?? []
-    this.captureTurnFacts(state, actingPlayerId, turnSpells, false)
     if (state.summary.reason === 'all_spells' && turnSpells.length >= 4) {
       this.addMatchFact(state, 'turn_clear_streak', winnerId, {
         round: state.round, successCount: turnSpells.length, reason: 'all_spells',
       })
     }
+    this.advanceActionIndex(state, actingPlayerId)
   }
 
   sendHandTo(state, socket, playerId) {

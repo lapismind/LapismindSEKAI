@@ -59,3 +59,30 @@ The Auth full suite intentionally logs `forced player failure` while testing tra
 
 - In-progress rooms persisted before B2 have lazy defaults for current-round accounting, but their earlier rounds cannot be reconstructed. They therefore retain the existing v1 report fallback instead of emitting a v2 report with an unverifiable score breakdown. New matches initialized by B2 reconcile exactly.
 - Facts are capped at the Auth limit of 100. Exact duplicate facts are suppressed, while distinct rounds/data remain available until the cap.
+
+## Reviewer Fix Pass
+
+The B2 High/Medium review findings were fixed with new RED/GREEN coverage. No B3 story selection was implemented.
+
+- `doEndTurn()` now finalizes the actor's action facts and advances that player's `currentTurnIndex` before persisting state. Reloading the exact stored state therefore starts the next action in a fresh bucket while successful chained casts remain in the current bucket.
+- `beginRound()` establishes each player's next unused action index from persisted action buckets, so terminal actions from separate rounds cannot merge.
+- Terminal `self_destruct` actions now capture maxima and `turn_distinct_spells` from successful casts completed before the fatal miss. The failed declaration does not count as a successful cast and never creates `voluntary_stop`.
+- `comeback_win` now uses the same canonical capped insertion path as every other fact. Fact retention is deterministic by fixed priority, then canonical key/player/data order. At the 100-fact boundary, high-value comeback evidence displaces lower-priority survivor/voluntary facts rather than making the Auth payload invalid. This is fact retention only, not story selection.
+- Producer-consumer lifecycle tests now reload exact persisted state after `doEndTurn()`, cross real `beginRound()` boundaries, cover terminal self-destruction sequences, and sanitize capped reports produced by `buildMatchReport()`.
+
+Strict TDD evidence:
+
+- RED: 4 intended behavior failures after correcting one invalid self-destruct fixture: persisted action index remained `0`, two real rounds merged into bucket `0`, fatal misses left maxima at `0`, and capped comeback reports contained 101 facts.
+- GREEN focused: `node --test tests/rules.test.mjs tests/match-facts.test.mjs` passed 36/36.
+
+Final serial verification:
+
+- Abracadawhat production build and emoji postbuild: passed.
+- Abracadawhat full: 69/69 passed.
+- Auth sanitizer focused: 19/19 passed.
+- Auth full, including isolated real D1 integration: 47/47 passed.
+- Auth full still intentionally logs `forced player failure` while proving transaction rollback; the test passes.
+
+Remaining concern:
+
+- Pre-B2 in-progress rooms still use the documented v1 report fallback because facts and score sources from their earlier rounds cannot be reconstructed authoritatively.
