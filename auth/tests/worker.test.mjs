@@ -140,6 +140,7 @@ const SECRET = 'test-secret'
 function makeEnv() {
   return {
     SESSION_SECRET: SECRET,
+    MATCH_REPORT_SECRET: 'match-report-secret',
     GITHUB_CLIENT_ID: 'cid',
     GITHUB_CLIENT_SECRET: 'csec',
     ADMIN_GITHUB_ID: '',
@@ -409,3 +410,48 @@ console.log('worker password-limit tests passed')
 }
 
 console.log('worker nickname tests passed')
+
+// ---- 战绩上报：路由必须使用 2-5 人的 v1 清洗规则 ----
+{
+  const env = makeEnv()
+  env.DB = {
+    prepare(sql) {
+      const statement = {
+        bind() { return statement },
+        async run() {
+          if (sql.startsWith('INSERT INTO matches')) return { meta: { last_row_id: 1, changes: 1 } }
+          if (sql.startsWith('INSERT INTO match_players')) return { meta: { changes: 1 } }
+          if (sql.startsWith('INSERT OR IGNORE INTO achievements')) return { meta: { changes: 0 } }
+          throw new Error('match report fake db: unsupported run: ' + sql)
+        },
+        async first() {
+          if (sql.includes('SUM(') && sql.includes('match_players')) {
+            return { totalCasts: 0, totalKills: 0, totalWins: 0, dragonFails: 0, suicides: 0 }
+          }
+          throw new Error('match report fake db: unsupported first: ' + sql)
+        },
+        async all() {
+          if (sql.includes('json_each')) return { results: [] }
+          throw new Error('match report fake db: unsupported all: ' + sql)
+        },
+      }
+      return statement
+    },
+  }
+  const players = Array.from({ length: 6 }, (_, i) => ({
+    playerId: `p${i + 1}`,
+    nickname: `玩家${i + 1}`,
+  }))
+  const res = await worker.fetch(new Request('https://auth.qmzhj.top/api/matches', {
+    method: 'POST',
+    headers: {
+      authorization: 'Bearer match-report-secret',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ game: 'abracadawhat', roomId: 'R1', rounds: 1, players }),
+  }), env)
+
+  assert.equal(res.status, 400, '超过 5 名玩家必须由统一清洗器拒绝')
+}
+
+console.log('worker match-report tests passed')

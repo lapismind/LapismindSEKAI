@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 import './helpers/workerLoader.mjs'
 
 const { default: worker } = await import('../src/worker/index.js')
+const { AbracaRoom } = await import('../src/worker/abracaRoom.js')
 const { createSessionToken, createIdentityToken, verifyIdentityToken } = await import('@lapismind/lobby-kit')
 
 let forwarded = null
@@ -56,6 +57,67 @@ const env = {
     env,
   )
   assert.equal(bad.status, 401)
+}
+
+{
+  // 古代巨龙击杀既计入总击杀，也单独计入巨龙击杀子集。
+  const state = {
+    phase: 'playing',
+    round: 1,
+    targetScore: 8,
+    currentPlayerId: 'caster',
+    lastCastLevel: null,
+    castSucceeded: {},
+    castFailed: {},
+    castCounts: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0 },
+    deck: [],
+    secretPile: [],
+    summary: null,
+    players: [
+      { id: 'caster', nickname: '施法者', seat: 0, score: 0, health: 6, hand: [1, 8], secrets: [], alive: true },
+      { id: 'p2', nickname: '目标二', seat: 1, score: 0, health: 3, hand: [], secrets: [], alive: true },
+      { id: 'p3', nickname: '目标三', seat: 2, score: 0, health: 3, hand: [], secrets: [], alive: true },
+      { id: 'p4', nickname: '目标四', seat: 3, score: 0, health: 3, hand: [], secrets: [], alive: true },
+    ],
+    matchStats: {
+      players: Object.fromEntries(['caster', 'p2', 'p3', 'p4'].map((playerId) => [playerId, {
+        playerId,
+        kills: 0,
+        deaths: 0,
+        spellsCast: {},
+        roundSpellCasts: [],
+        castStreaks: {},
+        turnSpellSets: {},
+        currentTurnIndex: 0,
+        dragonKills: 0,
+        dragonOneCastKills: 0,
+        dragonFails: 0,
+        suicides: 0,
+        killedHighHpTarget: false,
+        singleCastMultiKillNonDragon: 0,
+        castOwlThisMatch: false,
+        roundWonAtHp1: false,
+        roundEndSecrets: 0,
+        roundWonNoSecrets: false,
+        roundsSurvived: 0,
+      }])),
+    },
+  }
+  const ctx = {
+    storage: { put: async () => {} },
+    getWebSockets: () => [],
+  }
+  const room = new AbracaRoom(ctx, {})
+  const originalRandom = Math.random
+  Math.random = () => 0.999
+  try {
+    await room.doCast(state, 'caster', { spellId: 1 })
+  } finally {
+    Math.random = originalRandom
+  }
+
+  assert.equal(state.matchStats.players.caster.kills, 3)
+  assert.equal(state.matchStats.players.caster.dragonKills, 3)
 }
 
 console.log('abraca worker auth tests passed')

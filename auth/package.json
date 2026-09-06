@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "node tests/worker.test.mjs",
+    "test": "node --test tests/*.test.mjs",
     "db:init": "wrangler d1 execute sekai-db --remote --file=./schema.sql",
     "db:init:local": "wrangler d1 execute sekai-db --local --file=./schema.sql"
   },

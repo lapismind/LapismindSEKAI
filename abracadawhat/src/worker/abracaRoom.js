@@ -419,11 +419,11 @@ export class AbracaRoom {
           if (preKillHp >= 3 && me?.health === 1) ms.killedHighHpTarget = true
         }
       }
+      ms.kills += killsThisCast
       if (spellId === 1) {
         ms.dragonKills += killsThisCast
         ms.dragonOneCastKills = Math.max(ms.dragonOneCastKills, killsThisCast)
       } else {
-        ms.kills += killsThisCast
         if (killsThisCast >= 2) {
           ms.singleCastMultiKillNonDragon = Math.max(ms.singleCastMultiKillNonDragon, killsThisCast)
         }

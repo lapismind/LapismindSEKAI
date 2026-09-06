@@ -136,6 +136,18 @@ test('双人局闪电暴风雨只对唯一对手造成一点伤害', () => {
   assert.deepEqual(result.damaged, [{ playerId: 'opponent', amount: 1 }])
 })
 
+test('古代巨龙一次命中的受击列表不重复目标', () => {
+  const state = prepareRound([{ id: 'caster' }, { id: 'p2' }, { id: 'p3' }, { id: 'p4' }], fixedRng)
+  state.currentPlayerId = 'caster'
+  state.players[0].hand = [1, 8]
+  for (const target of state.players.slice(1)) target.health = 1
+
+  const result = applyCast(state, 'caster', 1, fixedRng)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.damaged.map((entry) => entry.playerId), ['p2', 'p3', 'p4'])
+})
+
 test('普通施法失败扣一心并锁定回合；古龙失败掷骰扣 1 到 3 心', () => {
   let calls = 0
   const rng = () => { calls++; return 0 }

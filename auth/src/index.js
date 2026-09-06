@@ -15,6 +15,7 @@
 import { generatePlayerId, createSessionToken, verifyIdentityToken, SESSION_TTL_MS } from '@lapismind/lobby-kit'
 
 import { evaluateAchievements, ACHIEVEMENT_DEFS, GAMES, ACHIEVEMENT_TARGETS, progressFromCareer } from './achievements.js'
+import { sanitizeMatchReport } from './matchReports.js'
 
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize'
 const GITHUB_TOKEN_URL = 'https://github.com/login/oauth/access_token'
@@ -679,45 +680,20 @@ async function postMatch(request, env, cors = {}) {
   let body
   try { body = await request.json() } catch { return json({ error: 'invalid json' }, 400, cors) }
 
-  const game = typeof body.game === 'string' ? body.game.slice(0, 32) : ''
-  const players = Array.isArray(body.players) ? body.players.slice(0, 10) : []
-  const rounds = Number.isInteger(body.rounds) ? body.rounds : 0
-  if (!game || players.length < 2) return json({ error: 'invalid payload' }, 400, cors)
+  const sanitized = sanitizeMatchReport(body)
+  if (!sanitized.ok) return json({ error: sanitized.error }, 400, cors)
+  const report = sanitized.report
+  const { game, players, rounds } = report
 
   // 写 matches
   const matchResult = await env.DB.prepare(
     'INSERT INTO matches (game, room_id, rounds) VALUES (?, ?, ?)'
-  ).bind(game, body.roomId || null, rounds).run()
+  ).bind(game, report.roomId, rounds).run()
   const matchId = matchResult.meta.last_row_id
 
   // 写 match_players + 收集每个玩家的上报数据
   const cleanPlayers = []
-  for (const p of players) {
-    if (!p || typeof p.playerId !== 'string' || !p.playerId.startsWith('p')) continue
-    const row = {
-      playerId: p.playerId.slice(0, 64),
-      nickname: typeof p.nickname === 'string' ? p.nickname.slice(0, 64) : null,
-      score: Number.isInteger(p.score) ? p.score : 0,
-      isChampion: p.isChampion === true,
-      kills: Number.isInteger(p.kills) ? p.kills : 0,
-      deaths: Number.isInteger(p.deaths) ? p.deaths : 0,
-      spellsCast: typeof p.spellsCast === 'object' && p.spellsCast ? p.spellsCast : {},
-      secretsTaken: Number.isInteger(p.secretsTaken) ? p.secretsTaken : 0,
-      roundsSurvived: Number.isInteger(p.roundsSurvived) ? p.roundsSurvived : 0,
-      // 成就判定专用字段（不入库，只传给判定引擎）
-      roundWonAtHp1: p.roundWonAtHp1 === true,
-      roundEndSecrets: Number.isInteger(p.roundEndSecrets) ? p.roundEndSecrets : 0,
-      roundKillsNonDragon: Number.isInteger(p.roundKillsNonDragon) ? p.roundKillsNonDragon : 0,
-      dragonKills: Number.isInteger(p.dragonKills) ? p.dragonKills : 0,
-      dragonOneCastKills: Number.isInteger(p.dragonOneCastKills) ? p.dragonOneCastKills : 0,
-      finalHp: Number.isInteger(p.finalHp) ? p.finalHp : null,
-      firstRoundSuicide: p.firstRoundSuicide === true,
-      roundSpellCasts: Array.isArray(p.roundSpellCasts) ? p.roundSpellCasts : [],
-      maxFailsInRound: Number.isInteger(p.maxFailsInRound) ? p.maxFailsInRound : 0,
-      hadFullHpThenDied: p.hadFullHpThenDied === true,
-      dragonFails: Number.isInteger(p.dragonFails) ? p.dragonFails : 0,
-      suicides: Number.isInteger(p.suicides) ? p.suicides : 0,
-    }
+  for (const row of players) {
     cleanPlayers.push(row)
     await env.DB.prepare(
       `INSERT INTO match_players
@@ -764,7 +740,7 @@ async function postMatch(request, env, cors = {}) {
   }
 
   // 判定成就（career 查询不含本场刚写入的行，所以判定函数里都做了 career + 本场相加）
-  const unlocked = await evaluateAchievements({ ...body, players: cleanPlayers }, careerLookup)
+  const unlocked = await evaluateAchievements(report, careerLookup)
 
   // 写 achievements 表（UNIQUE 约束去重，只保留真正新达成的）
   const newUnlocked = []
