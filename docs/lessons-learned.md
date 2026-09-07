@@ -1,5 +1,58 @@
 # Lessons Learned
 
+## 2026-09-07 D2/D3 full-suite Wrangler flake
+
+- 全量 Auth 测试把多个 spawn 真实 `wrangler dev` 的集成测试文件并跑时，Windows 上会非确定性地出现「wrangler dev did not become ready」或 libuv `UV_HANDLE_CLOSING`（退出码 3221226505 / 0xC0000409），且失败落在哪个文件每次不同。只要相关测试在单独 `node --test` 下全绿，且改动只新增 GET 路由、不触碰 career/上报/迁移路径，就不能把这种失败当成代码回归；验证应优先串行或按文件隔离复跑。
+
+## 2026-09-07 D1 reviewer P2/P3 round
+
+- A `Set`-based authoritative derivation (`filter known keys -> new Set -> sort`) is the right cache repair for `unlocked_keys_json`; any "preserve valid nonempty array" upsert CASE is a corruption bug, because valid-JSON semantic garbage passes `json_valid`/`json_type`/`json_array_length` unchanged.
+- When editing a function body with `edit`, a partial context match can re-indent only the upper half of a block and leave the lower half at the old indent, producing a whitespace-only diff that `node --check` accepts. After structural edits, re-read the whole edited function and normalize indentation before diff review.
+- Real-D1 concurrency coverage must know which persistent users exist at that point in the fixture. After the fixture registers p2, concurrent/tie assertions must expect `savedReports: ['p1','p2']`, not `['p1']`; asserting the pre-registration shape at a later stage is a false RED.
+
+## 2026-09-07 D1 personal-report RED fixture
+
+- A `dragon_multi_kill` story with `killCount: 3` is impossible in a two-player match because the sanitizer caps one-cast kills at `playerCount - 1`. Persistence RED fixtures must satisfy all upstream report invariants; otherwise a correct 400 validation response hides the intended missing-storage failure.
+- Auth-relative syntax checks such as `node --check src/matchPersistence.js` must run with `auth/` as the working directory, or use the root-relative `auth/src/matchPersistence.js`; a `MODULE_NOT_FOUND` from the wrong working directory is tooling error, not source validation.
+- Best-effort production catches can make old fake-D1 tests pass while printing unsupported-query errors. When a new optional persistence step is intentional, update the fake to model the new lookup/write contract and require clean output rather than treating caught fixture drift as verification.
+- Large script-style test files reuse common setup names in many top-level blocks. A context-only patch can insert new fake state beside the wrong matching declaration; after patching, search the new identifier and verify its declaration and every use are inside the same lexical block before running the suite.
+- A real Wrangler D1 test that serially executes migrations, 11 match posts, corruption, retention, triggers, and retries can legitimately exceed the earlier 60-second suite budget on Windows. Keep network probes individually bounded, but size the outer `node:test` timeout for the complete isolated workflow so timeout does not hide the next business assertion.
+- SQLite permits selecting a non-grouped column alongside `COUNT(*)`, which can return one arbitrary row's value and hide per-player differences. Idempotence assertions over personal reports must group by or select each `player_id` explicitly, especially when only one player owns the match's new unlock keys.
+- A report upsert batch can succeed and still leave no row when the same batch's “latest 10” cleanup evicts that old match. Response fields named `savedReports` must be based on post-retention existence, not merely a successful SQL batch, or retries of old reports overstate persistence.
+
+## 2026-09-07 C4 reviewer label test rename
+
+- 职业标签列表断言改成批准领域词后，后续按旧标签查值的断言也必须同步改名；只更新 expected label array 会让测试在真正行为断言前以 `TypeError` 中断。重命名测试术语时应搜索同文件所有字符串引用，再重跑确认是业务通过/失败而非测试空引用。
+- Python 三引号内写 JavaScript `join('\n')` 时，Python 会先把 `\n` 变成实际换行并破坏 JS 单引号字符串，Playwright 报 `SyntaxError`。跨语言脚本应写成 `join('\\n')`，或使用 Python raw string。
+- Python Playwright 的同步 route handler 内 `time.sleep()` 会阻塞测试线程，导致无法在延迟响应期间观察页面中间态。延迟/悬挂 fetch 应在 `add_init_script` 里用浏览器 Promise + timer 模拟，并监听传入的 AbortSignal。
+- Tier 泄漏扫描若直接读取 `body.textContent`，会把内联 `<script>` 源码里的普通变量字母当成用户可见泄漏。扫描隐藏 DOM 时应克隆 body 后移除 `script/style/template`，保留真正渲染节点的隐藏文本和属性。
+- C4 tier 扫描扩大到整个 `body` 会命中全站音乐歌词中合法的独立拉丁字母（例如歌曲文本里的「A」），这不属于资料页故事 tier 泄漏。隐私断言应覆盖 `.profile-shell` 的全部可见/隐藏节点及属性，既不漏 C4 错误面，也不把站外组件内容当成 C4 数据。
+
+## 2026-09-07 C4 profile presentation RED
+
+- lobby-kit `getAchievements()` 若手工重建部分响应，会在 Auth 合同新增 `career`、`legacyUnlockedCount` 等字段时静默丢数据。兼容客户端应在验证 `achievements` 数组后透明返回服务端对象，只覆盖本地 `ok: true`。
+- Blog 纯展示模型首次 RED 以 `ERR_MODULE_NOT_FOUND` 失败，准确证明模块尚未实现；这与测试基础设施错误不同，因为测试入口、导入路径和 Node ESM 均已正常工作到模块解析阶段。
+- Windows 下 `with_server.py` 直接启动 `npm run dev -- --host 127.0.0.1` 未能在 30 秒内探活 4321；浏览器 RED 不能据此判定页面行为，必须先单独确认 Astro 实际启动输出/端口，再用可稳定管理的命令重跑。
+- Astro 7 的 dev CLI 可能复用仓库已有的托管进程并明确返回实际地址（本次为 3000），而不是按新命令另起 4321。遇到 helper 探活失败先看直接启动输出，再将 Playwright `BASE_URL` 指向已声明的实际端口。
+
+## 2026-09-07 C3 missing migration RED on Windows
+
+- 用 Wrangler 执行“文件尚不存在”作为 migration RED 时，Wrangler 在 Windows 上可能先正确报告 `Unable to read SQL text file`，随后在进程退出时额外触发 libuv `UV_HANDLE_CLOSING` assertion。业务 RED 仍应以缺少迁移文件为准，但后续迭代必须先创建文件再重跑，不能重复用同一异常退出污染测试结果。
+- 假 D1 若用宽泛的 `sql.includes('COUNT(*)')` 匹配评论计数，新加入含 `COUNT(*)` 的战绩汇总会被提前截获并返回错误 shape。SQL 测试桩应按目标表/查询职责收窄分支，不能只按聚合函数名匹配。
+- 清洗后的 `spellCounts` 允许规范魔法键对应 0，因此 `json_each` 分组可能返回总数为 0 的 spell 行。法师档案的 `spellTypesUsed` 和 `favoriteSpellId` 必须忽略非正数总计，不能把“字段存在”误当成“实际施放过”。
+- 将语法检查和仓库级 diff 检查合并时，命令工作目录决定相对源码路径；从仓库根运行 `node --check src/index.js` 会错误查找根目录 `src`。跨子项目验证应使用显式路径 `node --check auth/src/index.js`，或把命令工作目录设为子项目。
+- 真实 D1 SQL 增加 `WHERE` 过滤后，假 D1 若仍返回未过滤的 `json_each` 分组结果，会形成“真实集成绿、假路由红”的测试桩漂移。先以真实绑定结果为准，再让假桩模拟查询输出边界；不能为了旧假桩撤掉生产过滤。
+- 将查询提取到独立模块后，只扫描旧入口文件的源码回归会误报“查询数量不足”。这类结构断言应覆盖实际生产模块集合，或改用真实集成行为证明；不能要求实现为了测试继续留在旧文件。
+
+## 2026-09-07 C2 v2 achievement persistence fixture
+
+- 新增“单个成就解锁”集成断言前必须检查基础 standing 是否已经满足其他 active 条件。本次基础夹具的 `roundWinsByReason` 同时含 `kill: 1` 与 `all_spells: 1`，因此加入一线生机事实后会合法地同时解锁 `different_paths`；应断言完整精确结果或构造只满足目标条件的合法 sanitizer fixture，不能为了测试预期削弱生产判定。
+- 让既有 v2 持久化路径开始访问另一张历史表时，真实 D1 的“pre-005”夹具也必须包含那张在 005 之前已经存在的表。夹具只描述迁移前真实基线，不等于新增迁移；缺表导致的 500 不能误判为 C2 事务逻辑错误。
+
+## 2026-09-07 C1 achievement projection
+
+- `Array.prototype.flatMap()` 的同步回调里不能临时加入 `await`。当目录重塑已经移除所有 active 累计目标时，API 投影应直接停止生成 `target/progress`，不要为了 legacy 内部兼容在逐项映射中重复查询 career；跨场累计仍留给后续法师档案任务。
+
 ## 2026-09-07 B5 compiled recap fixture
 
 - Vue may render adjacent interpolations and text into one accessibility text node; an achievement card containing stars plus a title will not satisfy `get_by_text(title, exact=True)` even though the title is visibly present. Browser assertions for highlighted-vs-collapsed items should target the card/container boundary and then inspect its content or visibility, rather than assuming each interpolation becomes an independent text node.

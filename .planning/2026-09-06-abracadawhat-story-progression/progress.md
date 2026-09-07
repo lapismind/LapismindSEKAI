@@ -5,3 +5,23 @@
 - 2026-09-06：补充世界观规则：故事卡玩家界面使用四星至一星，不显示 S/A/B/C。
 - 2026-09-06：开始编写分阶段实施计划。
 - 2026-09-06：实施计划完成，共 17 个独立任务；自检规格覆盖、字段一致性和范围约束通过，开始 Stage A。
+- 2026-09-06：A1 完成（`5bc6979` + 审阅修复 `636280b`）；Auth 23/23、Abracadawhat 27/27，独立复审通过。传输层 body 大小限制记为后续加固，不阻塞 A1。
+- 2026-09-06：A2 完成（`400e5b3` + 审阅修复 `9cd409c`）；Auth 25/25、Abracadawhat 31/31，独立复审通过。保留一个 Minor：补同场 Auth 成功广播的正向测试。
+- 2026-09-06：A3 完成（`f56b33f` + 审阅修复 `d5c805a`）；Abracadawhat 37/37，390px Playwright 通过，独立复审通过。
+- 2026-09-06：A4 完成（`1f36a6a` + 审阅修复 `3c8881f`、`e8e04aa`）；Abracadawhat 51/51，路由退出、连接竞态和对话框 Playwright 通过。Stage A 完成，进入 Stage B。
+- 2026-09-06：B1 完成（`e950641` + 加固 `a1bf49d`、`bbf82dc`）；Auth 47/47、Abracadawhat 51/51、真实隔离 D1 集成通过，独立复审确认 foundation-ready。B2 完成前禁止单独部署游戏 Worker v2。
+- 2026-09-07：B1 初始提交 `e950641` 后处理 reviewer High/Medium：增加迁移重复预检、旧休眠房间 v1 fallback、规范 payload SHA-256 冲突检测、pending/complete 与 D1 batch 原子玩家写入、精确 fact/story schema 和完整失败/并发/修复测试。Auth 43/43、Abracadawhat 51/51、构建通过；待新提交。
+- 2026-09-07：B1 final foundation pass 完成实现与验证：preflight 移出 migrations、稳定 finishedAt、facts 无序规范化、全列/额外行修复、pending achievement 隔离、比分契约、真实隔离 D1 集成和 A2 正向广播。Auth 47/47、Abracadawhat 51/51、构建通过；待新提交。
+- 2026-09-07：B2 完成 RED/GREEN 实现与初轮全量验证：回合得分来源/决定性魔法、本人轮末起手、权威轮胜/行动峰值、11 类固定 facts、去重击杀死亡和真实 producer-consumer sanitizer contract 已通过；未选择 stories、未部署。最终提交前复跑串行门禁。
+- 2026-09-07：B2 final 串行门禁通过：Abracadawhat focused 31/31、build/postbuild、full 64/64；Auth sanitizer 19/19、full 47/47（含真实隔离 D1）。报告写入 `B2-report.md`，准备按 B2 边界提交。
+- 2026-09-07：B2 经三轮审阅修复后完成（`d34cb6b`、`c6aa7c3`、`b3737cd`、`952f746`）；Abracadawhat 77/77、Auth 47/47，行动边界、事实保留、持久翻盘证据和最强翻盘快照均通过最终复审。
+- 2026-09-07：B3 完成（`5c25ff7` + 审阅修复 `c76a632`）；Abracadawhat 90/90，故事选择的白名单、确定性、去重和 Auth 契约独立复审通过。
+- 2026-09-07：B4 完成（`2e1d6b5` + 审阅修复 `e138ec5`）；Abracadawhat 112/112、Auth 47/47，即时 game_over、reportId 隔离和失败状态独立复审通过。保留 Minor：缺密钥且 stale report 的专门测试。
+- 2026-09-07：B5 完成（`c946d50` + 审阅修复 `926ab70`）；Abracadawhat 120/120，A4/B5 Playwright 通过，四至一星故事、回合/比赛复盘和弹窗操作独立复审通过。Stage B 完成，进入 Stage C。
+- 2026-09-07：C1 完成（`78fa221` + 审阅修复 `144d10b`）；Auth 37/37、Abracadawhat 120/120，10 个 active 传奇目录、legacy/hidden 投影和兼容响应契约独立复审通过。
+- 2026-09-07：C2 完成（`24ad864`）；Auth 61/61、Abracadawhat 120/120，十个事实驱动传奇成就和 v2 幂等解锁通过复审。保留 Minor：死亡秘密持有者显式反例、成就 batch 失败重试测试。
+- 2026-09-07：C3 完成（`3214e43` + 审阅修复 `c6a4b12`）；Auth 64/64，6 个旧解锁映射、法师档案和真实 D1 脏历史容错独立复审通过。生产迁移保持 D4 条件门禁。
+- 2026-09-07：C4 完成（`7479eb0` + 审阅修复 `d2ec27b`、`be90782`）；lobby-kit 全量、Blog test/check/lint/build、Playwright 10/10 通过，资料页分区、加载隔离与隐私独立复审通过。Stage C 完成，进入 Stage D。
+- 2026-09-07：B3 启动。基线 Abracadawhat build + 77/77、Auth sanitizer 19/19 通过；首个预期 RED 为缺少 `story.js`，随后按计划补仅含两项导出的空实现以进入行为断言 RED。
+- 2026-09-07：B3 行为 RED 确认 7 项预期失败，最小静态规则表实现后 focused 11/11、build/postbuild、Abracadawhat full 88/88 通过；真实 Auth v2 sanitizer 接受所有选出 story。待最终复跑、审阅与独立提交。
+- 2026-09-07：B3 最终自审无 Critical/Important；fresh serial build/postbuild + full 88/88、focused 11/11、Auth sanitizer 19/19、diff check 全通过。报告 `B3-report.md` 完成，准备只暂存 B3 计划文件和报告。

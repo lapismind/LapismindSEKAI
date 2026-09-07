@@ -5,3 +5,17 @@
 - Worker 已生成部分丰富统计，但 Auth 清洗层丢弃多个字段；完整链路测试必须先补。
 - 现有部分成就不可达、描述与规则冲突或鼓励坏玩法。
 - 用户确认故事卡玩家可见稀有度为 4/3/2/1 星，四星最高。
+- A1 已统一击杀口径：`kills` 包含巨龙，`dragonKills` 是子集；v1 发送端与 Auth 清洗边界已对齐。
+- `/api/matches` 仍在 schema 清洗前解析完整 JSON；当前由 Worker 间密钥保护，作为 v2/端点防御加固项跟踪。
+- A2 使用当前比赛 `matchStats.startAt` 抑制迟到的旧场成就广播；schema v2 上线后再由稳定 `reportId` 提供跨层隔离。
+- B1 v2 协议已固定 Auth 消费结构；B2 必须产出完全一致的 `scoreBySource`、`roundWinsByReason` 和事实字段，否则严格清洗会拒绝真实比赛。
+- 生产数据库尚未建立 Wrangler migration tracking baseline；D4 必须先做远程只读重复数据预检和备份/恢复点确认，不能直接运行 migrations apply。
+- B1 审阅修复确认 D1 `batch()` 是事务：任一语句失败会回滚整个批次；v2 玩家行与 `complete` 状态切换放进同一 batch，pending match 不进入 career。
+- Auth 既有 001-004 是直接执行历史，Wrangler 当前把 001-005 全列为 pending；在人工建立基线前不能声称已有 migration tracking，也不能盲目 `migrations apply`。
+- 005 唯一索引前必须只读检查历史 `(match_id, player_id)` 重复；任何结果都中止并人工审查，不自动删除或合并。
+- B1 final：操作性 preflight SQL 已移出 migrations；facts 作为无序证据规范排序，stories 保留 B3 优先级顺序；同一已完成比赛固定复用持久化 `finishedAt`。
+- B1 final：真实隔离 Wrangler D1 测试执行生产 persistence helper，证明 batch 回滚、pending 隔离/修复、冲突 409、全列精确比对和额外玩家行清理。
+- B2 producer semantics：`voluntary_stop` 仅指同一行动成功施法至少 2 次后主动 `end_turn`，猜错后的被迫结束和终结轮次的施法不计；低血击杀使用施法前 actor HP 与伤害前 target HP。
+- B2 producer-consumer contract：真实 `AbracaRoom` 方法生成的 standings/facts 经 `sanitizeMatchReport(buildMatchReport(...))` 接受；每轮来源累计与最终分数精确对账。
+- B3 contract：Auth 的 `secret_score` 没有同名 B2 fact；唯一可直接映射的权威事实是 `survivor_secret_stack`，将已证明的 `secretCount` 同时输出为 `secretPoints`/`secretCount` 后通过真实 Auth story schema。
+- B3 selection：批准规格没有跨玩家公平配额；同类去重按 `story key + playerId`，全场仍严格按 S>A>B>C、固定 key、playerId、round 选择，保留 playerId 供后续个人战报筛选。

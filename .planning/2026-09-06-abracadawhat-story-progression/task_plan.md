@@ -7,10 +7,10 @@
 ## 阶段
 
 - [complete] 1. 编写并审查实施计划
-- [in_progress] 2. A：正确性与关键 UX 修复
-- [pending] 3. B：服务端事实与故事引擎、局后复盘
-- [pending] 4. C：传奇成就、法师档案与旧成就迁移
-- [pending] 5. D：最近十场战报与个人资料展示
+- [complete] 2. A：正确性与关键 UX 修复
+- [complete] 3. B：服务端事实与故事引擎、局后复盘
+- [complete] 4. C：传奇成就、法师档案与旧成就迁移
+- [complete] 5. D：最近十场战报与个人资料展示
 - [pending] 6. 全链路审阅、生产验证、部署与收尾
 
 ## 约束
@@ -33,3 +33,14 @@
 | A3 夹具诊断发现 Vue runtime-only 不支持 JS 内联 template | 2 | 改用 test-only `.vue` SFC，由项目已有 Vite Vue 插件编译，不修改生产 Vue alias。 |
 | A3 夹具同时存在两个“猫头鹰效果说明”导致 Playwright strict mode | 3 | 将 SpellCard 定位限定到对应 `data-testid` 容器，公共区定位限定到自身 section。 |
 | A3 Playwright `page.on` 直接传 `list.append` 抛 AttributeError | 4 | 改用 lambda 包装事件参数后追加到列表。 |
+| B1 migration test 用 `npx.cmd` + `shell: false` 未启动 | 1 | 改为读取 Wrangler package 的真实 bin 路径并由 Node 直接启动，保留参数边界。 |
+| B1 preflight 经 shell 传多行 SQL 被拆成未知参数 | 2 | 预检改读仓库 SQL 文件，并由 Node 直接调用 Wrangler CLI。 |
+| B1 只读 SQL 测试把注释里的 delete 当成语句 | 3 | 扫描前剥离 `--` 注释，只检查 executable SQL。 |
+| B1 final 真实 D1 测试 readiness fetch 无超时 | 1 | 增加 500ms AbortSignal 与 15 次有界重试，失败打印 Wrangler stdout/stderr。 |
+| B1 final 临时 Wrangler config 使用不同 database ID | 2 | 复用仓库公开 D1 ID，并继续用独立 `persist-to` 隔离默认本地库。 |
+| B1 final fixture legacy match 使全表计数多一行 | 3 | v2 幂等断言限定 `report_id IS NOT NULL`，保留 legacy fixture。 |
+| B2 pre-damage 补丁残留旧循环变量并重复声明 `victim` | 1 | 立即读取修改片段，删除旧引用；后续状态变量替换后先做聚焦语法/测试验证。 |
+| B2 v2 完整性标记使现有手工 v2 fixture 走 v1 fallback | 1 | 仅给明确表示 B2-capable v2 的 fixture 增加 `factsVersion: 2`；旧持久房间 fixture 保持无标记验证 fallback。 |
+| 更新进度时误写 B1 SHA，补丁上下文不匹配 | 1 | 补丁整体未应用；读取真实进度后用准确 `bbf82dc` 追加。 |
+| Todo 列表写入 D1 优先级和 D4 描述时混入草稿字符 | 1 | 立即用完整列表覆盖校正，未影响代码或任务状态。 |
+| Stage C 进度补丁标题混入草稿字符 | 1 | 整体未应用；使用计划中的准确标题重做。 |
