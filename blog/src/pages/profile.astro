@@ -100,7 +100,23 @@ import { SITE_TITLE } from '../consts';
 			.career-row.wide { grid-column: 1 / -1; }
 			.career-row dt { margin: 0 0 0.2rem; color: var(--primary); font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.05em; }
 			.career-row dd { margin: 0; color: var(--ink); font-size: 0.92rem; line-height: 1.5; overflow-wrap: anywhere; }
-			@media (max-width: 480px) { .ach-shell, .career-shell { padding: 1.15rem 1rem 1.25rem; } .career-grid { grid-template-columns: 1fr; } .career-row.wide { grid-column: auto; } .ach-row { align-items: flex-start; gap: 0.7rem; } }
+			.report-shell { margin-top: 1.2rem; padding: 1.4rem 1.6rem 1.6rem; }
+			.report-head { margin-bottom: 1rem; }
+			.report-head h2 { margin: 0; font-size: 1.15rem; }
+			.report-head p { margin: 0.3rem 0 0; color: var(--muted); font-size: 0.82rem; }
+			.report-state { padding: 1.2rem; text-align: center; color: var(--muted); font-size: 0.86rem; border: 1px dashed var(--line); border-radius: var(--radius); }
+			.report-state[hidden], #report-list[hidden] { display: none; }
+			.report-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.8rem; }
+			.report-card { padding: 0.9rem 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card-bg); }
+			.report-card-meta { margin: 0 0 0.5rem; font-size: 0.82rem; font-family: var(--font-mono); color: var(--primary); }
+			.report-standings { list-style: none; margin: 0 0 0.5rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; }
+			.report-standings li { margin: 0; font-size: 0.82rem; color: var(--ink-soft); }
+			.report-story { padding: 0.55rem 0; border-top: 1px dashed var(--line); }
+			.report-story:first-of-type { border-top: none; }
+			.report-story-title { margin: 0 0 0.2rem; font-size: 0.9rem; font-weight: 650; letter-spacing: 0.02em; color: var(--ink); }
+			.report-story-body { margin: 0; font-size: 0.82rem; line-height: 1.6; color: var(--muted); }
+			.report-achievements { margin: 0.5rem 0 0; font-size: 0.8rem; color: oklch(0.6 0.14 150); }
+			@media (max-width: 480px) { .ach-shell, .career-shell, .report-shell { padding: 1.15rem 1rem 1.25rem; } .career-grid { grid-template-columns: 1fr; } .career-row.wide { grid-column: auto; } .ach-row { align-items: flex-start; gap: 0.7rem; } }
 		</style>
 	</head>
 	<body>
@@ -182,6 +198,20 @@ import { SITE_TITLE } from '../consts';
 						<dl id="career-grid" class="career-grid"></dl>
 					</section>
 
+					<section id="report-section" class="report-shell glass" hidden aria-labelledby="report-title">
+						<div class="report-head">
+							<h2 id="report-title">最近战报</h2>
+							<p>认证服务保存的最近 10 场出包魔法师个人战报。</p>
+						</div>
+						<div id="report-loading" class="report-state" role="status" hidden>正在读取最近战报……</div>
+						<div id="report-error" class="report-state" role="alert" hidden>
+							<p>最近战报暂时无法读取。</p>
+							<button type="button" class="btn btn-ghost" id="report-retry">重试</button>
+						</div>
+						<div id="report-empty" class="report-state" hidden></div>
+						<div id="report-list" class="report-list" hidden></div>
+					</section>
+
 					<div class="actions">
 						<a id="pf-github-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener" hidden>GitHub 主页 ↗</a>
 						<a id="pf-register-entry" class="btn btn-primary" href="/login" hidden>进入 SEKAI</a>
@@ -202,6 +232,7 @@ import { SITE_TITLE } from '../consts';
 			import guestAvatar from '@lapismind/lobby-kit/avatars/0.png';
 			import { avatarChoices, avatarUrlById } from '../lib/avatarChoices.js';
 			import { buildAchievementSections, buildCareerRows } from '../lib/profilePresentation.js';
+			import { buildReportCards } from '../lib/abracadawhatProgression.js';
 
 			const guestAvatarSrc = typeof guestAvatar === 'string' ? guestAvatar : guestAvatar.src;
 			const auth = createAuthClient();
@@ -225,6 +256,7 @@ import { SITE_TITLE } from '../consts';
 					loading.hidden = true;
 					content.hidden = false;
 					void loadAchievements();
+					void loadReports();
 				} catch {
 					loading.hidden = true;
 					errorBox.hidden = false;
@@ -256,6 +288,8 @@ import { SITE_TITLE } from '../consts';
 					if (!res.ok) throw new Error('no achievements data');
 					renderHall(res);
 					renderCareer(res.career);
+					achievementNameByKey = new Map((res.achievements || []).map((a: any) => [a.key, a.name]));
+					if (lastReportCards.length && !el('report-list').hidden) renderReportCards(lastReportCards);
 					const hasAchievements = Array.isArray(res.achievements) && res.achievements.length > 0;
 					emptyState.hidden = hasAchievements;
 					achievementsContent.hidden = !hasAchievements;
@@ -278,6 +312,110 @@ import { SITE_TITLE } from '../consts';
 			}
 			document.addEventListener('astro:before-swap', teardownAchievements, { once: true });
 			window.addEventListener('pagehide', teardownAchievements, { once: true });
+
+			// ---------- 最近战报（只展示 Auth 保存的数据；失败只影响本区，不让资料页进入 error） ----------
+			let currentReportsController: AbortController | null = null;
+			let reportsGeneration = 0;
+			let achievementNameByKey = new Map<string, string>();
+			let lastReportCards: any[] = [];
+
+			async function loadReports() {
+				currentReportsController?.abort();
+				const generation = ++reportsGeneration;
+				const section = el('report-section');
+				const loadingState = el('report-loading');
+				const errorState = el('report-error');
+				const emptyState = el('report-empty');
+				const listState = el('report-list');
+				const controller = new AbortController();
+				currentReportsController = controller;
+				const timeout = window.setTimeout(() => controller.abort(), 3000);
+				section.hidden = false;
+				loadingState.hidden = false;
+				errorState.hidden = true;
+				emptyState.hidden = true;
+				listState.hidden = true;
+				try {
+					const res = await auth.getMatchReports('abracadawhat', 10, { signal: controller.signal });
+					if (generation !== reportsGeneration) return;
+					if (!res.ok) throw new Error('no match reports data');
+					lastReportCards = buildReportCards(res.reports || []);
+					if (auth.isGuest()) {
+						setText(emptyState, '游客当前局可看故事，最近战报需登录后保存。');
+						emptyState.hidden = false;
+					} else if (lastReportCards.length === 0) {
+						setText(emptyState, '还没有保存的战报。完成一局出包魔法师后，这里会显示最近的 10 场。');
+						emptyState.hidden = false;
+					} else {
+						renderReportCards(lastReportCards);
+						listState.hidden = false;
+					}
+				} catch {
+					if (generation !== reportsGeneration) return;
+					errorState.hidden = false;
+				} finally {
+					window.clearTimeout(timeout);
+					if (generation !== reportsGeneration) return;
+					loadingState.hidden = true;
+					currentReportsController = null;
+				}
+			}
+
+			function renderReportCards(cards: any[]) {
+				const list = el('report-list');
+				list.textContent = '';
+				for (const card of cards) {
+					const article = document.createElement('article');
+					article.className = 'report-card';
+					article.dataset.matchId = String(card.matchId ?? '');
+
+					const meta = document.createElement('p');
+					meta.className = 'report-card-meta';
+					const date = String(card.finishedAt ?? '').slice(0, 10);
+					meta.textContent = (date || '未知日期') + ' · ' + String(card.playerCount ?? '') + ' 人 · ' + String(card.rounds ?? '') + ' 轮 · 第 ' + String(card.rank ?? '') + ' 名 · ' + String(card.score ?? '') + ' 分';
+					article.appendChild(meta);
+
+					const standings = document.createElement('ul');
+					standings.className = 'report-standings';
+					for (const row of card.standings || []) {
+						const item = document.createElement('li');
+						item.textContent = '第 ' + String(row.rank ?? '') + ' 名 · ' + String(row.nickname || '玩家') + ' · ' + String(row.score ?? '') + ' 分';
+						standings.appendChild(item);
+					}
+					article.appendChild(standings);
+
+					for (const story of card.stories || []) {
+						const block = document.createElement('div');
+						block.className = 'report-story';
+						const title = document.createElement('p');
+						title.className = 'report-story-title';
+						title.textContent = story.stars + ' ' + story.title;
+						const body = document.createElement('p');
+						body.className = 'report-story-body';
+						body.textContent = story.body;
+						block.append(title, body);
+						article.appendChild(block);
+					}
+
+					const names = (card.unlockedKeys || []).map((key: string) => achievementNameByKey.get(key)).filter(Boolean);
+					if (names.length) {
+						const ach = document.createElement('p');
+						ach.className = 'report-achievements';
+						ach.textContent = '本场新成就：' + names.join('、');
+						article.appendChild(ach);
+					}
+
+					list.appendChild(article);
+				}
+			}
+
+			function teardownReports() {
+				reportsGeneration += 1;
+				currentReportsController?.abort();
+				currentReportsController = null;
+			}
+			document.addEventListener('astro:before-swap', teardownReports, { once: true });
+			window.addEventListener('pagehide', teardownReports, { once: true });
 
 			function renderHall(payload: any) {
 				const hall = el('ach-hall');
@@ -549,6 +687,7 @@ import { SITE_TITLE } from '../consts';
 			loadProfile();
 			el('pf-retry').addEventListener('click', loadProfile);
 			el('ach-retry').addEventListener('click', loadAchievements);
+			el('report-retry').addEventListener('click', loadReports);
 
 		</script>
 	</body>
