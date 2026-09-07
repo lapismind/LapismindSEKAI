@@ -1,6 +1,8 @@
 import { hashMatchReport } from './matchReports.js'
 import { ACHIEVEMENT_DEFS, evaluateAchievements, projectAchievement } from './achievements.js'
 
+const KNOWN_ACHIEVEMENT_KEYS = new Set(ACHIEVEMENT_DEFS.map((definition) => definition.key))
+
 export class ReportConflictError extends Error {
   constructor() {
     super('reportId payload conflict')
@@ -90,9 +92,9 @@ async function persistPlayerMatchReports(db, report, matchId) {
   for (const standing of report.standings) {
     if (!persistentPlayerIds.has(standing.playerId)) continue
     const storiesJson = JSON.stringify(report.stories.filter((story) => story.playerId === standing.playerId).slice(0, 3))
-    const unlockedKeysJson = JSON.stringify(unlockedRows
-      .filter((row) => row.player_id === standing.playerId)
-      .map((row) => row.achievement_key))
+    const unlockedKeysJson = JSON.stringify([...new Set(unlockedRows
+      .filter((row) => row.player_id === standing.playerId && KNOWN_ACHIEVEMENT_KEYS.has(row.achievement_key))
+      .map((row) => row.achievement_key))].sort())
     try {
       await db.batch([
         db.prepare(
@@ -104,13 +106,7 @@ async function persistPlayerMatchReports(db, report, matchId) {
              game = excluded.game, rank = excluded.rank, score = excluded.score,
              rounds = excluded.rounds, player_count = excluded.player_count,
              standings_json = excluded.standings_json, stories_json = excluded.stories_json,
-             unlocked_keys_json = CASE
-               WHEN json_valid(player_match_reports.unlocked_keys_json)
-                AND json_type(player_match_reports.unlocked_keys_json) = 'array'
-                AND json_array_length(player_match_reports.unlocked_keys_json) > 0
-               THEN player_match_reports.unlocked_keys_json
-               ELSE excluded.unlocked_keys_json
-             END,
+             unlocked_keys_json = excluded.unlocked_keys_json,
              finished_at = excluded.finished_at`
         ).bind(
           matchId, standing.playerId, report.game, standing.rank, standing.score,

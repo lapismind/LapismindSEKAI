@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import net from 'node:net'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawn, spawnSync } from 'node:child_process'
@@ -37,20 +38,32 @@ function reportId(sequence) {
   return `abracadawhat:${sequence.toString(16).padStart(8, '0')}-e89b-42d3-a456-426614174000`
 }
 
+async function reservePort() {
+  const server = net.createServer()
+  await new Promise((resolve, reject) => server.listen(0, '127.0.0.1', resolve).once('error', reject))
+  const port = server.address().port
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))
+  return port
+}
+
 async function waitFor(url, child) {
-  for (let attempt = 0; attempt < 15; attempt++) {
-    if (child.exitCode != null) throw new Error(`wrangler dev exited ${child.exitCode}`)
-    try { if ((await fetch(url, { signal: AbortSignal.timeout(500) })).status === 404) return } catch {}
-    await new Promise((resolve) => setTimeout(resolve, 100))
+  const deadline = Date.now() + 60000
+  while (Date.now() < deadline) {
+    if (child.exitCode != null) throw new Error(`wrangler dev exited early with code ${child.exitCode}`)
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(1000) })
+      if (response.status === 404) return
+    } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 250))
   }
-  throw new Error('wrangler dev did not become ready')
+  throw new Error('wrangler dev did not become ready within 60s')
 }
 
 test('real isolated local D1 executes persistence conflict rollback pending repair and exact rows', { timeout: 120000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'sekai-real-d1-'))
   const persistTo = path.join(root, 'state')
   const configPath = path.join(root, 'wrangler.jsonc')
-  const port = 19731
+  const port = await reservePort()
   await writeFile(configPath, JSON.stringify({
     name: 'sekai-d1-persistence-test',
     main: path.join(authDir, 'tests', 'fixtures', 'd1-persistence-worker.js'),
@@ -121,6 +134,12 @@ test('real isolated local D1 executes persistence conflict rollback pending repa
       stories_json: '[{"key":"voluntary_stop","playerId":"p1","tier":"C","data":{"round":1,"successCount":3,"distinctCount":2}}]',
       unlocked_keys_json: '["different_paths"]',
     }])
+
+    const semanticCorrupt = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, "--command=UPDATE player_match_reports SET unlocked_keys_json='[\"bogus\",123,\"different_paths\",\"different_paths\",\"eight_facets\",\"last_breath\"]' WHERE match_id=2 AND player_id='p1';"])
+    assert.equal(semanticCorrupt.status, 0, semanticCorrupt.stderr || semanticCorrupt.stdout)
+    assert.equal((await post(payload())).status, 200)
+    query = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, "--command=SELECT unlocked_keys_json FROM player_match_reports WHERE match_id=2 AND player_id='p1';", '--json'])
+    assert.deepEqual(rows(query), [{ unlocked_keys_json: '["different_paths"]' }])
 
     const trigger = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, '--command=CREATE TRIGGER fail_p2 BEFORE INSERT ON match_players WHEN NEW.player_id = \'p2\' BEGIN SELECT RAISE(ABORT, \'forced\'); END;', '--json'])
     assert.equal(trigger.status, 0, trigger.stderr || trigger.stdout)
@@ -196,6 +215,43 @@ test('real isolated local D1 executes persistence conflict rollback pending repa
       { player_id: 'p1', unlocked_keys_json: '["last_breath"]', n: 1 },
       { player_id: 'p2', unlocked_keys_json: '[]', n: 1 },
     ])
+
+    const concurrentReportId = reportId(500)
+    const concurrentPayload = payload({
+      reportId: concurrentReportId,
+      roomId: 'CONCURRENT',
+      startedAt: '2026-12-01T00:00:00.000Z',
+      finishedAt: '2026-12-01T00:10:00.000Z',
+      facts: [{ key: 'low_hp_kill', playerId: 'p1', data: { round: 2, spellId: 7, actorHp: 1, targetHpBefore: 3, targetPlayerId: 'p2' } }],
+    })
+    const [concA, concB] = await Promise.all([post(concurrentPayload), post(concurrentPayload)])
+    const concABody = await concA.json()
+    const concBBody = await concB.json()
+    assert.equal(concA.status, 200, JSON.stringify(concABody))
+    assert.equal(concB.status, 200, JSON.stringify(concBBody))
+    assert.equal(concABody.matchId, concBBody.matchId)
+    assert.deepEqual(concABody.savedReports, ['p1', 'p2'])
+    assert.deepEqual(concBBody.savedReports, ['p1', 'p2'])
+    assert.deepEqual([concABody, concBBody].flatMap((body) => body.newAchievements.map((entry) => entry.key)).sort(), ['weak_over_strong'])
+    query = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, `--command=SELECT COUNT(*) AS n, unlocked_keys_json FROM player_match_reports WHERE match_id=(SELECT id FROM matches WHERE report_id='${concurrentReportId}') AND player_id='p1' GROUP BY unlocked_keys_json;`, '--json'])
+    assert.deepEqual(rows(query), [{ n: 1, unlocked_keys_json: '["weak_over_strong"]' }])
+
+    const tieTime = '2026-12-10T00:10:00.000Z'
+    const tieStarted = '2026-12-10T00:00:00.000Z'
+    const tieReportIds = []
+    for (let i = 1; i <= 11; i++) {
+      const reportIdValue = reportId(600 + i)
+      tieReportIds.push(reportIdValue)
+      const response = await post(payload({
+        reportId: reportIdValue, roomId: `TIE-${i}`,
+        startedAt: tieStarted, finishedAt: tieTime,
+      }))
+      const body = await response.json()
+      assert.equal(response.status, 200, JSON.stringify(body))
+      assert.deepEqual(body.savedReports, ['p1', 'p2'], '同 finished_at 新建的报告（id 最大）必须保留')
+    }
+    query = wrangler(['d1', 'execute', 'sekai-db', '--local', '--persist-to', persistTo, "--command=SELECT m.report_id FROM player_match_reports pr JOIN matches m ON m.id=pr.match_id WHERE pr.player_id='p1' AND pr.game='abracadawhat';", '--json'])
+    assert.deepEqual(rows(query).map((row) => row.report_id).sort(), tieReportIds.slice(1).sort(), '相同 finished_at 时按 id 保留最大的 10 场并淘汰最先写入的 1 场')
   } finally {
     if (child?.pid) spawnSync('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true })
     await rm(root, { recursive: true, force: true })

@@ -61,3 +61,42 @@ The existing B1 rollback test intentionally logs `forced player failure`; it pas
 - Personal-report storage is intentionally best-effort. A transient failure can leave a completed match and achievements without one or more reports until the producer retries the identical payload.
 - `savedReports` is the D1 persistence status required by the approved D1 contract; no additional response status field was added.
 - No query endpoint exists yet. Reading and corrupt-row skipping remain Task D2.
+
+## Reviewer P2/P3 Fixes
+
+### Authoritative unlock-key recomputation (finding 1)
+
+- `unlocked_keys_json` is now treated as a cache, never as a source of truth.
+- On every hash-identical retry it is recomputed from `achievements` rows for the same `(match_id, player_id)`, intersected with known achievement definition keys, deduplicated, and sorted deterministically.
+- The upsert always overwrites the stored cache with the recomputed value; the previous "preserve any valid nonempty array" `CASE` was removed.
+- This repairs valid-JSON semantic corruption: unknown keys, numbers, duplicates, and keys belonging to another player/match are all filtered out.
+- Legitimate first-save keys are preserved even when the retry's own `newAchievements` is empty, because the authoritative `achievements` rows persist across retries.
+- Real-D1 coverage seeds `["bogus",123,"different_paths","different_paths","eight_facets","last_breath"]` on the stored report and asserts a retry restores `["different_paths"]` (the only key actually attributed to p1 for that match).
+
+### Concurrent report writes and retention tie (finding 2 + 4)
+
+- The real isolated D1 test now issues two identical concurrent posts for a fresh match and asserts: both succeed, same `matchId`, `savedReports` `['p1','p2']`, the union of `newAchievements` is exactly one `weak_over_strong`, and the stored report is a single row per player with the exact `unlocked_keys_json`.
+- Real D1 concurrency proved stable, so this is primary coverage rather than a fake fallback.
+- An equal-`finished_at` retention test posts 11 matches with the identical `finished_at` and asserts retention keeps the 10 highest ids, evicting only the first-written match. `savedReports` for each of the 10 newest is `['p1','p2']`.
+
+### Real D1 startup hardening (finding 3)
+
+- The integration test now binds a dynamic port via a reserved ephemeral listener instead of a fixed `19731`.
+- Readiness uses bounded ~60s condition polling with per-attempt `AbortSignal.timeout(1000)`, no arbitrary 1.5s sleeps, and no unbounded loops.
+- The gate detects process early exit and throws with the captured child stdout/stderr so a crash is reported as infrastructure, not a silent hang.
+- Cleanup remains `taskkill /t /f` for the whole local process tree plus temporary directory removal.
+- Honest flake/retry record: no readiness retries were needed in any full run; the real-D1 integration passed on the first attempt in all serial full runs.
+
+## Verification (reviewer round)
+
+```text
+Auth full suite run 1: 66/66 passed
+Auth full suite run 2: 66/66 passed
+Auth full suite run 3: 66/66 passed
+Real isolated D1 (concurrency + tie + corruption): passed in all three runs
+Migration 005/006/007 local execution: passed in both runs
+Auth production/test syntax checks: passed
+git diff --check for staged D1 paths: passed
+```
+
+The existing B1 rollback test intentionally logs `forced player failure`; it passes and verifies pending-match isolation.
