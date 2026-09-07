@@ -11,6 +11,7 @@
  *   auth.getIdentity()       // 归一化 { playerId, nickname, avatarId }，入房前填充大厅
  *   auth.refresh()           // 重新拉取 /api/me（登录回调/注册之后刷新身份）
  *   auth.getAchievements()            // 当前玩家的成就展馆数据（全量目录 + 解锁标记）
+ *   auth.getMatchReports(game, limit) // 当前玩家最近个人战报（默认 abracadawhat 10 场）
  *   auth.isGuest()
  *
  * 会话在 HttpOnly cookie 里（domain=.qmzhj.top），跨子域自动携带——
@@ -181,6 +182,23 @@ export function createAuthClient({
     return { ...data, ok: true }
   }
 
+  /**
+   * 当前会话玩家的最近个人战报。
+   * - 游客：服务端返回 persistent:false + 空数组；
+   * - 登录用户：返回最近 limit 场（最大 10）。
+   * 返回 { ok, persistent, reports }，校验 reports 数组并透传 persistent。
+   */
+  async function getMatchReports(game = 'abracadawhat', limit = 10, { signal } = {}) {
+    const res = await fetchImpl(
+      `${baseUrl}/api/match-reports?game=${encodeURIComponent(game)}&limit=${encodeURIComponent(limit)}`,
+      { credentials: 'include', signal },
+    )
+    if (!res.ok) return { ok: false, error: 'match reports fetch failed' }
+    const data = await res.json().catch(() => ({}))
+    if (!Array.isArray(data.reports)) return { ok: false, error: 'bad response' }
+    return { ...data, ok: true }
+  }
+
   function isGuest() {
     return user?.provider === 'guest'
   }
@@ -243,7 +261,7 @@ export function createAuthClient({
     user = data.user
     return { ok: true, user }
   }
-  return { init, getUser, getIdentity, refresh, loginWithGithub, register, loginWithPassword, getAchievements, setNickname, setAvatar, logout, isGuest }
+  return { init, getUser, getIdentity, refresh, loginWithGithub, register, loginWithPassword, getAchievements, getMatchReports, setNickname, setAvatar, logout, isGuest }
 }
 
 // 页面级共享实例：main.js 预加载与 UI 组件（AuthBadge）共用同一个 client，

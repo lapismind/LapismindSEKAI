@@ -49,6 +49,7 @@ export default {
       if (pathname === '/api/me/avatar' && request.method === 'POST') return await handleSetAvatar(request, env, cors)
       if (pathname === '/api/me/nickname' && request.method === 'POST') return await handleSetNickname(request, env, cors)
       if (pathname === '/api/achievements' && request.method === 'GET') return await handleAchievements(request, env, cors)
+      if (pathname === '/api/match-reports' && request.method === 'GET') return await handleMatchReports(request, url, env, cors)
       if (pathname === '/logout' && request.method === 'POST') return handleLogout(cors)
       if (pathname === '/api/comments' && request.method === 'GET') return await listComments(url, env, cors)
       if (pathname === '/api/comments' && request.method === 'POST') return await postComment(request, env, cors)
@@ -517,6 +518,67 @@ async function handleAchievements(request, env, cors = {}) {
     total: activeDefinitions.length,
     legacyUnlockedCount: ACHIEVEMENT_DEFS.filter(definition => definition.status === 'legacy' && unlockedAt.has(definition.key)).length,
   }, 200, cors)
+}
+
+// ---------- 最近战报查询 ----------
+
+const MATCH_REPORT_GAMES = new Set(['abracadawhat'])
+const MATCH_REPORT_DEFAULT_LIMIT = 10
+
+// 只返回当前会话本人的战报：不接受 playerId 查询参数，杜绝越权读取他人数据。
+async function handleMatchReports(request, url, env, cors = {}) {
+  const session = await getSession(request, env)
+  if (!session) return json({ error: 'login required' }, 401, cors)
+
+  const game = url.searchParams.get('game') || 'abracadawhat'
+  if (!MATCH_REPORT_GAMES.has(game)) return json({ error: 'invalid game' }, 400, cors)
+
+  const limit = Math.min(10, Math.max(1, parseInt(url.searchParams.get('limit') || '10', 10) || MATCH_REPORT_DEFAULT_LIMIT))
+
+  // 游客不落库，无持久战报可读
+  if (session.provider === 'guest') {
+    return json({ ok: true, persistent: false, reports: [] }, 200, cors)
+  }
+
+  const { results } = await env.DB.prepare(
+    `SELECT match_id, game, rank, score, rounds, player_count,
+            standings_json, stories_json, unlocked_keys_json, finished_at
+     FROM player_match_reports
+     WHERE player_id = ? AND game = ?
+     ORDER BY finished_at DESC, id DESC
+     LIMIT ?`
+  ).bind(session.playerId, game, limit).all()
+
+  const reports = []
+  for (const row of results) {
+    let standings, stories, unlockedKeys
+    try {
+      standings = JSON.parse(row.standings_json)
+      stories = JSON.parse(row.stories_json)
+      unlockedKeys = JSON.parse(row.unlocked_keys_json)
+    } catch (error) {
+      console.error('match report row skipped (corrupt json):', row.match_id, error)
+      continue
+    }
+    if (!Array.isArray(standings) || !Array.isArray(stories) || !Array.isArray(unlockedKeys)) {
+      console.error('match report row skipped (invalid shape):', row.match_id)
+      continue
+    }
+    reports.push({
+      matchId: row.match_id,
+      game: row.game,
+      rank: row.rank,
+      score: row.score,
+      rounds: row.rounds,
+      playerCount: row.player_count,
+      standings,
+      stories,
+      unlockedKeys,
+      finishedAt: row.finished_at,
+    })
+  }
+
+  return json({ ok: true, persistent: true, reports }, 200, cors)
 }
 
 function handleLogout(cors = {}) {
