@@ -14,11 +14,6 @@ with sync_playwright() as playwright:
     page.goto(f"{base_url}/tests/fixtures/a4-harness.html")
     page.wait_for_load_state("networkidle")
 
-    target = page.get_by_test_id("target-score")
-    expect(target).to_contain_text("先到 8 分")
-    expect(target).to_contain_text("房主法师 还差 0 分")
-    expect(target).to_contain_text("客人法师 还差 3 分")
-
     dialog = page.get_by_role("dialog", name="房主法师 获胜！")
     expect(dialog).to_be_visible()
     close = page.get_by_role("button", name="关闭比赛结算详情")

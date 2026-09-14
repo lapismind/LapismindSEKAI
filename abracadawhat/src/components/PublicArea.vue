@@ -8,7 +8,6 @@ const props = defineProps({
   matchHistory: { type: Array, default: () => [] },
   deckRemaining: { type: Number, default: 0 },
   secretPileRemaining: { type: Number, default: 0 },
-  targetScore: { type: Number, default: 8 },
 })
 
 // 牌堆紧张时高亮提醒（≤5 张算告急）
@@ -19,8 +18,6 @@ const standings = computed(() => {
   const players = props.players.filter(p => p.score > 0 || p.health > 0 || p.alive)
   return [...players].sort((a, b) => b.score - a.score)
 })
-
-const targetStandings = computed(() => [...props.players].sort((a, b) => b.score - a.score))
 
 // 全局总得分
 const globalTotals = computed(() => {
@@ -42,19 +39,6 @@ const openSpellId = ref(null)
 
 <template>
   <div class="rounded-xl border border-[#D8D0E4] bg-white p-4 shadow-sm">
-    <div class="mb-3 flex flex-wrap items-center justify-center gap-2 text-xs" data-testid="target-score">
-      <span class="rounded-full bg-brand-600 px-3 py-1.5 font-bold text-white">
-        先到 {{ targetScore }} 分
-      </span>
-      <span
-        v-for="row in targetStandings"
-        :key="`target-${row.id}`"
-        class="rounded-full bg-[#F7EFF8] px-3 py-1.5 text-[#55506B]"
-      >
-        <strong class="text-[#333333]">{{ row.nickname }}</strong>
-        还差 {{ Math.max(0, targetScore - row.score) }} 分
-      </span>
-    </div>
     <div class="mb-2 flex items-center justify-between text-xs text-[#8A8299]">
       <button
         type="button"

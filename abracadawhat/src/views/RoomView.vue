@@ -241,7 +241,6 @@ async function copyInvite() {
         :match-history="game.roomState.matchHistory ?? []"
         :deck-remaining="game.roomState.deckRemaining ?? 0"
         :secret-pile-remaining="game.roomState.secretPileRemaining ?? 0"
-        :target-score="game.roomState.targetScore ?? 8"
       />
 
       <div class="my-3 text-center text-sm">
