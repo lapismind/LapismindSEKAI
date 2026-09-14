@@ -53,10 +53,10 @@ const me = st.players.find((p) => p.id === 'prcA')
 if (!me || me.role !== 'player') fail(`重连后身份丢失, role=${me?.role}`)
 console.log('✓ 重连后身份恢复为玩家')
 
-// A 重连后应能收到自己的手牌
+// A 重连后应能收到自己的手牌（闷牌轮 1 张暗牌）
 const hand = lastOf(a2, 'your_hand')
-if (!hand || hand.cards.length !== 5) fail(`重连后未收到手牌, cards=${hand?.cards?.length}`)
-console.log('✓ 重连后收到手牌（5 张）')
+if (!hand || hand.cards.length !== 1) fail(`重连后未收到手牌, cards=${hand?.cards?.length}`)
+console.log('✓ 重连后收到手牌（闷牌轮 1 张）')
 
 console.log('\n✓ 断线重连全部通过')
 a2.close()

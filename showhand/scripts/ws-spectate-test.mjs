@@ -51,8 +51,9 @@ const sp = lastOf(c, 'spectate_state')
 if (!sp) fail('观众没收到 spectate_state')
 const seat = sp.players.filter((p) => p.role === 'player')
 if (seat.length < 2) fail('观众应看到 2 名玩家')
-const allHave7 = seat.every((p) => p.cards && p.cards.length === 5)
-if (!allHave7) fail('观众应看到玩家完整手牌（5 张）')
+// 边发边下注：开局每个人只有 2 张（1 暗 1 明），但观众能看到暗牌
+const allHaveHand = seat.every((p) => p.cards && p.cards.length === 1)
+if (!allHaveHand) fail('观众应看到玩家完整手牌（闷牌轮 1 张暗牌）')
 console.log('✓ 观众收到全桌完整手牌')
 
 // 观众不能下注
@@ -67,7 +68,7 @@ const paView = lastOf(a, 'room_state')
 const bPublic = paView.players.find((p) => p.id === 'psb')
 const hasDark = bPublic.publicCards.some((card) => card.hidden)
 if (hasDark) fail('玩家视角不应看到他人暗牌')
-if (bPublic.publicCards.length !== 4) fail(`玩家视角他人应只看到 4 张明牌，实际 ${bPublic.publicCards.length}`)
+if (bPublic.publicCards.length !== 0) fail(`闷牌轮没有明牌，实际看到 ${bPublic.publicCards.length} 张`)
 console.log('✓ 玩家视角只看到他人明牌（防作弊）')
 
 // 观众视角能看到暗牌

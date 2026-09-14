@@ -4,11 +4,13 @@ import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import SoupLobby from '../../assets/soup-lobby.png';
+import ShowhandCover from '../../assets/covers/showhand-cover.jpg';
 import { SITE_TITLE } from '../../consts';
 import { games } from '../../data/projects';
 
 const projectImages: Record<string, typeof SoupLobby> = {
 	'turtle-soup': SoupLobby,
+	showhand: ShowhandCover,
 };
 ---
 

@@ -1,0 +1,32 @@
+{
+  "name": "@lapismind/design-kit",
+  "version": "0.1.0",
+  "description": "设计语言通用件：品牌色阶、浅色表面令牌、基础样式、字体接入规范",
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./tokens.css",
+    "./theme.css": "./theme.css",
+    "./base.css": "./base.css",
+    "./fonts/lxgwwenkaiscreen.css": "./fonts/lxgwwenkaiscreen.css",
+    "./scripts/sync-fonts.mjs": "./scripts/sync-fonts.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "tokens.css",
+    "theme.css",
+    "base.css",
+    "fonts",
+    "scripts"
+  ],
+  "scripts": {
+    "sync-fonts": "node scripts/sync-fonts.mjs",
+    "test": "node tests/tokens.test.mjs"
+  },
+  "keywords": [
+    "design-tokens",
+    "css",
+    "tailwind",
+    "fonts"
+  ],
+  "license": "MIT"
+}

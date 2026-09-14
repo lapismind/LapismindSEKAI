@@ -1,19 +1,7 @@
 @import "tailwindcss";
-
-@theme {
-  /* 品牌主色 #8888CC（真冬的海龟汤） */
-  --color-brand-50: #f2f2fa;
-  --color-brand-100: #e6e6f5;
-  --color-brand-200: #cfcfe9;
-  --color-brand-300: #b3b3dd;
-  --color-brand-400: #9999cf;
-  --color-brand-500: #8888cc;
-  --color-brand-600: #7676b8;
-  --color-brand-700: #6363a0;
-  --color-brand-800: #505085;
-  --color-brand-900: #3d3d68;
-  --color-brand-950: #2a2a48;
-}
+/* 品牌色阶来自 design-kit（本轮只收口色阶：海龟汤是深色主题，
+   自有 --bg-deep 等表面色与字体栈，不引 tokens/base，保持它的夜间气质） */
+@import "@lapismind/design-kit/theme.css";
 
 :root {
   --bg-deep: #1c1c33;

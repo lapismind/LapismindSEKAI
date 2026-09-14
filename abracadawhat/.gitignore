@@ -2,3 +2,7 @@
 node_modules/
 dist/
 .wrangler/
+
+# 字体资产（5MB+，不提交）
+# 唯一真源在 packages/design-kit/fonts/，dev/build 前由 predev/prebuild 同步进来
+public/fonts/

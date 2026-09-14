@@ -76,6 +76,46 @@ resetForwarded()
 }
 
 {
+  // /api/identity：过长的 playerId 一律不签发（Auth 侧存不下，也无法回读）
+  const longPlayerId = 'p' + 'x'.repeat(64)
+  const free = await worker.fetch(
+    new Request('https://showhand.test/api/identity?playerId=' + longPlayerId),
+    env,
+  )
+  assert.equal(free.status, 400, '降级路径不签发不合法 playerId')
+
+  const sessionToken = await createSessionToken({ playerId: longPlayerId, provider: 'guest' }, env.SESSION_SECRET)
+  const viaSession = await worker.fetch(
+    new Request('https://showhand.test/api/identity?playerId=pfallback', {
+      headers: { cookie: 'session=' + sessionToken },
+    }),
+    env,
+  )
+  assert.equal(viaSession.status, 400, '会话身份不合法时同样拒签')
+}
+
+{
+  // /api/identity：不以 p 开头的 playerId 不签发
+  const res = await worker.fetch(
+    new Request('https://showhand.test/api/identity?playerId=no-prefix'),
+    env,
+  )
+  assert.equal(res.status, 400)
+}
+
+{
+  // /ws：超长 roomId 直接拒绝，不转发进 DO
+  resetForwarded()
+  const token = await createIdentityToken('pclient-1', env.IDENTITY_SECRET)
+  const res = await worker.fetch(
+    new Request('https://showhand.test/ws?roomId=' + 'R'.repeat(65) + '&playerId=pclient-1&token=' + encodeURIComponent(token)),
+    env,
+  )
+  assert.equal(res.status, 400)
+  assert.equal(forwarded.last, undefined, '非法 roomId 不应转发给 DO')
+}
+
+{
   // /ws：有效 token 原样转发（URL 身份不改写，最终由 DO 验签 token 定身份）
   resetForwarded()
   const token = await createIdentityToken('pclient-1', env.IDENTITY_SECRET)
@@ -140,7 +180,7 @@ class ShimResponse {
   }
 }
 
-async function doUpgradeWithToken(playerIdInToken, urlPlayerId, token) {
+async function doUpgradeWithToken(playerIdInToken, urlPlayerId, token, nickname = 'n') {
   const serverWs = fakeServerSocket()
   globalThis.WebSocketPair = class {
     constructor() { return { 0: { close() {} }, 1: serverWs } }
@@ -152,7 +192,7 @@ async function doUpgradeWithToken(playerIdInToken, urlPlayerId, token) {
     const res = await room.fetch(
       new Request(
         'https://showhand.test/ws?roomId=R1&playerId=' + urlPlayerId +
-          '&nickname=n&avatarId=1&token=' + encodeURIComponent(token),
+          '&nickname=' + encodeURIComponent(nickname) + '&avatarId=1&token=' + encodeURIComponent(token),
         { headers: { upgrade: 'websocket' } },
       ),
     )
@@ -179,6 +219,33 @@ async function doUpgradeWithToken(playerIdInToken, urlPlayerId, token) {
   assert.equal(bad.res.status, 401)
   const none = await doUpgradeWithToken('x', 'px', '')
   assert.equal(none.res.status, 401, '未配置会话时缺少 token 直接拒绝')
+}
+
+{
+  // 验签通过但格式不合法的 playerId → DO 拒绝（不以 p 开头 / 超长）
+  const noPrefix = await createIdentityToken('evil', env.IDENTITY_SECRET)
+  const badPrefix = await doUpgradeWithToken('evil', 'pfallback', noPrefix)
+  assert.equal(badPrefix.res.status, 400, '不以 p 开头的 playerId 应被拒绝')
+  assert.equal(badPrefix.state.players.length, 0, '非法身份不应产生玩家记录')
+
+  const longId = 'p' + 'x'.repeat(64)
+  const longToken = await createIdentityToken(longId, env.IDENTITY_SECRET)
+  const tooLong = await doUpgradeWithToken(longId, 'pfallback', longToken)
+  assert.equal(tooLong.res.status, 400, '超长 playerId 应被拒绝')
+  assert.equal(tooLong.state.players.length, 0)
+}
+
+{
+  // 昵称规范化：超长截断到 64 字，空白回退为「玩家」
+  const token = await createIdentityToken('pnick', env.IDENTITY_SECRET)
+  const long = await doUpgradeWithToken('pnick', 'pnick', token, 'x'.repeat(100))
+  assert.equal(long.res.status, 101)
+  assert.equal(long.state.players[0].nickname.length, 64, '超长昵称应被截断')
+
+  const token2 = await createIdentityToken('pblank', env.IDENTITY_SECRET)
+  const blank = await doUpgradeWithToken('pblank', 'pblank', token2, '   ')
+  assert.equal(blank.res.status, 101)
+  assert.equal(blank.state.players[0].nickname, '玩家', '空白昵称应回退为默认值')
 }
 
 console.log('worker auth tests passed')

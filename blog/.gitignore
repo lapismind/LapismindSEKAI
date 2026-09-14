@@ -1,6 +1,10 @@
 # build output
 dist/
 
+# 字体资产（5MB+，不提交）
+# 唯一真源在 packages/design-kit/fonts/，dev/build 前由 prebuild 同步进来
+public/fonts/
+
 # preview server log
 preview.log
 # generated types

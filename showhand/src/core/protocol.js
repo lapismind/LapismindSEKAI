@@ -10,7 +10,9 @@ export const Msg = {
   SEND_JOIN: 'join',
   SEND_SET_HOST_CONFIG: 'set_host_config',
   SEND_START_GAME: 'start_game',
+  SEND_REMATCH: 'rematch',
   SEND_BET: 'bet',
+  SEND_LOOK: 'look', // 闷牌轮看牌
   SEND_SPECTATE: 'spectate',
 
   // 服务端 → 客户端
@@ -21,7 +23,6 @@ export const Msg = {
   RCV_SHOWDOWN: 'showdown',
   RCV_GAME_OVER: 'game_over',
   RCV_PLAYER_JOINED: 'player_joined',
-  RCV_PLAYER_LEFT: 'player_left',
   RCV_SPECTATE_STATE: 'spectate_state',
   RCV_ERROR: 'error',
 }

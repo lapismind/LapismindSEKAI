@@ -20,13 +20,21 @@ export const useGameStore = defineStore('game', () => {
   const showdown = ref(null) // 最近一次摊牌
   const lastGameOver = ref(null)
   const error = ref(null)
+  // 下注提交锁：发出 bet 后立刻禁用操作，收到 bet_result / turn_to / error 后释放。
+  // 加注和全下是不可逆的代价性动作，手快连点两次会重复提交同一笔下注。
+  const betLocked = ref(false)
   let errorClearTimer = null
+  let betLockTimer = null
+  let previousUnsubs = []
+  let connectGeneration = 0
   const lobbyStore = useLobbyStore()
   // 响应式读大厅 playerId：认证身份（会话 playerId）就绪后会更新，
   // 房间内登录/换号后 me/回合判断等跟着最新身份走
   const myPlayerId = computed(() => lobbyStore.myPlayerId)
 
   async function connect(roomCode, nickname, playerId, avatarId) {
+    if (roomId.value && roomId.value !== roomCode) leaveRoom()
+    const generation = ++connectGeneration
     // 先换取身份 token（失败则无 token 直接连，服务端拒绝）
     let token = null
     try {
@@ -34,47 +42,107 @@ export const useGameStore = defineStore('game', () => {
       if (res.ok) {
         const body = await res.json()
         token = body.token ?? null
-        if (token) sessionStorage.setItem("identity_token", token)
       }
     } catch { /* offline or server error */ }
+    // 换 token 期间可能已离开或切了房间，丢弃这次过期的连接
+    if (generation !== connectGeneration) return
+    if (token) sessionStorage.setItem('identity_token', token)
     roomId.value = roomCode
     inRoom.value = true
     wsClient.connect({ roomId: roomCode, nickname, playerId, avatarId, token })
   }
 
+  function releaseBetLock() {
+    if (betLockTimer) {
+      clearTimeout(betLockTimer)
+      betLockTimer = null
+    }
+    betLocked.value = false
+  }
+
+  /** 清掉只属于"刚刚结束的那一场"的展示状态 */
+  function clearMatchTransients() {
+    showdown.value = null
+    lastGameOver.value = null
+    spectateState.value = null
+  }
+
   function disconnect() {
+    clearMatchTransients()
+    error.value = null
+    releaseBetLock()
     wsClient.disconnect()
     inRoom.value = false
   }
 
+  /** 离开房间：撤掉监听、断开连接，并把房间状态清干净 */
+  function leaveRoom() {
+    ++connectGeneration
+    previousUnsubs.forEach(unsubscribe => unsubscribe())
+    previousUnsubs = []
+    disconnect()
+    roomId.value = null
+    phase.value = 'waiting'
+    roomState.value = null
+    myHand.value = []
+    myRole.value = 'player'
+  }
+
   function sendBet(action, amount) {
+    if (betLocked.value) return
+    betLocked.value = true
     wsClient.send(Msg.SEND_BET, { action, amount })
+    // 兜底：即使 bet_result 丢失也要放开锁，避免界面永久卡在不可操作
+    if (betLockTimer) clearTimeout(betLockTimer)
+    betLockTimer = setTimeout(() => {
+      betLocked.value = false
+      betLockTimer = null
+    }, 1200)
   }
 
   function setHostConfig(config) {
     wsClient.send(Msg.SEND_SET_HOST_CONFIG, config)
   }
 
+  /** 闷牌轮看牌：亮给自己，之后的跟注按全价 */
+  function look() {
+    wsClient.send(Msg.SEND_LOOK, {})
+  }
+
   function startGame() {
     wsClient.send(Msg.SEND_START_GAME, {})
+  }
+
+  /** 整场结束后由房主发起：重置筹码、观众重新入座、回到 waiting */
+  function rematch() {
+    clearMatchTransients()
+    wsClient.send(Msg.SEND_REMATCH, {})
   }
 
   function toSpectator() {
     wsClient.send(Msg.SEND_SPECTATE, {})
   }
 
-  function hydrate(handlers) {
-    const unsubs = [
+  function hydrate(handlers = {}) {
+    // 同一事件被注册两次会被处理两次（重复弹窗、重复计数），
+    // 先撤掉上一次的监听再装新的。
+    previousUnsubs.forEach(unsubscribe => unsubscribe())
+    previousUnsubs = []
+
+    const newUnsubs = [
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
-        // 新一局开始（phase 从 settled 回到 playing 且 round 变化）时清掉摊牌
-        if (phase.value === 'settled' && data.phase === 'playing') {
-          showdown.value = null
-          lastGameOver.value = null
-        }
+        // 开新一局（局数推进）或房主开了再来一局（回到 waiting）时，
+        // 清掉上一局的摊牌/结算残留，否则弹层会一直盖着牌桌
+        const newHandStarted = data.phase === 'playing'
+          && roomState.value != null
+          && data.round !== roomState.value.round
+        if (newHandStarted || data.phase === 'waiting') clearMatchTransients()
         roomState.value = data
         phase.value = data.phase
-        const me = data.players.find((p) => p.id === myPlayerId)
+        const me = data.players.find((p) => p.id === myPlayerId.value)
         if (me) myRole.value = me.role
+        // 不在本局行动阶段时旧的提交锁无意义
+        if (data.phase !== 'playing') releaseBetLock()
       }),
       wsClient.on(Msg.RCV_YOUR_HAND, (data) => {
         myHand.value = data.cards
@@ -90,13 +158,15 @@ export const useGameStore = defineStore('game', () => {
         lastGameOver.value = data
       }),
       wsClient.on(Msg.RCV_BET_RESULT, (data) => {
-        // 下注后可能轮转到下家或进入下一轮，清掉当前行动标记避免误判
-        if (roomState.value) {
-          roomState.value = { ...roomState.value, currentPlayerId: null }
-        }
+        // 我的下注已被服务端受理，放开提交锁。
+        // 服务端在 bet_result 之后紧接着补发 room_state（底池与各座位投入实时更新）
+        // 再发 turn_to，因此这里不需要自己修补 currentPlayerId。
+        releaseBetLock()
         handlers.onBetResult?.(data)
       }),
       wsClient.on(Msg.RCV_TURN_TO, (data) => {
+        // 回合交到我手上时，上一次提交的锁已无意义（服务端已处理完并移交回合）
+        if (data.playerId === myPlayerId.value) releaseBetLock()
         // 同步当前行动者到 roomState（BetPanel 靠它判断 myTurn）
         if (roomState.value) {
           roomState.value = { ...roomState.value, currentPlayerId: data.playerId, currentBet: data.currentBet }
@@ -105,6 +175,8 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on(Msg.RCV_ERROR, (data) => {
         error.value = data.message ?? '未知错误'
+        // 服务端拒绝了上一步操作：提交锁必须复位，否则玩家再也点不动
+        releaseBetLock()
         // 连续报错时先清掉旧定时器，避免前一个提前把新错误清掉
         if (errorClearTimer) clearTimeout(errorClearTimer)
         errorClearTimer = setTimeout(() => {
@@ -114,7 +186,8 @@ export const useGameStore = defineStore('game', () => {
       }),
       wsClient.on('_open', () => handlers.onOpen?.()),
     ]
-    return () => unsubs.forEach((un) => un())
+    previousUnsubs = newUnsubs
+    return () => newUnsubs.forEach((un) => un())
   }
 
   function clearShowdown() {
@@ -132,12 +205,16 @@ export const useGameStore = defineStore('game', () => {
     showdown,
     lastGameOver,
     error,
+    betLocked,
     myPlayerId,
     connect,
     disconnect,
+    leaveRoom,
     sendBet,
     setHostConfig,
+    look,
     startGame,
+    rematch,
     toSpectator,
     hydrate,
     clearShowdown,

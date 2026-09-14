@@ -1,0 +1,65 @@
+/* ============================================================
+   @lapismind/design-kit —— 基础层
+   ============================================================
+   只放"设计语言"级别的东西：底色、字体、选中态、面板配方、
+   焦点样式约定、数字字体约定、动效降级。
+   不放布局（每个项目自己的 html/body/app 高度、overscroll、
+   整页排版尺度等留在各项目 global.css）。
+
+   用法（Tailwind 项目）：
+     @import "tailwindcss";
+     @import "@lapismind/design-kit/tokens.css";
+     @import "@lapismind/design-kit/base.css";
+     @import "@lapismind/design-kit/theme.css";
+   用法（不用 Tailwind，如 Astro）：
+     只引 tokens.css + base.css。
+   ============================================================ */
+
+body {
+	font-family: var(--font-body);
+	background: var(--page-bg);
+	color: var(--ink);
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+::selection {
+	background: var(--primary-soft);
+	color: var(--primary);
+}
+
+/* 数字字体约定：筹码数、房间码、倒计时、卡牌点数这类要等宽对齐的数字，
+   一律走 --font-mono + 表格数字。楷体的数字在小字号下辨识度差且不等宽。 */
+.font-num {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 玻璃面板：白玻璃 + 1px 发丝边 + 柔影。
+   规范明确：白色卡片浮在浅底上不需要深色遮罩，层次靠阴影不靠暗底。 */
+.glass {
+	background: var(--glass-bg);
+	backdrop-filter: blur(14px) saturate(1.15);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-sm);
+}
+
+/* 可交互元素的统一焦点样式（opt-in，避免覆盖各项目已有的分区样式） */
+.focus-ring:focus-visible {
+	outline: 2px solid var(--color-brand-500, #8888cc);
+	outline-offset: 2px;
+}
+
+/* 动效降级：用户在系统里要求减少动效时，关掉装饰性动画与过渡。
+   保留必要的即时态变化（不做 display/opacity 的彻底移除）。 */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+}

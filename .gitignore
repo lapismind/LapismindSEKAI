@@ -11,3 +11,6 @@ Thumbs.db
 _migrate_*/
 
 planning-new-game/
+
+# 工具会话状态（zcode plan 文件等），不属于项目源码
+.zcode/

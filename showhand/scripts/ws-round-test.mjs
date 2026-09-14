@@ -65,10 +65,10 @@ if (st?.phase !== 'playing') fail(`房主开下一局失败 phase=${st?.phase}`)
 if (st?.round !== 2) fail(`round 应=2，实际=${st?.round}`)
 console.log('✓ 房主开下一局成功，进入第 2 局 round=2')
 
-// 新局重新发牌
+// 新局重新发牌：闷牌轮只发 1 张暗牌
 const hand = lastOf(a, 'your_hand')
-if (!hand || hand.cards.length !== 5) fail(`第 2 局未重新发牌, cards=${hand?.cards?.length}`)
-console.log('✓ 第 2 局重新发牌（5 张）')
+if (!hand || hand.cards.length !== 1) fail(`第 2 局未重新发牌, cards=${hand?.cards?.length}`)
+console.log('✓ 第 2 局重新发牌（闷牌轮 1 张暗牌）')
 
 console.log('\n✓ 局间循环全部通过')
 a.close()

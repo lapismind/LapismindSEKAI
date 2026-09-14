@@ -6,16 +6,27 @@ D:\LapismindSEKAI 下所有游戏的共享代码都放在这里，**避免复制
 
 ```
 packages/
-└── lobby-kit/     @lapismind/lobby-kit —— 大厅通用件（纯逻辑层）
+├── lobby-kit/      @lapismind/lobby-kit   大厅通用件（纯逻辑层 + 少量共享 Vue 组件）
+├── chat-kit/       @lapismind/chat-kit    多人聊天与表情（Vue 组件 + 表情资源）
+└── design-kit/     @lapismind/design-kit  设计语言（CSS 令牌 + 基础样式 + 字体资产）
 ```
 
-各游戏通过 npm `file:` 本地依赖引用，例如 showhand 的 package.json：
+各项目通过 npm `file:` 本地依赖引用，例如 showhand 的 package.json：
 
 ```json
 "dependencies": {
-  "@lapismind/lobby-kit": "file:../packages/lobby-kit"
+  "@lapismind/lobby-kit": "file:../packages/lobby-kit",
+  "@lapismind/design-kit": "file:../packages/design-kit"
 }
 ```
+
+**分层原则**：按"哪种复用"分包，不按技术栈分包。
+
+- **逻辑复用** → `lobby-kit`（协议信封、重连、房间码、身份）
+- **功能复用** → `chat-kit`（整套聊天能力，含 UI 与资源）
+- **视觉复用** → `design-kit`（配色、字体、圆角、阴影、层次规则）
+
+包内可以有 UI 与静态资源。判断标准不是"有没有 UI"，而是**"各项目是不是该长得一样"**：聊天面板与配色该一样，所以进包；牌桌、棋盘这类游戏核心界面差异大，留在各自项目里。
 
 ---
 
@@ -105,8 +116,9 @@ npm test        # 跑全部 5 个模块测试
 ### 已知注意点
 
 - `file:` 依赖是**本地路径引用**，改包源码后无需重新 install，但注意包改动后要在游戏侧重新 `npm install`（或重跑 `npm install @lapismind/lobby-kit@file:../packages/lobby-kit`）让 node_modules 里的副本同步
-- 包是纯逻辑，**别把 UI 组件/样式放进来**——各游戏的 UI 定制差异大，UI 层保持各游戏自持
+- `lobby-kit` 是纯逻辑层，**别把 UI 放进这个包**——它是"逻辑复用"包。UI 该不该进包看分层原则（见上）：`chat-kit` / `design-kit` 就是专门装 UI 与样式的包
 - 游戏特有逻辑（如海龟汤的谜题列表）放游戏侧 store，不要混进包
+- **大体积二进制资源不进 git**（字体、表情包等）：在包目录放一份真源，消费方构建/开发前用脚本同步到自己的 `public/`，并把产物目录 gitignore。`chat-kit/emojis/` 与 `design-kit/fonts/files/` 都按此处理
 
 ---
 

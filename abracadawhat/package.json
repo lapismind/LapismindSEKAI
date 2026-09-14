@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "predev": "node ../packages/design-kit/scripts/sync-fonts.mjs",
     "build": "vite build",
+    "prebuild": "node ../packages/design-kit/scripts/sync-fonts.mjs",
     "postbuild": "node scripts/copy-emojis.mjs",
     "preview": "vite preview",
     "test": "node --test tests/*.test.mjs",
@@ -13,6 +15,7 @@
   },
   "dependencies": {
     "@lapismind/chat-kit": "file:../packages/chat-kit",
+    "@lapismind/design-kit": "file:../packages/design-kit",
     "@lapismind/lobby-kit": "file:../packages/lobby-kit",
     "pinia": "^4.0.3",
     "vue": "^3.5.41",

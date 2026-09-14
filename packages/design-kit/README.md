@@ -1,0 +1,145 @@
+# @lapismind/design-kit
+
+LapismindSEKAI 的**设计语言通用件**：品牌色阶、浅色表面令牌、基础样式、字体接入。
+
+设计语言的唯一真源。博客与各游戏的配色/字体/圆角/阴影都从这里来，**不要在项目里重写这些令牌**——同一份值抄在多处，改一次要改 N 个地方，而且必然漏掉一个。
+
+---
+
+## 消费方式
+
+**Tailwind 项目（Vue + Vite）**
+
+```css
+/* src/styles/global.css */
+@import "tailwindcss";
+@import "@lapismind/design-kit/tokens.css";  /* CSS 自定义属性 */
+@import "@lapismind/design-kit/theme.css";   /* 品牌色阶 → 生成 bg-brand-* 等工具类 */
+@import "@lapismind/design-kit/base.css";    /* 底色/字体/面板/焦点/动效降级 */
+```
+
+装依赖：
+
+```bash
+npm install @lapismind/design-kit@file:../packages/design-kit
+```
+
+**非 Tailwind 项目（Astro 博客）**
+
+只引 `tokens.css` + `base.css`，然后用 `var(--page-bg)` 这类自定义属性。不要引 `theme.css`（它的 `@theme` 只有 Tailwind 认）。
+
+---
+
+## 色板
+
+主色 `#8888CC`，代表色。色相集中在 `--hue-accent: 283`，其余表面色/文字色都由它按固定偏移推导——**换主色只需要改这一个数字**。
+
+| 用途 | 令牌 | 值 | 实际 hex |
+|---|---|---|---|
+| 页面底 | `--page-bg` | `oklch(0.972 0.014 249)` | `#EFF7FF` 极浅冷调白 |
+| 更淡一档底 | `--page-bg-deep` | `oklch(0.955 0.02 249)` | `#E6F2FD` |
+| 卡片（可半透明） | `--card-bg` | `oklch(0.995 0.005 249)` | `#FBFEFF` |
+| 卡片（实白） | `--card-solid` | `#FFFFFF` | `#FFFFFF` |
+| 标题/重点 | `--ink` | `oklch(0.25 0.028 250)` | `#17232F` |
+| 正文 | `--ink-soft` | `oklch(0.42 0.03 245)` | `#404F5D` |
+| 辅助说明 | `--muted` | `oklch(0.55 0.03 240)` | `#627482` |
+| 1px 发丝边 | `--line` / `--line-strong` | `oklch(0.9 0.012 249)` / `oklch(0.82 0.02 249)` | `#D8DFE6` / `#BBC5D1` |
+| 品牌色（文字/图标） | `--primary` | `oklch(0.52 0.12 283)` | `#605EAB` |
+| 品牌装饰/光晕 | `--primary-brand` | `oklch(0.654 0.1 283)` | `#8888CC` |
+| 浅色填充块 | `--primary-soft` / `--primary-ghost` | `oklch(0.93 0.03 283)` / `oklch(0.965 0.02 283)` | `#E4E6FC` / `#F1F2FF` |
+| 品牌渐变 | `--gradient` | `linear-gradient(120deg, 紫 → 粉紫)` | — |
+
+> **页面底为什么是"极浅冷调白"而不是明显的香芋紫**：`--hue-bg = hue_accent - 34°`，从紫（283）往冷的方向走了 34 度落进蓝区。这是本站的既有观感（博客就是这个底色），香芋紫的存在感由品牌色、渐变与卡片承担，页面底只负责"干净"。调这个偏移量能整体改冷暖，但会同时影响博客与所有游戏。
+
+Tailwind 工具类档位（`theme.css`）：`brand-50 … brand-950`，其中 `brand-500 = #8888CC`、`brand-600 = #7676B8`。
+
+> **两处定义必须同步**：`theme.css` 是静态 hex（Tailwind 的 `@theme` 只吃静态值），`tokens.css` 是 oklch 推导。`tests/tokens.test.mjs` 会校验二者色相一致——改主色时两处一起改，跑 `npm test` 确认。
+
+深色主题（`--hue-accent` 同源推导）在 `tokens.css` 的 `:root[data-theme='dark']` 里，按需 opt-in。自带深色身份的项目（如 turtle-soup）不引这一段。
+
+---
+
+## 层次规则
+
+**白卡浮在浅底上，靠描边 + 阴影做层次，不靠深色遮罩。**
+
+阴影阶梯（`--shadow-sm/md/lg`）承担层级：
+
+| 层级 | 用法 |
+|---|---|
+| `--shadow-sm` | 普通面板、席位卡 |
+| `--shadow-md` | 卡牌、抬起的元素 |
+| `--shadow-lg` | 浮层、弹窗、当前态强调 |
+
+**禁止**：
+
+1. **深色底 + 白字**的输入框/提示条（白底深字，或浅色填充 + 品牌色字）。
+2. 用 `bg-black/70` 这类重遮罩压背景——白卡加柔影就够。（模态需要聚焦时用极浅遮罩，不要纯黑。）
+3. 在项目里硬编码品牌色 hex。要新档位就往 `theme.css` 加，不要散落在组件里。
+
+**允许**：游戏元素本身可以有对比强的深色。牌背、筹码这类"物件"的固有色不受限制（扑克牌背本来就是深的），受限的是 UI 组件。
+
+---
+
+## 圆角与触摸目标
+
+| 令牌 | 值 | 用途 |
+|---|---|---|
+| `--radius-sm` | 10px | 小控件、徽章容器 |
+| `--radius` | 18px | 面板、席位卡 |
+| `--radius-lg` | 26px | 大卡片、弹窗 |
+| `--tap-min` | 44px | 可点击元素的最小边长（手机） |
+
+胶囊（`border-radius: 999px`）用于标签、状态徽章、计数。
+
+---
+
+## 字体应用规则
+
+这是最容易做错的一环，**中文正文与数字用两套栈**：
+
+| 场景 | 用 | 原因 |
+|---|---|---|
+| 中文标题/正文/按钮/说明 | `--font-body`（霞鹜文楷 Screen） | 与站点手写感一致；这是"一眼看出是同一个站"的主要来源 |
+| 筹码数、房间码、倒计时、卡牌点数、坐标、任何要竖向对齐的数字 | `--font-mono` + `.font-num` | 楷体的数字在小字号下辨识度差、宽度不等，牌面数字会歪 |
+
+`.font-num` = `font-family: var(--font-mono); font-variant-numeric: tabular-nums`。
+
+字体栈里 `LXGW WenKai Screen` 之后跟着 `'Atkinson', system-ui, …` 是**逐级兜底**：字体没加载出来时也不能掉成衬线体。
+
+### 字体资产
+
+5.2MB 的 woff2 子集**不进 git**，唯一真源在 `packages/design-kit/fonts/`（与 chat-kit 对 `emojis/` 的处理一致）。消费方在 dev/build 前同步到自己的 `public/fonts/`，并把该目录 gitignore：
+
+```json
+"scripts": {
+  "predev": "node ../packages/design-kit/scripts/sync-fonts.mjs",
+  "prebuild": "node ../packages/design-kit/scripts/sync-fonts.mjs"
+}
+```
+
+```html
+<link rel="stylesheet" href="/fonts/lxgwwenkaiscreen.css" />
+```
+
+CSS 里是 97 个按 `unicode-range` 切分的 `@font-face`，**浏览器只下载页面实际用到的那几个子集**，不是一次拉 5MB。
+
+> 为什么必须拷贝、不能直接引用包路径：Vite/Astro 只把项目的 `public/` 按原路径静态托管，`@font-face` 的 `url()` 是运行时请求，必须落在可访问的路径上。
+
+---
+
+## 新增一个项目的接入步骤
+
+1. `npm install @lapismind/design-kit@file:../packages/design-kit`
+2. 在 `src/styles/global.css` 里按上面的顺序 `@import`（Tailwind 项目再加 `theme.css`）
+3. 在 `package.json` 加 `predev` / `prebuild` 同步字体，`index.html` 加 `<link>`
+4. 项目 `global.css` **只留应用外壳**（`html/body/#app` 高度、`overscroll-behavior`、整页排版尺度这些布局级设置），设计令牌一律不重写
+5. 用 Tailwind 工具类时只写 `bg-brand-*` / `text-brand-*` / `border-brand-*`；需要非工具类的色值走 `var(--*)`
+
+## 自检
+
+```bash
+cd packages/design-kit && npm test
+```
+
+校验：必需令牌齐全、`theme.css` 与 `tokens.css` 的色相一致、字体子集文件与 CSS 里的引用一一对应（防止同步了一部分）。

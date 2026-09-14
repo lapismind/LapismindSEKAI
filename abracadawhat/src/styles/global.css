@@ -1,19 +1,11 @@
-@import "tailwindcss";
+/* abracadawhat —— 只保留本项目的应用外壳与游戏专属样式。
+   品牌色阶、表面色、字体、面板配方、焦点约定全部来自 @lapismind/design-kit；
+   不要在这里重写设计令牌，改设计语言请改 design-kit。 */
 
-@theme {
-  /* 品牌紫（与 lobby-kit 规范一致） */
-  --color-brand-50: #f2f2fa;
-  --color-brand-100: #e6e6f5;
-  --color-brand-200: #cfcfe9;
-  --color-brand-300: #b3b3dd;
-  --color-brand-400: #9999cf;
-  --color-brand-500: #8888cc;
-  --color-brand-600: #7676b8;
-  --color-brand-700: #6363a0;
-  --color-brand-800: #505085;
-  --color-brand-900: #3d3d68;
-  --color-brand-950: #2a2a48;
-}
+@import "tailwindcss";
+@import "@lapismind/design-kit/tokens.css";
+@import "@lapismind/design-kit/theme.css";
+@import "@lapismind/design-kit/base.css";
 
 html,
 body,
@@ -22,13 +14,7 @@ body,
   margin: 0;
 }
 
-body {
-  background: #f2ebf7;
-  color: #444444;
-  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-}
-
-/* 聊天面板动画 */
+/* 聊天面板动画（本项目专属，不属于设计语言） */
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: all 0.2s ease-out;
