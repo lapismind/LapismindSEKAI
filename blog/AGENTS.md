@@ -13,15 +13,32 @@
 - src/layouts/BlogPost.astro — 文章布局（目录 / 阅读进度 / 评论区挂载）
 - src/components — Header / Footer / BaseHead 全站骨架；CommentSection / UserAvatar 是 Vue 交互岛（认证相关）；Live2dMascot / MusicDock / IntroOverlay 是花活组件
 - src/data — profile.ts / projects.ts / music-player.json：页面多为数据驱动，改文案优先改这里
-- src/styles/global.css — 设计令牌：`--hue-accent` 单源 OKLCH 亮暗主题
-- src/worker.ts — 仅 `/live2d/*` 防盗链，`[assets] directory = ./dist`
+- src/styles/global.css — 设计令牌：`--hue-accent` 单源 OKLCH 亮暗主题；以及本站自有令牌（`--cursor-*`、`--lift-hover`、`--corner-*`）
+- src/worker.ts — `/live2d/*` 防盗链 + moc3 返回预压缩 `.br` + 设缓存头（详见 docs/site-features.md 第 8 节）
+- scripts/precompress-live2d.mjs — 构建后置步骤（`postbuild`），把 moc3 预压成 `.br`
+
+## 不要动的地方（已确认的边界）
+
+### 看板娘（Live2dMascot）的位置
+她的位置是用户反复微调定下来的，**不要改**，包括：
+
+- `#l2d-widget` 的 `left / bottom / width / height`：桌面 `left:12px; bottom:0; 300×420`；
+  `@media (max-width:720px)` 下 `left:6px; 190×260`；同区块内 `.l2d-ground`、`.l2d-particles` 的尺寸
+- `.l2d-card`（「SEKAI · N 天」徽章）的 `left: 50%; bottom: 12px`
+- JS `place()` 里的定位算法（scale 取画布高度、x 居中、y 让脚底透明区压出屏幕）
+
+"顺手优化"（防重叠、挪位置、缩放自适应）一律不做。她与右下角其他浮层
+（电台按钮 / 回到顶部）在窄屏会视觉相邻，这是**已知且接受**的状态。
+
+顺带：右下角的电台按钮与回到顶部共用角落，定位参数必须走 global.css 的 `--corner-*`
+变量（见该处注释），别在组件里各写一份边距——两处分开写必然互相压住。
 
 ## 认证与评论（重要）
 
 - 认证服务在仓库根 auth/（Worker，auth.qmzhj.top）：评论 / 头像 / 成就 / 账号都走它，本目录不持会话逻辑。
 - 前端身份客户端在 packages/lobby-kit（createAuthClient），会话在 HttpOnly cookie（域 .qmzhj.top）。
 - 本地联调：lobby-kit 客户端默认指向 http://localhost:8787（需 auth/ 起 wrangler dev）；CommentSection 的 authBaseUrl 目前硬编码生产域。
-- 动认证接口必须同步 auth/tests（当前 npm test 红，见 review 已知问题）。
+- 动认证接口必须同步 auth/tests。
 
 ## 常用命令
 
@@ -36,9 +53,11 @@ npx wrangler deploy
 
 Python 3.13 + Playwright（全局约定，见仓库根 AGENTS.md）。
 
-## 已知问题速查（详情见 docs/review-2026-08-29.md）
+## 已知问题
 
-- MusicDock 在 SPA 切页后交互失效 / 播放重置（`__mdBound` 全局守卫绑定旧 DOM）
-- /music/lyrics/*.json 缺失 → 中文歌词字幕 404（有日文降级）
-- 评论区分页无 UI；评论区不回传 avatar_id（账号自选头像不显示）
-- auth 测试桩缺成就 SUM 查询 → npm test 红
+2026-08-29 审阅（docs/review-2026-08-29.md）与 2026-09-04 UI/UX 审阅
+（docs/ui-ux-review-v2-2026-09-04.md）里列出的问题**已全部处理完毕**
+（前者见该文第 8 节修复记录；后者的 P0/P1 已实施，Live2D 懒加载/折叠经用户确认不实施）。
+不要再按旧清单去"修"已经不存在的 bug——要确认现状就实机复跑，别引用过期文档。
+
+当前门禁：`npm run build` / `npm run check`（0 errors）/ `npm run lint` / `npm test` 均通过。
