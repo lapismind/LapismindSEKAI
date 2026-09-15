@@ -20,9 +20,25 @@
 	   基调是"几乎察觉不到"——3px 配中档阴影，6px 是上限，别再加。 */
 	--lift-hover: 3px;
 
+	/* ── 右下角浮动控件 ──
+	   箱曲电台按钮（MusicDock）和回到顶部按钮（Footer）叠在同一个角落，
+	   定位参数必须同源：分开写两处，改一个就会互相压住。
+	   --corner-gap   距视口右下角的边距
+	   --corner-btn   按钮直径（两个都是 46px）
+	   --corner-stack 第二个按钮的底边位置（叠在第一个正上方） */
+	--corner-gap: 1.3rem;
+	--corner-btn: 46px;
+	--corner-stack: calc(var(--corner-gap) + var(--corner-btn) + 0.7rem);
+
 	/* aliases，兼容旧页面遗留引用 */
 	--accent: var(--primary);
 	--accent-dark: var(--primary-2);
+}
+
+@media (max-width: 480px) {
+	:root {
+		--corner-gap: 0.8rem;
+	}
 }
 
 

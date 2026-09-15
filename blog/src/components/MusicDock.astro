@@ -397,8 +397,10 @@ import songs from '../data/music-player.json';
 <style is:global>
 	.music-dock {
 		position: fixed;
-		right: 1.3rem;
-		bottom: 1.3rem;
+		/* 与「回到顶部」共用右下角，定位走 global.css 的 --corner-* 变量，
+		   避免两处各写一份边距后互相压住 */
+		right: var(--corner-gap);
+		bottom: var(--corner-gap);
 		z-index: 65;
 		display: flex;
 		/* column-reverse：DOM 里按钮排在面板之前（读屏与键盘顺序应该如此），
@@ -775,10 +777,8 @@ import songs from '../data/music-player.json';
 	}
 
 	@media (max-width: 480px) {
-		.music-dock {
-			right: 0.8rem;
-			bottom: 0.8rem;
-		}
+		/* 窄屏的边距由 global.css 覆盖 --corner-gap 统一处理，
+		   这里只管面板宽度 */
 		.dock-panel {
 			max-width: calc(100vw - 1.6rem);
 		}

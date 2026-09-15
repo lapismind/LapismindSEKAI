@@ -151,8 +151,10 @@ const today = new Date();
 	}
 	.back-to-top {
 		position: fixed;
-		right: 1.4rem;
-		bottom: 1.4rem;
+		/* 与箱曲电台按钮共用右下角：靠 --corner-* 变量叠在它正上方，
+		   这样两个按钮不会在同一角互相压住（改边距请改 global.css 那组变量） */
+		right: var(--corner-gap);
+		bottom: var(--corner-stack);
 		z-index: 70;
 		display: grid;
 		place-items: center;
@@ -178,6 +180,13 @@ const today = new Date();
 	.back-to-top:hover {
 		color: var(--primary);
 		border-color: var(--primary);
+	}
+	/* 电台面板展开时会把右下角整片占掉，回到顶部让位。
+	   不让位的话它会压在玻璃面板上面（z-index 比电台高），看着像坏了。 */
+	:global(#music-dock.dock-open) ~ .back-to-top {
+		opacity: 0;
+		visibility: hidden;
+		pointer-events: none;
 	}
 	.footer-decor {
 		position: relative;
