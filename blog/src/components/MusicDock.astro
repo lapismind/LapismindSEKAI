@@ -401,7 +401,12 @@ import songs from '../data/music-player.json';
 		bottom: 1.3rem;
 		z-index: 65;
 		display: flex;
-		flex-direction: column;
+		/* column-reverse：DOM 里按钮排在面板之前（读屏与键盘顺序应该如此），
+		   但视觉上必须"面板朝上生长、按钮永远贴在右下角"。用正序 + 贴底对齐的话，
+		   字幕剧场一展开（面板约 580px 高）就会把按钮一路顶到屏幕上边缘——
+		   375×667 上按钮跑到 y=19，看起来就像"图标跳到右上角了"。
+		   reverse 之后按钮位置与面板高度无关。 */
+		flex-direction: column-reverse;
 		align-items: flex-end;
 		gap: 0.6rem;
 	}
@@ -467,6 +472,32 @@ import songs from '../data/music-player.json';
 		opacity: 1;
 		visibility: visible;
 		transform: none;
+	}
+	/* 字幕剧场展开时面板很高（约 580px）。给它一个视口高度上限：
+	   多出来的高度由歌词列表收缩滚动消化。
+	   注意：面板固定在底部后，多余高度只会往上顶，所以上限是必须的，
+	   否则只是把"按钮顶到上面"换成"面板顶部出屏"。
+	   这里的 flex 设置和下面 .dock-lyrics 的规则是一套，别分开放——
+	   同优先级时后写的赢，拆开容易互相覆盖。 */
+	.dock-panel.lyrics {
+		display: flex;
+		flex-direction: column;
+		max-height: calc(100vh - 5.5rem);
+		max-height: calc(100dvh - 5.5rem);
+		/* 兜底：极短视口（如 320×568）上，歌词列表已经压到 min-height、
+		   其余部分又不能再压，仍会差几十像素。让面板自己能滚，
+		   保证版权说明这类内容永远可达，而不是被 overflow:hidden 永久裁掉。 */
+		overflow-y: auto;
+		overscroll-behavior: contain;
+	}
+	/* 播放条与剧场/进度/曲目/版权说明都不参与收缩，只有歌词列表吸收 */
+	.dock-panel.lyrics .dock-mini,
+	.dock-panel.lyrics .dock-lyrics > *:not(.lyr-list) {
+		flex: none;
+	}
+	.dock-panel.lyrics .lyr-list {
+		flex: 1 1 auto;
+		min-height: 3.5rem;
 	}
 
 	.dock-mini {
@@ -562,7 +593,11 @@ import songs from '../data/music-player.json';
 		padding: 0.9rem 0.9rem 0.7rem;
 	}
 	.dock-panel.lyrics .dock-lyrics {
-		display: block;
+		/* 纵向 flex 是为了让歌词列表在面板被视口高度限制住时收缩（配上面 .dock-panel.lyrics 的规则） */
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
+		min-height: 0;
 	}
 	.lyr-theater {
 		position: relative;
