@@ -95,3 +95,30 @@ npx wrangler deploy  # 或 wrangler pages deploy dist
 ```
 
 wrangler.toml：`[[routes]] pattern = "blog.qmzhj.top" custom_domain = true`；`[assets] directory = "./dist"`、`not_found_handling = "404-page"`（404.html 由 `src/pages/404.astro` 生成）。
+
+> `npm run build` 会触发 `postbuild`：`scripts/precompress-live2d.mjs` 把 `dist/live2d` 下的 `model.moc3` 预压成 `.br`（见第 8 节）。直接 `npx wrangler deploy` 而不 build，会部署上一次的 `dist/`——这一步不会自动补。
+
+## 8. 资源传输与缓存策略
+
+看板娘首屏曾经一次要拉 3465KB（纹理 2074 + 模型 1158 + JS 230）。2026-09-15 做了一轮**完全无损**的瘦身，降到 1756KB（−49%）：
+
+| 资源 | 改动 | 之前 | 之后 |
+|---|---|---|---|
+| `texture_00.png` | → WebP lossless（`exact=True`，逐位相同） | 2074 KB | 1217 KB |
+| `model.moc3` | 构建期 brotli q11 预压 | 1158 KB | 306 KB |
+| JS（pixi / cubism / live2d） | 未改（CF 已自动压 zstd/br） | 230 KB | 230 KB |
+
+**为什么 moc3 要自己压**：CF 的自动压缩按 Content-Type 判断，而 `.moc3` 没有 MIME（实测响应里 content-type 缺失），CF 会完全跳过它。构建期预压是唯一无损且可控的做法。
+
+**为什么纹理用 `exact=True`**：默认的 WebP lossless 会清零 alpha=0 像素的 RGB（省 460KB），差异全在不可见区域；但 Live2D 的混合模式写在二进制 moc3 里，无法排除 multiply 这类"alpha=0 时 RGB 仍参与合成"的模式，所以选了逐位相同的 `exact=True`。
+
+**缓存策略分两处，别搞混**（原因见 lessons-learned 第 27 条）：
+
+| 路径 | 设在哪 | 值 | 理由 |
+|---|---|---|---|
+| `/_astro/*` | `public/_headers` | `immutable, max-age=31556952` | Astro 产物文件名带内容哈希 |
+| `/fonts/*`、`/music/*`、`/cursors/*` | `public/_headers` | `max-age=604800` | 文件名不含哈希，给 7 天；换文件要意识到最长 7 天陈旧期 |
+| `/live2d/*` | `src/worker.ts` | `max-age=86400` | 这些响应由 Worker 生成，`_headers` 对它们不生效 |
+
+**改看板娘素材时注意**：`/live2d/*` 的文件名不含哈希，换了纹理/模型后老访客最长 1 天看到旧图。要立刻生效就同时改文件名（并同步 `model.model3.json` 的引用）。
+

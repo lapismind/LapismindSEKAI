@@ -10,6 +10,7 @@
     "predev": "node ../packages/design-kit/scripts/sync-fonts.mjs",
     "build": "astro build",
     "prebuild": "node ../packages/design-kit/scripts/sync-fonts.mjs",
+    "postbuild": "node scripts/precompress-live2d.mjs",
     "preview": "astro preview",
     "test": "node tests/profile-presentation.test.mjs",
     "astro": "astro",

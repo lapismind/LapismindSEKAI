@@ -123,3 +123,59 @@
 - 现象：我准备好一套 `.reveal-stagger` + JS 编号的新机制，结果发现首页/列表页早已用 `style="--reveal-delay:${i * 90}ms"` 做了逐项错峰（90/80/70ms 三套数字各写各的）。
 - 结论：错峰不用新做，只需把三处硬编码换成共享令牌 `--reveal-delay: calc(var(--stagger) * ${i})`，节奏收敛成一个数。
 - 教训：**先读现状再提方案**。否则会同时犯两个错——重复造轮子，以及在报告里把"已有功能"说成"新增功能"。
+
+## 2026-09-15（Live2D 首屏瘦身：无损 WebP + moc3 预压缩 + 缓存头）
+
+背景：看板娘首屏实测 3465KB（纹理 2074 + moc3 1158 + JS 230）。要求"不压画质"，所以只做真无损的改动。
+
+### 23. `.moc3` 完全没被压缩，因为它的 Content-Type 是空的
+- 现象：`/live2d/mafuyu/model.moc3` 生产实测 1158KB 原样传，`content-encoding` 为空；同目录的 `.js` 都被压成了 zstd。
+- 根因：**CF 的自动压缩按 Content-Type 判断**，`.moc3` 没有对应 MIME（实测响应里 content-type 确实缺失），CF 直接跳过。
+- 本地实测压缩比：gzip 411KB(35%)、**brotli q11 306KB(26%)**。零画质损失。
+- 修法：构建期预压缩成 `.br`，Worker 直接返回（见第 24/25 条的坑）。
+
+### 24. Worker 返回已压缩的 body，必须显式 `encodeBody: 'manual'`——否则二次压缩
+- 现象：浏览器 fetch `/live2d/mafuyu/model.moc3` 拿到 313374 字节，sha256 **正好等于 `.br` 文件本身** → 说明运行时把已压缩的 body 又压了一遍，客户端解一次拿到的是压缩包，模型直接加载失败。
+- 根因：Worker 里 `new Response(body, {...})` 默认把 body 当作**未压缩数据**，会按 `Content-Encoding` 再编码一次。
+- 修法：`encodeBody: 'manual'`（声明"body 已经编码好了"）。
+- 两个连带坑：
+  - `encodeBody: 'auto'` **会抛错**（`TypeError: encodeBody: unexpected value: auto`）。"不手动编码"的做法是**不设这个属性**，而不是设成 auto。
+  - **fetch 响应的 headers 是只读的**，`res.headers.set(...)` 会 `TypeError: Can't modify immutable headers`（表现为 500）。想改头只能 `new Headers(res.headers)` 后重造 Response。
+- 因此"只加一个缓存头"的正确写法是：拷头 + 按原响应是否带 `Content-Encoding` 决定要不要 `manual`：
+  ```ts
+  const headers = new Headers(res.headers);
+  headers.set('Cache-Control', LIVE2D_CACHE);
+  const init: ResponseInit & { encodeBody?: 'manual' } = { status: res.status, headers };
+  if (res.headers.has('Content-Encoding')) init.encodeBody = 'manual';
+  return new Response(res.body, init);
+  ```
+- 验收方法：**别只看字节数**（二次压缩后大小几乎不变，看不出来）。用浏览器 `fetch` + `crypto.subtle.digest('SHA-256', buf)` 跟原始文件比 sha256——解出来必须逐位相同。
+
+### 25. `wrangler dev` 会把进来的 `Accept-Encoding` 改写成 "br, gzip"，本地测不出协商分支
+- 现象：curl 明确带 `Accept-Encoding: identity`，Worker 里 `request.headers.get('Accept-Encoding')` 读到的仍是 `"br, gzip"`；用日志确认了三次都是同一个值。
+- 后果：基于 Accept-Encoding 的 br 协商**在本地无法验证负面路径**，写了也是自欺欺人。
+- 结论：不做协商，永远返回 `.br`（现代浏览器全支持 br；不支持的由 CF 边缘自动解压）。
+
+### 26. Workers 静态资产不会自动处理 `.br` 兄弟文件
+- 查证：CF 有一个未关闭的 feature request（workers-sdk #11089）就是这件事，官方没有 `brotli_static` 之类的行为。所以要自己预压缩 + 自己在 Worker 里吐。
+- 附带：`not_found_handling = "404-page"` 时，取不存在的文件会拿到**404 状态 + HTML**。判断"预压缩产物是否存在"必须严格判 `status === 200` 并排除 `text/html`，否则会把 404 页面当成压缩产物返回给客户端。
+
+### 27. `_headers` 对 `run_worker_first` 的路径不生效
+- CF 文档明确：`_headers` 定义的头**不会**应用到 Worker 代码生成的响应。
+- 本项目 `run_worker_first = ["/live2d/*"]`，所以 `/live2d/*` 的缓存头必须在 `src/worker.ts` 里设；`/fonts /music /_astro /cursors` 走静态资产，才受 `public/_headers` 管。
+- 顺带：全站默认是 `Cache-Control: public, max-age=0, must-revalidate`（含 `_astro/` 里带哈希的文件）。有 ETag 所以重复访问是 304、不重下，但每个资源每次都要往返校验一次。已按 `_headers` 给哈希资产设 `immutable`、其余 7 天，`/live2d/*` 在 Worker 里设 1 天（这些文件名不含哈希，不敢给 immutable）。
+
+### 28. 纹理 PNG → WebP 无损：为什么用 `exact=True` 而不是默认
+- 实测（2048×2048 RGBA 图集）：
+
+  | 编码 | mafuyu | 与 PNG 的关系 |
+  |---|---|---|
+  | 原 PNG | 2074 KB | — |
+  | WebP lossless 默认 | 757 KB | 可见像素逐位相同，**但 alpha=0 区域的 RGB 被清零** |
+  | WebP lossless `exact=True` | 1217 KB | **任何像素都逐位相同** |
+
+- 默认模式省得多（多 460KB），且经查差异**全部落在 alpha=0 的不可见像素**（可见像素 0 处不同、alpha 通道完全一致）。
+- 但没选它：Live2D 的混合模式写在二进制 moc3 里，无法确认是否存在 multiply 这类"alpha=0 时 RGB 仍参与合成"的模式。`exact=True` 逐位相同，不需要这个前提——多花 460KB 买一个不用赌的保证，符合"不压画质"的字面要求。
+- 改法：转文件 + 改 `model.model3.json` 里 `FileReferences.Texture` 的文件名（一处），运行时按 JSON 取图，浏览器解 WebP 无感。本地实测模型渲染正常。
+- 验收：转完立刻用 numpy 逐位比对原 PNG 与解码后的 WebP；上线后再用浏览器截图确认模型不是空白。
+
