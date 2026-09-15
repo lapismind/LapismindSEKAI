@@ -1,6 +1,6 @@
 """线上统一登录冒烟：无痕打开 turtle-soup，验证游客自动登录 + 登录入口出现。
 
-用法：python docs/agents/playwright-auth-smoke.py [url]
+用法：python docs/agent/scripts/playwright-auth-smoke.py [url]
 默认 https://soup.qmzhj.top/，可传 showhand / abracadawhat 域名。
 """
 import asyncio

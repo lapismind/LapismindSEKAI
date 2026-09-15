@@ -5,7 +5,7 @@
 > 性质：代码审查后的集中修复、部署与 Agent 交接
 >
 > Git 提交：`8a2c13e`、`d346de8`
-> 归档规则：`../../../docs/ARCHIVING.md`
+> 归档规则：`../../../docs/agent/archiving.md`
 
 ## 本轮目标
 

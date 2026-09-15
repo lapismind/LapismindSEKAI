@@ -1,7 +1,7 @@
 """无头复现 / 诊断 blog.qmzhj.top/profile。
 
 用法:
-  python docs/agents/playwright-profile-repro.py
+  python docs/agent/scripts/playwright-profile-repro.py
 
 依赖: 本机只有 Python 3.13 的 playwright (C:\Program Files\Python313)，没有 node 版。
   浏览器二进制缺失时先装:  python -m playwright install chromium
