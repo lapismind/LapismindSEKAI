@@ -59,6 +59,16 @@
 - **node_modules**：不在包内，新电脑上按第一节第 3 步逐个 `npm install`（`package-lock.json` 随 git 走，保证版本一致）。
 - **.git / 源代码**：由 `git clone` 获取，不需要打包。迁移后可直接 `git pull` / `git push`。
 - **密钥安全**：增量包里含 `.dev.vars`、`MATCH_REPORT_SECRET` 等本地密钥，文件仅限自己设备间传递，不要上传到网盘或聊天工具。
+- **wrangler 登录状态**：**仓库里没有、也不该有 Cloudflare 凭证**。凭证文件在用户目录：
+  `%APPDATA%\xdg.config\.wrangler\config\default.toml`（2026-09-15 实测位置——注意 wrangler 用的是
+  `xdg.config` 这一层，**不是** `%APPDATA%\.wrangler`）。若增量包没带上它（本次就没有），
+  **部署前必须先 `npx wrangler login`**（交互式 OAuth，需要人工点一次授权）。
+  先确认：`npx wrangler whoami` 应打印账号邮箱，而不是 `You are not authenticated`。
+  - 排查提示：`.wrangler/` 目录只有 `logs/`、`metrics.json`、`registry/` 而**没有 `config/default.toml`**，
+    就代表没登录——前三个是缓存，不是凭证。
+  - 不要用 `echo $APPDATA` 之类去拼路径做判断（Git Bash 里 `$APPDATA` 可能是空的，
+    会拼成 `/xdg.config/...` 从而误报"不存在"，本次就是这么误判过一次）。
+  - 也**不要**指望 `wrangler deploy --temporary`：那会发到临时预览账号，不是你的域名。
 - **增量包不能覆盖 git 文件**：`git clone` 后先解压增量包，再 `npm install`，顺序不要颠倒。
 - **仓库位置随意**：代码与文档都不依赖仓库所在目录，两台设备用不同路径是正常的——**不要**把文档里的示例路径"统一"成自己那台机器的绝对路径。
 
@@ -70,3 +80,7 @@
       （预期只剩占位示例与历史记录：`docs/lessons-learned.md`、`scripts/sync.ps1` 的注释，以及 `.planning/` 下逐字保留的过往日志）
 - [ ] `blog` 可本地启动（`npm run dev` 或对应脚本）
 - [ ] 各联机游戏可本地起服务并进入房间
+- [ ] **部署能力**：`npx wrangler whoami` 打印出账号邮箱（未登录则先 `npx wrangler login`；
+      凭证不在仓库里，见第三节"wrangler 登录状态"）
+- [ ] **字体已同步**：`ls <游戏>/public/fonts/files/*.woff2 | wc -l` 为 97
+      （gitignore 的产物；由 `predev`/`prebuild` 生成。若部署前缺失，站点会退回系统字体）
