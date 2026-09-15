@@ -5,129 +5,99 @@
 > 接手时先读本文件即可，不用猜哪个日期文件最新。流程见 `docs/agent/handoff.md`。
 
 > 日期：2026-09-15
-> 性质：设计语言统一（功能 + 重构；已完成；**未部署**，线上无变化）
-> 上一轮：路径约定统一为相对路径，已归档到 [`2026-09-15-路径约定统一-handoff.md`](./2026-09-15-路径约定统一-handoff.md)
-> 更早：blog 动效 / Live2D 性能 / 浮动控件修复 → [`2026-09-15-blog-动效与性能-handoff.md`](./2026-09-15-blog-动效与性能-handoff.md)
+> 性质：设计语言统一（延续上一轮；已完成；**未部署**，线上无变化）
+> 上一轮：turtle-soup 接入 design-kit（语义颜色层 + 202 处 slate 迁移）
+> → [`2026-09-15-turtle-soup-接入设计语言-handoff.md`](./2026-09-15-turtle-soup-接入设计语言-handoff.md)
 
 ## 本轮目标
 
-把 **turtle-soup 接入 `@lapismind/design-kit`**（设计语言通用件）。它是三个游戏里最后一个未接入的：
-CSS 只引 `theme.css`，组件里有 **207 处 `slate-*` 硬编码深色**，而 showhand / abracadawhat 是 0 处
-（分别 122 / 76 处 `brand-*`）。同时它字体是自带的 `system-ui` 栈，没有字体同步。
+把设计语言统一推到底：**lobby-kit 的浅色路径** + **showhand / abracadawhat 两个游戏**。
+上一轮只做了 turtle-soup（深色）；这一轮结束时，**博客 + 三个游戏全部同源**。
 
 ## 执行摘要
 
-- **design-kit 补真缺口**：新增 6 个令牌（`--field-bg` / `--surface-raised` / `--btn-neutral(-hover)` /
-  `--overlay` / `--on-accent`，浅深两段都有）＋ 用 `@theme inline` 加了**语义颜色层**
-  （`bg-surface` / `text-ink` / `border-line` / `text-on-accent` …），三个游戏自此有了按角色取名、
-  且跟随 `data-theme` 切换的工具类。
-- **turtle-soup 机制层**：补 `tokens.css` + `base.css` 引入；`<html data-theme="dark">` 常驻深色；
-  接上 `predev`/`prebuild` 字体同步（97 子集）与 `index.html` 的 `<link>`；`body` 改 `var(--font-body)`
-  霞鹜文楷；删掉自己声明的 4 个 hex 变量（其中 3 个从未被引用）；`theme-color` 对齐到深色页底。
-- **202 处 `slate-*` → 语义令牌**（脚本迁移，见下方踩坑）。
-- **清死代码**：`IdentityBadge.vue`（57 行，无人 import，只剩一句过期注释）＋ no-op 的 `animate-bounce-slow`
-  （keyframes 全仓库不存在）。
-- **lobby-kit 的 `ProfileEditor` 新增 `dark` 变体**（`AuthBadge` 早就有，`ProfileEditor` 没有，
-  导致 turtle-soup 大厅里出现一个刺眼的白底输入框）。
-- **新增可复用的验证资产**：`docs/agent/scripts/playwright-turtle-soup-design-check.py`
-  ＋ `.planning/2026-09-15-turtle-soup-design-kit/` 下的迁移脚本与对比度审计脚本。
+- **lobby-kit 浅色路径也收敛到令牌**：`ProfileEditor` / `AuthBadge` 的浅色值由硬编码 hex
+  改为 `var(--令牌, 原硬编码)`。上一轮只给了 `dark` 变体，浅色仍是写死的，所以严格说
+  lobby-kit 那时还没有真正接入 design-kit；这轮补上了。
+- **`AuthBadge` 主按钮改用 `var(--primary)`**（原 `#6b6bd0`）：`--primary` 是品牌色的
+  "可读档位"，白字对比度从约 4.4:1 提到约 5.5:1，过 AA。**不要**用 `--primary-brand`
+  （白字只有 3.3:1）。
+- **showhand + abracadawhat：182 处硬编码 hex → 语义令牌**。这两个游戏的 UI 颜色
+  100% 是 Tailwind 任意值形式（`text-[#8a8299]`），全部迁掉。
+- 新增两个可复用脚本：`playwright-game-shot.py`（任意游戏落截图）与
+  `playwright-design-token-probe.py`（**探针**：查页面里还有没有旧调色板残留、实际色值是不是令牌）。
 
 ## 关键决策（git 查不到的部分）
 
-- **`@theme inline` 是整件事的技术前提**。design-kit 原注释写"Tailwind 的 `@theme` 只吃静态值"，
-  所以品牌色阶被迫用静态 hex 重复一份。这句话一半对：普通 `@theme` 要静态值，但 **`@theme inline`
-  会把 `var()` 原样保留进产物、不预先求值**。我先写最小 spike 实测确认（产物形如
-  `.bg-surface{background-color:var(--card-bg)}` 与 `color-mix(in oklab, var(--card-bg) 80%, transparent)`），
-  确认 hover 变体与 `/NN` 透明度都能用、且切主题自动生效，**然后才动手**。
-  判断标准：**值要不要跟着主题走**——要就用 `inline` 指向 tokens.css，不要才用普通 `@theme` 写死。
-- **深色外观允许变化，完整向设计语言靠拢**（用户拍板）。原话是"海龟汤本来就是一开始拿来练手的，
-  风格那时都没定下来，现在统一向设计语言靠拢"。所以走了 design-kit 的 `data-theme="dark"`
-  派生令牌，而不是把 turtle-soup 现有 hex 固化成令牌值。**代价：页底由 `#1c1c33`（紫调深蓝）
-  变成 `#09111a`（更深的冷蓝）**，整体比原来暗一档——这是有意接受的，且从此与博客的深色主题同源。
-- **保留的"游戏内容"不动**（不属于设计语言）：`GameBoard` 的四个判定色
-  （`#34d399`/`#f87171`/`#94a3b8`/`#fbbf24`）、`fx-pop` 的回弹与判定指针动画（关键反馈手感）、
-  以及 `RoomView` 那张**浅琥珀"汤面"纸质卡**——它是深色游戏里刻意的浅色面板，
-  里面那两处 `slate`（`bg-slate-900/10` 难度徽章 + `text-slate-600`）**故意保留**，
-  因为换成深色主题令牌会把对比度搞反。迁移脚本为此设了"受保护行"。
-- **不迁圆角/阴影到 `--radius-*`/`--shadow-*`**：showhand / abracadawhat 其实也都在用 Tailwind 默认
-  的 `rounded-2xl` / `shadow-lg`。跟它们保持一致，比单方面"更正确"重要。
-- **lobby-kit 的 `dark` 值写成 `var(--令牌, 硬编码回退)`**，而不是复制一套 hex。
-  lobby-kit 不依赖 design-kit，所以回退必须给全：引了 design-kit 的项目自动同源，没引的行为完全不变。
-  复制 hex 正是当初产生"白底输入框"这种漂移的原因。
-- **先归档再改写 `CURRENT.md`**（按 `docs/agent/archiving.md`）：上一轮（路径约定）收口时
-  从 `CURRENT.md` 原样转存成 `2026-09-15-路径约定统一-handoff.md`，再改写本文件。
+- **中性色从"紫调灰"收敛到 design-kit 的"冷调蓝灰"**。两个游戏原本用 `#8a8299` / `#5f586b` /
+  `#d8d0e4` 这一族**紫调**灰；design-kit 的中性色是从 `--hue-accent` 减去 34°（落进蓝区）派生的，
+  所以收敛后整体偏蓝。**这是设计语言自己的取舍，不是妥协**——design-kit README 明说
+  页面/中性色走冷调，"香芋紫的存在感由品牌色、渐变与卡片承担"。实测变化很细微
+  （前后截图几乎看不出差异），属于精修而非改版。
+- **只动 UI chrome，绝不动"游戏物件"色**。明确保留：
+  - `showhand/src/core/tableShape.js` 的牌桌 SVG 配色（`rail` / `feltTop` / `feltStroke` …）
+  - `ChipIcon.vue` 的筹码红 `#e05a4e`（语义色，design-kit 没有 danger 令牌）
+  - 模板里作为 **prop 传入**的颜色（如 `<ChipIcon color="#8888cc" />`）
+  理由有两条：这些值在 JS / prop 上下文里**用 `var()` 本就无效**；而且牌桌、筹码是游戏物件，
+  按 design-kit 的规则本就不受 UI 约束（与 turtle-soup 保留判定色、牌桌回弹同一原则）。
+  迁移脚本用"只替换 Tailwind 任意值字面量"来保证这条边界，实测这三处**确实未被触碰**。
+- **`lobby-kit` 的 fallback 一律给全**。lobby-kit 自身不依赖 design-kit，所以每处都写成
+  `var(--x, 原值)`：引了 design-kit 的项目自动同源，没引的项目行为完全不变。
 
 ## 验证证据
 
-- **测试全绿**：`packages/design-kit` `npm test`（30 令牌、brand-500 色相一致、97 字体子集一一对应）；
-  `packages/lobby-kit` `npm test`（7 个测试文件全过）；`turtle-soup` `npm test`（1 passed / 0 failed）。
-- **构建全绿**：turtle-soup / showhand / abracadawhat 三个 `npm run build` 通过。
-  （blog 未跑构建——它只引 `tokens.css` + `base.css`，不引 `theme.css`；且 `tokens.css` 的改动经
-  `git diff` 确认**纯新增**：唯一被删的一行是旧注释文字，没有任何既有令牌值被改动，因此不受影响。）
-- **编码无损**：`.vue` 用 Node 按 utf8 读回，无 `\uFFFD`、无 mojibake 标记。
-  （这条检查是 turtle-soup 自己的教训要求的——2026-08-14 用 PowerShell 批量改 9 个 `.vue` 把中文全弄乱过。）
-- **对比度（数值）**：脚本从 `tokens.css` 解析深色真值、合成 alpha 后算 WCAG。
-  **文字 21 项里 20 项达 AA**；唯一未达的是 `text-white on brand-600` = 4.16:1，属**既有状况**
-  （没改过任何 `brand-*`，showhand 本来就这么用，design-kit README 自己称 brand-600 为"白字可读性下限"）。
-  判定气泡在四个判定色上**都比原来好**（+0.64 ~ +1.07）。表面/描边分离度比原来的 slate 更含蓄
-  （描边 vs 卡片 1.72→1.32），但**实机看着是清楚的**（见下条）——深色层次本来靠描边+阴影。
-- **浏览器实机验证（8 张截图）**：`docs/agent/scripts/out/turtle-soup-design/`。
-  跑通大厅 → 建房间 → 选谜题 → 开局 → 抽屉 → 帮助，实测 `body` 的 computed `font-family`
-  就是 `"LXGW WenKai Screen"`、`html[data-theme]=dark`、`--card-bg` 解析成深色值。
-  控制台只有 2 条 error，都是没起本地 auth 服务导致的 CORS / `net::ERR_FAILED`——**仓库文档记录的预期现象**。
+- **构建**：`showhand`、`abracadawhat` 均通过；`turtle-soup` 不受本轮影响。
+- **测试**：`packages/lobby-kit` 7 个测试文件全过（改过它，必须跑）。
+- **编码无损**：46 个 `.vue/.js/.css` 用 Node 按 utf8 读回，无 `\uFFFD`。
+- **探针（本轮最硬的证据）**：在两个游戏的真实渲染页面上遍历所有元素的
+  computed `color` / `background-color` / `border-*-color`——
+  - **旧调色板残留 = 0 处**（`#8a8299`/`#333333`/`#5f586b`/`#d8d0e4`/`#a29bb5`/`#f7eff8`/`#2a2a48` 全无）
+  - 实际色值是 design-kit 令牌：文本 `oklch(0.25 0.028 250)`（=`--ink`）×67、
+    描边 `oklch(0.9 0.012 249)`（=`--line`，色相 249 = `--hue-bg`）×108、
+    `oklch(0.654 0.1 283)`（=`--primary-brand`）×4
+  - 以及品牌色阶的**精确值**：`#b3b3dd`（=brand-300）×4、`#cfcfe9`（=brand-200）×4
+- **前后截图**：`docs/agent/scripts/out/design-language/`（before/after 各两张）。
+  肉眼几乎无差异——这正是预期：这是一次精修级收敛，不是改版。
 - **未验证（明确标注）**：
-  - 判定气泡（`text-on-accent`）**没有截图**——它要 AI 主持真的回答一句才会出现，而 AI 主持依赖外部 API。
-    用户已明确"AI 主持人这个暂时不管了，没有廉价 API 了"。该处只有数值证据。
-  - **多玩家状态未覆盖**：只能在本地起单人局，房间内多人环绕、观战等界面没跑到。
-  - 本仓库**对 CSS 没有任何自动化测试**，所以"配色迁移正确"终究依赖人眼；上面的截图是抽样，不是全量。
+  - **只截到大厅**。牌桌/对局中的界面（`PokerTable`、`PlayerSeat`、`PublicArea`、`SpellCard` 等，
+    恰好是改动最集中的地方）**没有截图**——需要多人开局或走完整局，单人跑不到。
+    这些文件的改动是同一套机械替换，且探针在大厅已验证令牌生效，但**不能说已经看过**。
+  - 本仓库对 CSS 没有自动化测试，所以仍是"截图 + 探针抽样"，不是全量。
 
 ## 生产状态
 
-- **未部署，四个线上站点均无变化**（本轮没有触碰 Worker、协议或线上配置）。
-- 线上仍是上一轮状态：`blog.qmzhj.top` Version `bc42df85`。
+- **未部署，四个线上站点均无变化**。三个游戏线上仍跑旧样式，本轮改动只在本地与 git 里。
+- 若要上线：`cd showhand && npm run deploy`、`cd abracadawhat && npm run deploy`（各自独立部署）。
 - 无需回滚。
 
 ## 关键文件
 
 | 文件 | 作用 |
 |---|---|
-| `packages/design-kit/theme.css` | 品牌色阶（普通 `@theme`）＋ **语义颜色层（`@theme inline`）** |
-| `packages/design-kit/tokens.css` | 令牌真源；深色段现在被 turtle-soup 常驻使用 |
-| `packages/design-kit/README.md` | 语义类对照表 + `@theme` vs `@theme inline` 的判断标准 |
-| `turtle-soup/src/assets/main.css` | 只留应用外壳；三个 import；`fade-up` 收敛到令牌 |
-| `turtle-soup/index.html` | `data-theme="dark"`、字体 `<link>`、`theme-color` |
-| `packages/lobby-kit/src/vue/ProfileEditor.vue` | 新增 `dark` 变体（`AuthBadge` 的 dark 值也改为读令牌） |
-| `docs/agent/scripts/playwright-turtle-soup-design-check.py` | 浏览器验证脚本（可复用） |
-| `.planning/2026-09-15-turtle-soup-design-kit/` | 迁移脚本（`migrate-slate.mjs`）＋对比度审计（`contrast-audit.mjs`） |
-| `docs/lessons-learned.md` | 新增"漏装一个包的依赖，报错长在消费方"条目 |
+| `packages/lobby-kit/src/vue/ProfileEditor.vue` | 浅色 + 深色两套值都改为 `var(--令牌, 回退)` |
+| `packages/lobby-kit/src/vue/AuthBadge.vue` | 同上；主按钮改用 `--primary` |
+| `.planning/2026-09-15-design-language-light-games/migrate-hex.mjs` | 182 处 hex → 语义令牌的迁移脚本 |
+| `docs/agent/scripts/playwright-design-token-probe.py` | 探针：查旧调色板残留 / 令牌是否生效 |
+| `docs/agent/scripts/playwright-game-shot.py` | 通用截图（前后对比用） |
 
 ## 踩坑记录
 
-1. **漏装一个包的依赖，报错出现在"消费它的项目"里，极易误判为自己改坏了共享包**。
-   在 abracadawhat 跑 build 报 `failed to resolve import "@lapismind/lobby-kit" from
-   packages/chat-kit/src/chat-client.js`，而我刚改过 design-kit，第一反应是"我把共享包改坏了"。
-   实际是 `packages/chat-kit` 自己没装依赖（仓库不是 workspace，9 个目录各自安装）。
-   判断法：**改 CSS 不可能造成模块解析失败**；把缺的依赖装上、其他改动不动、通过即证清。
-   已记入 `docs/lessons-learned.md`。
-2. **批量改 `.vue` 仍然必须用 Node（显式 utf8），绝不用 PowerShell 写文件**——这是 turtle-soup
-   自己的血泪教训，本次迁移脚本按此写，并用 Node 读回字节确认中文完好。
-3. **开局按钮点不动，是 `:disabled="waitingForPlayers || !game.puzzle"`**——光把人数设成 1 不够，
-   必须先在"更换"里选一个谜题。写验证脚本时在这上面绕过一圈。
-4. **`animate-bounce-slow` 一直是 no-op**（keyframes 全仓库不存在），通关 GIF 其实没有任何动画。
-   本次删掉死类；若想要庆祝效果，用 `--dur-*`/`--ease-*` 另做。
-5. **`tran slate-x-1/2` 会污染 `grep slate-` 的结果**（`translate` 含 `slate`）——核对残留时要用
-   `\bslate-` 或 `-[0-9]` 之类更严的模式。
+1. **`grep -o` 会让后续的"排除模式"彻底失效，据此得出的结论是错的**。
+   我原本用 `grep -roiE "#[0-9a-f]{3,8}" … | grep -viE "\-\[#"` 来判断"哪些 hex 不在
+   Tailwind 任意值里"，结果**每一条都通过了排除**——因为 `-o` 只输出匹配到的片段（`#D8D0E4`），
+   片段里当然不含 `-[#`。我据此误判"有大量 hex 写在 scoped CSS / script 里"，还照这个错误前提
+   设计了第二趟替换。**正确做法**：要按整行过滤就别加 `-o`（或用 `grep -v` 作用于 `grep -rn` 的整行输出），
+   或者干脆打开文件看上下文。这次是 dry-run 的计数（`style 内 hex 0 处`）与我预期的"很多"矛盾，
+   才回头去读文件、发现前提错了。
+2. 顺带确认一个事实：**这两个游戏的 UI 颜色 100% 是 Tailwind 任意值形式**，没有写进 scoped CSS。
+   所以真正的工作量只有一趟替换，第二趟（`<style>` 内裸 hex）是防御性的、当前匹配 0 处。
 
 ## 环境与权限
 
-- **本机新增**：Python **3.14** 的 Playwright 1.62.0 + Chromium headless shell。
-  注意仓库文档写的"Python 3.13 的 playwright"在本机**不成立**（只有 3.14 / 3.11），
-  `C:\Program Files\Python313` 并不存在。
-- **联机调试验证必须用 `npx wrangler dev`**：turtle-soup 的 `vite.config.js` **没有配 `/ws`、`/api` 代理**，
-  `npm run dev` 跑不了房间。验证脚本默连 `http://127.0.0.1:8788`。
-- 本地不跑 auth（`localhost:8787`）时页面出现 CORS / `net::ERR_FAILED` 是**预期现象**，不是回归。
-- **收工/开工命令必须用 `pwsh`，不要用 `powershell`**（5.1 读无 BOM 的 UTF-8 中文脚本会报语法错误）。
-- 部署：`blog` 目录下 `npm run build && npx wrangler deploy`（本轮不需要）。
+- 沿用上一轮：`pwsh`（不能用 `powershell` 5.1）、Python **3.14** 的 Playwright、
+  联机页面必须用 `npx wrangler dev`（`vite dev` 没有 `/ws`、`/api` 代理）。
+- 本地验证端口：`8789` showhand、`8790` abracadawhat、`8788` turtle-soup。
+- 不跑本地 auth（`localhost:8787`）时页面出现 CORS / `net::ERR_FAILED` 属**预期现象**。
 
 ## 阻塞项
 
@@ -135,17 +105,15 @@ CSS 只引 `theme.css`，组件里有 **207 处 `slate-*` 硬编码深色**，�
 
 ## 下次可做之事（按推荐排序，均未与用户确认）
 
-1. **lobby-kit 浅色路径仍是硬编码**。本轮只给 `dark` 变体接上了 design-kit 令牌；浅色值
-   （`#ffffff` / `#d8d0e4` / `#333333` / `#8a8299`）仍写死在组件里，只是"接近"design-kit 的浅色令牌。
-   要两端都同源，把它们也改成 `var(--令牌, 回退)`。收益中等、风险低。
-2. **showhand / abracadawhat 也可以照做**。审计发现它们**也没用语义表面令牌**，
-   而是硬编码 `#8A8299` / `#333333` / `#D8D0E4` 等 hex（各 100+ 处）。turtle-soup 是第一个真正
-   消费语义令牌的游戏，模式已跑通并有验证脚本，另两个可以照着迁。
-3. **`AuthBadge` 的 `.lk-btn-primary` 背景是 `#6b6bd0`，不在 `brand-*` 色阶里**，
-   所以它不跟随主色色相变化。本轮没动（会改变另两个浅色游戏的观感），可单独处理。
-4. **给 `scripts/sync.ps1` 加 UTF-8 BOM**（上一轮遗留，仍未做）：让 5.1 与 7 都能跑。
-5. **AI 主持相关一律暂缓**：用户明确"暂时不管了，没有廉价 API 了"。
-   这包含 `turtle-soup/docs/todos.md` 里那条"AI 复盘按钮始终不显示"。
+1. **牌桌/对局中界面还没看过**。本轮改动最集中的几个组件（`PokerTable` / `PlayerSeat` /
+   `PublicArea` / `SpellCard` / `CastPanel`）只在大厅侧验证了令牌生效，没截到实际对局画面。
+   要补的话需要开两局（或起两个浏览器上下文模拟两名玩家）。
+2. **三个游戏现在都同源了**，可以考虑把 `migrate-hex.mjs` 这套流程沉淀成
+   `docs/agent/scripts/` 下的正式工具（目前它在 `.planning/` 里，属于本轮证据）。
+3. **`design-kit` 的 `brand-600` 配白字是 4.16:1，低于 AA 正文标准**（既有问题，非本轮引入）。
+   浅色底上的白字按钮可以考虑统一改用 `--primary`（`AuthBadge` 本轮已经这么做了）。
+4. **给 `scripts/sync.ps1` 加 UTF-8 BOM**（两轮遗留，仍未做）。
+5. **部署三个游戏**：改动都还在本地，线上是旧样式。需要用户确认后再 `npm run deploy`。
 
-**不建议**：为了让深色表面分离度"达到 3:1"去改 design-kit 的深色 `--line`——WCAG 对表面/描边没有
-这个要求，且实机看着是清楚的；真要改会同时影响博客的深色主题。
+**不建议**：把 `tableShape.js` 的牌桌配色、`ChipIcon` 的筹码红也迁到令牌——它们是游戏物件色，
+`var()` 在那些上下文无效，design-kit 的规则也明确允许游戏元素有强对比固有色。

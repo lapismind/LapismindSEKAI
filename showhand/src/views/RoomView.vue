@@ -219,11 +219,11 @@ function seatHand(playerId) {
 </script>
 
 <template>
-    <div class="flex min-h-screen flex-col bg-[var(--page-bg)] text-[#333333]">
+    <div class="flex min-h-screen flex-col bg-[var(--page-bg)] text-ink">
     <!-- 顶部栏：窄屏允许换行，否则徽章会被 flex 挤成竖排文字 -->
-    <header class="flex flex-wrap items-center justify-between gap-y-2 border-b border-[#D8D0E4] bg-white/80 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
+    <header class="flex flex-wrap items-center justify-between gap-y-2 border-b border-line bg-white/80 px-3 py-2.5 backdrop-blur sm:px-4 sm:py-3">
       <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 sm:gap-x-3">
-        <a href="/" class="whitespace-nowrap text-sm text-[#8A8299] transition hover:text-[#333333]">← 退出</a>
+        <a href="/" class="whitespace-nowrap text-sm text-muted transition hover:text-ink">← 退出</a>
         <span class="font-num whitespace-nowrap text-sm font-bold text-brand-700">房间 {{ roomCode }}</span>
         <button
           type="button"
@@ -303,7 +303,7 @@ function seatHand(playerId) {
     </header>
 
     <!-- 个人资料编辑弹层 -->
-    <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2a2a48]/25 p-4">
+    <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/25 p-4">
       <div class="w-full max-w-sm rounded-2xl border border-brand-200 bg-white p-6">
         <h2 class="mb-4 text-lg font-bold">⚙️ 我的资料</h2>
         <ProfileEditor
@@ -318,14 +318,14 @@ function seatHand(playerId) {
     </div>
 
   <!-- 房间设置弹层 -->
-  <div v-if="showConfig" class="fixed inset-0 z-50 flex items-center justify-center bg-[#2a2a48]/25 p-4">
+  <div v-if="showConfig" class="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/25 p-4">
     <div class="w-full max-w-sm rounded-2xl border border-brand-200 bg-white p-6">
       <h2 class="mb-4 text-lg font-bold">房间设置</h2>
       <div v-if="false" /> <!-- spacer for indentation match -->
 
  <!-- 个人资料编辑弹层 -->
         <div class="mb-4">
-          <label class="mb-1 block text-xs text-[#8A8299]">玩法</label>
+          <label class="mb-1 block text-xs text-muted">玩法</label>
           <div class="flex gap-2">
             <button
               class="flex-1 rounded-lg py-2.5 text-sm font-bold transition"
@@ -340,14 +340,14 @@ function seatHand(playerId) {
           </div>
         </div>
         <div class="mb-4">
-          <label class="mb-1 block text-xs text-[#8A8299]">局数</label>
+          <label class="mb-1 block text-xs text-muted">局数</label>
           <input v-model.number="configRounds" type="number" min="1" max="100"
-            class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-[#333333] outline-none focus:border-brand-500" />
+            class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-ink outline-none focus:border-brand-500" />
         </div>
         <div class="mb-6">
-          <label class="mb-1 block text-xs text-[#8A8299]">初始筹码</label>
+          <label class="mb-1 block text-xs text-muted">初始筹码</label>
           <input v-model.number="configChips" type="number" min="100" step="100"
-            class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-[#333333] outline-none focus:border-brand-500" />
+            class="w-full rounded-lg border border-brand-200 bg-white px-3 py-2 text-ink outline-none focus:border-brand-500" />
         </div>
         <div class="flex gap-2">
           <button class="flex-1 rounded-lg bg-brand-100 hover:bg-brand-200 py-2.5 text-sm font-bold" @click="showConfig = false">取消</button>
@@ -374,7 +374,7 @@ function seatHand(playerId) {
           class="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-brand-200 bg-white/95 px-5 py-2 shadow-md"
           :style="{ left: (stageW / 2) * stageScale + 'px', top: (stageH / 2) * stageScale + 'px' }"
         >
-          <span class="text-sm text-[#8A8299]">底池</span>
+          <span class="text-sm text-muted">底池</span>
           <span class="flex items-center gap-1 font-num text-lg font-bold text-brand-700">
             <ChipIcon :size="18" color="#8888cc" /> {{ pot }}
           </span>
@@ -404,17 +404,17 @@ function seatHand(playerId) {
         <div v-if="matchFinished" class="rounded-2xl border border-brand-200 bg-white/95 p-4 shadow-lg">
           <div class="text-center">
             <div class="text-2xl">🏆</div>
-            <p class="mt-1 text-sm font-bold text-[#333333]">
+            <p class="mt-1 text-sm font-bold text-ink">
               {{ finalStandings[0]?.nickname ?? '—' }} 夺冠
             </p>
-            <p class="font-num text-xs text-[#8A8299]">共 {{ game.roomState?.round ?? 0 }} / {{ matchRoundTotal }} 局</p>
+            <p class="font-num text-xs text-muted">共 {{ game.roomState?.round ?? 0 }} / {{ matchRoundTotal }} 局</p>
           </div>
           <ol class="mt-3 space-y-0.5">
             <li
               v-for="(row, i) in finalStandings"
               :key="row.playerId"
               class="flex items-center gap-2 rounded-lg px-2 py-1 text-xs"
-              :class="row.playerId === game.myPlayerId ? 'bg-brand-100 font-bold text-brand-700' : 'text-[#5F586B]'"
+              :class="row.playerId === game.myPlayerId ? 'bg-brand-100 font-bold text-brand-700' : 'text-ink-soft'"
             >
               <span class="font-num w-4 shrink-0 text-right">{{ i + 1 }}</span>
               <span class="min-w-0 flex-1 truncate">{{ row.nickname }}</span>
@@ -429,7 +429,7 @@ function seatHand(playerId) {
           >
             🔄 再来一局
           </button>
-          <p v-else class="mt-3 text-center text-xs text-[#8A8299]">等待房主再来一局…</p>
+          <p v-else class="mt-3 text-center text-xs text-muted">等待房主再来一局…</p>
           <a
             href="/"
             class="mt-2 block rounded-lg border border-brand-200 bg-white py-2 text-center text-sm font-bold text-brand-700 transition hover:bg-brand-50"
@@ -437,9 +437,9 @@ function seatHand(playerId) {
         </div>
 
         <!-- 房主等待区 -->
-        <div v-else-if="isHost && game.phase === 'waiting'" class="rounded-2xl border border-[#D8D0E4] bg-white/95 p-4 text-center shadow-lg">
-          <p class="text-sm text-[#5F586B]">等待玩家加入…（至少 2 人开局）</p>
-          <p class="mt-1 text-xs text-[#8A8299]">分享链接邀请好友加入</p>
+        <div v-else-if="isHost && game.phase === 'waiting'" class="rounded-2xl border border-line bg-white/95 p-4 text-center shadow-lg">
+          <p class="text-sm text-ink-soft">等待玩家加入…（至少 2 人开局）</p>
+          <p class="mt-1 text-xs text-muted">分享链接邀请好友加入</p>
         </div>
 
         <!-- 玩家下注 -->
@@ -458,8 +458,8 @@ function seatHand(playerId) {
 
         <!-- 观众提示 -->
         <div v-else-if="game.myRole === 'spectator' && game.phase === 'playing'" class="rounded-2xl border border-brand-200 bg-white/95 p-4 text-center shadow-lg">
-          <p class="text-sm text-[#5F586B]">👀 你在观众席，可查看所有玩家的手牌</p>
-          <p v-if="isBlindRound" class="mt-1 text-xs text-[#8A8299]">闷牌轮中，没看牌的玩家连你也看不到</p>
+          <p class="text-sm text-ink-soft">👀 你在观众席，可查看所有玩家的手牌</p>
+          <p v-if="isBlindRound" class="mt-1 text-xs text-muted">闷牌轮中，没看牌的玩家连你也看不到</p>
         </div>
 
         <!-- 错误提示 -->
@@ -477,11 +477,11 @@ function seatHand(playerId) {
     />
 
     <!-- 摊牌结果弹层 -->
-    <div v-if="game.showdown" class="fixed inset-0 z-40 flex items-center justify-center bg-[#2a2a48]/30 p-4" @click.self="closeShowdown">
+    <div v-if="game.showdown" class="fixed inset-0 z-40 flex items-center justify-center bg-brand-950/30 p-4" @click.self="closeShowdown">
       <div class="w-full max-w-lg rounded-2xl border border-brand-200 bg-white p-6">
         <div class="mb-2 flex items-center justify-between">
-          <h2 class="text-xl font-bold text-[#333333]">摊牌</h2>
-          <button class="rounded-lg bg-brand-100 hover:bg-brand-200 px-3 py-1.5 text-sm text-[#5F586B] transition hover:bg-brand-200" @click="closeShowdown">
+          <h2 class="text-xl font-bold text-ink">摊牌</h2>
+          <button class="rounded-lg bg-brand-100 hover:bg-brand-200 px-3 py-1.5 text-sm text-ink-soft transition hover:bg-brand-200" @click="closeShowdown">
             关闭
           </button>
         </div>
@@ -496,8 +496,8 @@ function seatHand(playerId) {
                 :src="avatarUrl(players.find(p => p.id === h.playerId)?.avatarId)"
                 class="h-8 w-8 rounded-full object-cover" />
               <div>
-                <div class="text-sm font-bold text-[#333333]">{{ h.nickname }}</div>
-                <div class="text-xs text-[#8A8299]">{{ h.folded ? '弃牌' : (h.handName || '') }}</div>
+                <div class="text-sm font-bold text-ink">{{ h.nickname }}</div>
+                <div class="text-xs text-muted">{{ h.folded ? '弃牌' : (h.handName || '') }}</div>
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -506,7 +506,7 @@ function seatHand(playerId) {
             </div>
               <span
                 class="font-num min-w-14 rounded-md px-2 py-0.5 text-right text-sm font-bold"
-                :class="h.delta > 0 ? 'bg-emerald-50 text-emerald-700' : h.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-brand-100 text-[#8A8299]'"
+                :class="h.delta > 0 ? 'bg-emerald-50 text-emerald-700' : h.delta < 0 ? 'bg-red-50 text-red-600' : 'bg-brand-100 text-muted'"
               >
                 {{ h.delta > 0 ? '+' : '' }}{{ h.delta }}
               </span>
@@ -514,17 +514,17 @@ function seatHand(playerId) {
           </div>
         </div>
         <div class="mb-4 text-center">
-          <span class="text-sm text-[#8A8299]">赢家</span>
+          <span class="text-sm text-muted">赢家</span>
           <span class="ml-2 text-lg font-bold text-brand-700">
             {{ game.showdown.winners.map(w => players.find(p => p.id === w.playerId)?.nickname || w.playerId).join(', ') }}
             净赢 +{{ game.showdown.winners.reduce((s, w) => s + (w.netDelta ?? 0), 0) }}
           </span>
         </div>
-        <div v-if="game.lastGameOver" class="mb-4 rounded-xl bg-[#F7EFF8] px-4 py-3 border border-[#E6E1F0]">
-          <div class="text-center text-xs text-[#8A8299]">当前筹码</div>
+        <div v-if="game.lastGameOver" class="mb-4 rounded-xl bg-brand-50 px-4 py-3 border border-line">
+          <div class="text-center text-xs text-muted">当前筹码</div>
           <div class="mt-1 flex justify-center gap-4 text-sm">
             <span v-for="s in [...game.lastGameOver.standings].sort((a, b) => b.chips - a.chips).slice(0, 3)" :key="s.playerId"
-              class="font-num font-bold" :class="s.playerId === game.myPlayerId ? 'text-brand-600' : 'text-[#333333]'">
+              class="font-num font-bold" :class="s.playerId === game.myPlayerId ? 'text-brand-600' : 'text-ink'">
               {{ players.find(p => p.id === s.playerId)?.nickname }}: {{ s.chips }}
             </span>
           </div>

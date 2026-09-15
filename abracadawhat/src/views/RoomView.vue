@@ -185,14 +185,14 @@ async function copyInvite() {
         <!-- 顶栏 -->
     <header class="mb-3 flex items-center justify-between gap-2">
         <div class="flex items-baseline gap-3">
-        <h1 class="text-lg font-bold text-[#333333]">🧙 <span class="hidden sm:inline">出包魔法师</span></h1>
-        <span class="text-xs text-[#8A8299]"><span class="hidden sm:inline">房间号: </span>{{ roomCode }}</span>
+        <h1 class="text-lg font-bold text-ink">🧙 <span class="hidden sm:inline">出包魔法师</span></h1>
+        <span class="text-xs text-muted"><span class="hidden sm:inline">房间号: </span>{{ roomCode }}</span>
         <span v-if="game.roomState && game.roomState.round > 0" class="hidden sm:inline text-sm text-brand-600">
           【第 {{ game.roomState.round }} 轮】
         </span>
       </div>
       <div class="flex gap-1.5">
-        <button type="button" class="rounded-lg border border-[#CFCFE9] bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 hover:border-brand-300 hover:text-brand-500" @click="helpOpen = true">
+        <button type="button" class="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 hover:border-brand-300 hover:text-brand-500" @click="helpOpen = true">
           📖 <span class="hidden sm:inline">规则</span>
         </button>
         <button type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500" @click="copyInvite">
@@ -209,12 +209,12 @@ async function copyInvite() {
 
     <!-- 等待中 -->
     <div v-if="!game.roomState || game.roomState.phase === 'waiting'" class="flex flex-col items-center justify-center gap-4 py-16">
-      <p class="text-lg text-[#444444]">等待玩家加入（{{ game.roomState?.players.length ?? 0 }}/5）…</p>
+      <p class="text-lg text-ink">等待玩家加入（{{ game.roomState?.players.length ?? 0 }}/5）…</p>
       <div class="flex flex-wrap justify-center gap-2">
         <div
           v-for="p in game.roomState?.players ?? []"
           :key="p.id"
-          class="flex items-center gap-1.5 rounded-full border border-[#D8D0E4] bg-white px-3 py-1.5 text-sm text-[#333333]"
+          class="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1.5 text-sm text-ink"
         >
           <img :src="avatarUrl(p.avatarId)" :alt="p.nickname" class="h-6 w-6 rounded-full object-cover" />
           <span>{{ p.isHost ? '👑 ' : '' }}{{ p.nickname }}</span>
@@ -228,7 +228,7 @@ async function copyInvite() {
       >
         🎲 开始游戏
       </button>
-      <p v-if="isHost && (game.roomState?.players.length ?? 0) < 2" class="text-sm text-[#8A8299]">
+      <p v-if="isHost && (game.roomState?.players.length ?? 0) < 2" class="text-sm text-muted">
         至少需要 2 名玩家才能开始
       </p>
     </div>
@@ -246,7 +246,7 @@ async function copyInvite() {
       <div class="my-3 text-center text-sm">
         <span v-if="isRoundEnd" class="text-brand-600 font-bold">🔮 本轮结束 — 查看所有牌面进行复盘</span>
         <span v-else-if="isMyTurn" class="font-bold text-brand-600">轮到你施法了！</span>
-        <span v-else class="text-[#8A8299]">
+        <span v-else class="text-muted">
           等待 {{ game.roomState.players.find(p => p.id === game.roomState.currentPlayerId)?.nickname ?? '…' }} 施法…
         </span>
       </div>
@@ -280,7 +280,7 @@ async function copyInvite() {
 
       <CastFeedback />
 
-      <div v-if="game.mySecrets.length > 0" class="mt-3 rounded-xl border border-[#B3B3DD]/50 bg-brand-100 p-3">
+      <div v-if="game.mySecrets.length > 0" class="mt-3 rounded-xl border border-brand-300/50 bg-brand-100 p-3">
         <div class="mb-2 text-xs text-brand-700">🔮 你的秘密牌（轮末存活时每张 +1 分）</div>
         <div class="flex flex-wrap gap-1.5">
           <SpellCard
@@ -297,10 +297,10 @@ async function copyInvite() {
       <section v-if="isRoundEnd" data-testid="round-recap" class="mt-4 rounded-2xl border border-brand-300 bg-gradient-to-b from-brand-100 to-white p-4 shadow-sm sm:p-5">
         <div class="text-center">
           <p class="text-xs font-bold tracking-wider text-brand-600">第 {{ game.roomState.round }} 轮结算</p>
-          <h2 class="mt-1 text-xl font-bold text-[#333333]">
+          <h2 class="mt-1 text-xl font-bold text-ink">
             {{ roundWinner?.nickname ?? '本轮无人获胜' }}
           </h2>
-          <p class="mt-1 text-sm text-[#5F586B]">
+          <p class="mt-1 text-sm text-ink-soft">
             <span v-if="decisiveSpell">决定性魔法：{{ decisiveSpell.name }} · </span>{{ roundReason }}
           </p>
         </div>
@@ -309,32 +309,32 @@ async function copyInvite() {
           <article
             v-for="row in roundSummary?.standings ?? []"
             :key="row.id"
-            class="rounded-xl border border-[#DDD5E7] bg-white p-3"
+            class="rounded-xl border border-line bg-white p-3"
           >
             <div class="flex items-center justify-between gap-2">
-              <span class="min-w-0 truncate text-sm font-bold text-[#333333]">{{ row.nickname }}</span>
+              <span class="min-w-0 truncate text-sm font-bold text-ink">{{ row.nickname }}</span>
               <span class="shrink-0 text-sm font-bold text-brand-700">本轮 +{{ row.gained ?? 0 }} 分</span>
             </div>
             <dl class="mt-2 grid grid-cols-3 gap-1 text-center text-xs">
-              <div class="rounded-lg bg-[#F7EFF8] px-1 py-2"><dt class="text-[#8A8299]">轮胜分</dt><dd class="font-bold">{{ row.scoreBySource?.roundWinPoints ?? 0 }}</dd></div>
-              <div class="rounded-lg bg-[#F7EFF8] px-1 py-2"><dt class="text-[#8A8299]">幸存分</dt><dd class="font-bold">{{ row.scoreBySource?.survivalPoints ?? 0 }}</dd></div>
-              <div class="rounded-lg bg-[#F7EFF8] px-1 py-2"><dt class="text-[#8A8299]">秘密牌分</dt><dd class="font-bold">{{ row.scoreBySource?.secretPoints ?? 0 }}</dd></div>
+              <div class="rounded-lg bg-brand-50 px-1 py-2"><dt class="text-muted">轮胜分</dt><dd class="font-bold">{{ row.scoreBySource?.roundWinPoints ?? 0 }}</dd></div>
+              <div class="rounded-lg bg-brand-50 px-1 py-2"><dt class="text-muted">幸存分</dt><dd class="font-bold">{{ row.scoreBySource?.survivalPoints ?? 0 }}</dd></div>
+              <div class="rounded-lg bg-brand-50 px-1 py-2"><dt class="text-muted">秘密牌分</dt><dd class="font-bold">{{ row.scoreBySource?.secretPoints ?? 0 }}</dd></div>
             </dl>
           </article>
         </div>
 
-        <div v-if="startingHandCounts.length" class="mt-4 rounded-xl border border-[#DDD5E7] bg-white p-3">
-          <h3 class="text-sm font-bold text-[#333333]">你手里原来有</h3>
-          <p class="mt-1 text-sm leading-6 text-[#5F586B]">
+        <div v-if="startingHandCounts.length" class="mt-4 rounded-xl border border-line bg-white p-3">
+          <h3 class="text-sm font-bold text-ink">你手里原来有</h3>
+          <p class="mt-1 text-sm leading-6 text-ink-soft">
             <span v-for="(item, index) in startingHandCounts" :key="item.spell.id">
               {{ index ? '、' : '' }}{{ item.spell.name }} × {{ item.count }}
             </span>
           </p>
         </div>
 
-        <div class="mt-4 rounded-xl bg-[#F7EFF8] p-3">
+        <div class="mt-4 rounded-xl bg-brand-50 p-3">
           <div class="text-sm font-bold text-brand-700">先到 {{ game.roomState.targetScore ?? 8 }} 分</div>
-          <div class="mt-2 flex flex-wrap gap-2 text-xs text-[#5F586B]">
+          <div class="mt-2 flex flex-wrap gap-2 text-xs text-ink-soft">
             <span v-for="player in game.roomState.players" :key="player.id" class="rounded-full bg-white px-3 py-1.5">
               {{ player.nickname }} {{ player.score }} 分，还差 {{ Math.max(0, (game.roomState.targetScore ?? 8) - player.score) }} 分
             </span>
@@ -348,7 +348,7 @@ async function copyInvite() {
           class="min-h-[44px] rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500"
           @click="game.nextRound()"
         >开启下一轮</button>
-        <p v-else class="text-xs text-[#8A8299]">等待房主开启下一轮…</p>
+        <p v-else class="text-xs text-muted">等待房主开启下一轮…</p>
         </div>
       </section>
 
@@ -367,28 +367,28 @@ async function copyInvite() {
            type="button"
            @click="closeGameOverDetails"
            aria-label="关闭比赛结算详情"
-           class="absolute top-2 right-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm text-[#8A8299] hover:bg-white/70 hover:text-[#333333] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+           class="absolute top-2 right-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-sm text-muted hover:bg-white/70 hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
            title="关闭，继续准备再来一局"
          >✕</button>
           <div class="text-center text-5xl">🏆</div>
-           <h3 id="game-over-title" class="mt-3 text-center text-2xl font-bold text-[#333333]">
+           <h3 id="game-over-title" class="mt-3 text-center text-2xl font-bold text-ink">
              {{ game.lastGameOver.standings[0]?.nickname }} 获胜！
            </h3>
-           <p v-if="game.lastGameOver.rounds" class="mt-1 text-center text-sm text-[#8A8299]">共进行 {{ game.lastGameOver.rounds }} 轮</p>
+           <p v-if="game.lastGameOver.rounds" class="mt-1 text-center text-sm text-muted">共进行 {{ game.lastGameOver.rounds }} 轮</p>
            <div class="mt-4 grid gap-2 sm:grid-cols-2">
              <div
                v-for="(row, i) in game.lastGameOver.standings"
                :key="standingId(row)"
-               class="rounded-xl border border-[#DDD5E7] bg-white px-3 py-3 text-sm"
+               class="rounded-xl border border-line bg-white px-3 py-3 text-sm"
              >
                <div class="flex items-center justify-between gap-2">
-                 <span class="min-w-0 truncate font-bold text-[#333333]">{{ row.rank ?? i + 1 }}. {{ row.nickname }}</span>
+                 <span class="min-w-0 truncate font-bold text-ink">{{ row.rank ?? i + 1 }}. {{ row.nickname }}</span>
                  <span class="shrink-0 font-bold text-amber-600">{{ row.score }} 分</span>
                </div>
-               <div class="mt-2 grid grid-cols-3 gap-1 text-center text-xs text-[#5F586B]">
-                 <span class="rounded-lg bg-[#F7EFF8] px-1 py-1.5">轮胜 {{ row.roundWins ?? '—' }}</span>
-                 <span class="rounded-lg bg-[#F7EFF8] px-1 py-1.5">击杀 {{ row.kills ?? '—' }}</span>
-                 <span class="rounded-lg bg-[#F7EFF8] px-1 py-1.5">最长连放 {{ row.maxTurnCastCount ?? '—' }}</span>
+               <div class="mt-2 grid grid-cols-3 gap-1 text-center text-xs text-ink-soft">
+                 <span class="rounded-lg bg-brand-50 px-1 py-1.5">轮胜 {{ row.roundWins ?? '—' }}</span>
+                 <span class="rounded-lg bg-brand-50 px-1 py-1.5">击杀 {{ row.kills ?? '—' }}</span>
+                 <span class="rounded-lg bg-brand-50 px-1 py-1.5">最长连放 {{ row.maxTurnCastCount ?? '—' }}</span>
                </div>
              </div>
            </div>
@@ -396,10 +396,10 @@ async function copyInvite() {
            <section v-if="formattedStories.length" aria-labelledby="match-stories-title" class="mt-5">
              <h4 id="match-stories-title" class="text-sm font-bold text-brand-700">本局故事</h4>
              <div class="mt-2 grid gap-2 sm:grid-cols-3">
-               <article v-for="story in formattedStories" :key="story.title + story.body" class="rounded-xl border border-brand-200 bg-[#F7EFF8] p-3">
+               <article v-for="story in formattedStories" :key="story.title + story.body" class="rounded-xl border border-brand-200 bg-brand-50 p-3">
                  <div class="text-sm font-bold text-amber-600">{{ story.stars }}</div>
-                 <h5 class="mt-1 text-sm font-bold text-[#333333]">{{ story.title }}</h5>
-                 <p class="mt-1 text-xs leading-5 text-[#5F586B]">{{ story.body }}</p>
+                 <h5 class="mt-1 text-sm font-bold text-ink">{{ story.title }}</h5>
+                 <p class="mt-1 text-xs leading-5 text-ink-soft">{{ story.body }}</p>
                </article>
              </div>
            </section>
@@ -413,8 +413,8 @@ async function copyInvite() {
                class="rounded-xl border-2 border-amber-400 bg-amber-50 px-4 py-3 text-left"
              >
               <div class="text-sm font-bold text-amber-700">{{ '★'.repeat(a.stars) || '🥚' }} {{ a.name }}</div>
-              <div class="text-xs text-[#8A8299]">{{ a.desc }}</div>
-              <div class="mt-1 text-xs text-[#8A8299]">
+              <div class="text-xs text-muted">{{ a.desc }}</div>
+              <div class="mt-1 text-xs text-muted">
                  {{ game.lastGameOver.standings.find(s => s.id === a.playerId)?.nickname || '' }}
                </div>
              </div>
@@ -426,7 +426,7 @@ async function copyInvite() {
                <div class="space-y-2 px-4 pb-4">
                  <div v-for="a in remainingAchievements" :key="a.key + a.playerId" class="rounded-lg bg-white/80 p-3">
                    <div class="text-sm font-bold text-amber-700">{{ '★'.repeat(a.stars) || '🥚' }} {{ a.name }}</div>
-                   <div class="text-xs text-[#8A8299]">{{ a.desc }}</div>
+                   <div class="text-xs text-muted">{{ a.desc }}</div>
                  </div>
                </div>
              </details>
@@ -436,11 +436,11 @@ async function copyInvite() {
              战报暂未保存，不影响继续游戏
            </p>
 
-           <details v-if="game.lastGameOver.standings.some(row => row.scoreBySource || row.roundWinsByReason)" class="mt-4 rounded-xl border border-[#DDD5E7] bg-white text-left">
+           <details v-if="game.lastGameOver.standings.some(row => row.scoreBySource || row.roundWinsByReason)" class="mt-4 rounded-xl border border-line bg-white text-left">
              <summary class="flex min-h-[44px] cursor-pointer items-center px-4 py-2 text-sm font-bold text-brand-700">查看完整统计</summary>
-             <div class="space-y-3 px-4 pb-4 text-xs text-[#5F586B]">
-               <div v-for="row in game.lastGameOver.standings" :key="'stats-' + standingId(row)" class="rounded-lg bg-[#F7EFF8] p-3">
-                 <div class="font-bold text-[#333333]">{{ row.nickname }}</div>
+             <div class="space-y-3 px-4 pb-4 text-xs text-ink-soft">
+               <div v-for="row in game.lastGameOver.standings" :key="'stats-' + standingId(row)" class="rounded-lg bg-brand-50 p-3">
+                 <div class="font-bold text-ink">{{ row.nickname }}</div>
                  <p class="mt-1">得分：轮胜 {{ row.scoreBySource?.roundWinPoints ?? 0 }}、幸存 {{ row.scoreBySource?.survivalPoints ?? 0 }}、秘密牌 {{ row.scoreBySource?.secretPoints ?? 0 }}</p>
                  <p>轮胜方式：击杀 {{ row.roundWinsByReason?.kill ?? 0 }}、清空手牌 {{ row.roundWinsByReason?.all_spells ?? 0 }}</p>
                  <p>巨龙击杀 {{ row.dragonKills ?? 0 }}、死亡 {{ row.deaths ?? 0 }}、最多不同魔法 {{ row.maxTurnDistinctSpells ?? 0 }}</p>
@@ -456,11 +456,11 @@ async function copyInvite() {
                class="min-h-[44px] rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
                @click="game.rematch()"
              >再来一局</button>
-             <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-[#8A8299]">等待房主再来一局…</p>
+             <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-muted">等待房主再来一局…</p>
              <button
                type="button"
                aria-label="结算详情内返回大厅"
-               class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+               class="min-h-[44px] rounded-xl border border-brand-200 bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
                @click="goToLobby"
              >返回大厅</button>
            </div>
@@ -480,7 +480,7 @@ async function copyInvite() {
             v-if="!game.gameOverOpen"
             ref="gameOverReopenButton"
             type="button"
-            class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            class="min-h-[44px] rounded-xl border border-brand-200 bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             @click="openGameOverDetails"
           >查看结算详情</button>
           <button
@@ -489,10 +489,10 @@ async function copyInvite() {
             class="min-h-[44px] rounded-xl bg-brand-600 px-8 py-3 font-bold text-white shadow-lg hover:bg-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             @click="game.rematch()"
           >再来一局</button>
-          <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-[#8A8299]">等待房主再来一局…</p>
+          <p v-else class="flex min-h-[44px] items-center justify-center px-4 text-sm text-muted">等待房主再来一局…</p>
           <button
             type="button"
-            class="min-h-[44px] rounded-xl border border-[#CFCFE9] bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+            class="min-h-[44px] rounded-xl border border-brand-200 bg-white px-8 py-3 font-bold text-brand-600 hover:border-brand-300 hover:text-brand-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
             @click="goToLobby"
           >返回大厅</button>
         </div>
@@ -524,7 +524,7 @@ async function copyInvite() {
     <!-- 聊天面板 -->
     <div
       v-if="chatOpen"
-      class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-[#D8D0E4] bg-white shadow-2xl"
+      class="fixed bottom-34 right-4 z-40 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-line bg-white shadow-2xl"
       style="height: 420px;"
     >
       <GameChatPanel />

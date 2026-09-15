@@ -38,21 +38,21 @@ const openSpellId = ref(null)
 </script>
 
 <template>
-  <div class="rounded-xl border border-[#D8D0E4] bg-white p-4 shadow-sm">
-    <div class="mb-2 flex items-center justify-between text-xs text-[#8A8299]">
+  <div class="rounded-xl border border-line bg-white p-4 shadow-sm">
+    <div class="mb-2 flex items-center justify-between text-xs text-muted">
       <button
         type="button"
         @click="tableOpen = !tableOpen"
-        class="flex items-center gap-1 text-xs font-medium text-[#8A8299] hover:text-[#333333]"
+        class="flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
       >
         <span>🏆 战绩</span>
-        <span class="text-[#B3B3DD]">{{ tableOpen ? '▼' : '▶' }}</span>
+        <span class="text-brand-300">{{ tableOpen ? '▼' : '▶' }}</span>
       </button>
       <span class="flex items-center gap-3">
         <span class="rounded-full px-2.5 py-1 font-bold" :class="deckLow ? 'bg-red-100 text-red-600' : 'bg-brand-100 text-brand-700'">
           🂠 牌堆 {{ deckRemaining }}
         </span>
-        <span class="rounded-full bg-[#F7EFF8] px-2.5 py-1 text-[#8A8299]">🔮 秘密牌 {{ secretPileRemaining }}</span>
+        <span class="rounded-full bg-brand-50 px-2.5 py-1 text-muted">🔮 秘密牌 {{ secretPileRemaining }}</span>
       </span>
     </div>
     <!-- 已出牌展示：每种魔法已用/总数（常显，不用点开战绩） -->
@@ -61,7 +61,7 @@ const openSpellId = ref(null)
         v-for="spell in SPELLS"
         :key="spell.id"
         type="button"
-        class="flex min-h-[44px] min-w-[44px] flex-col items-center rounded-lg bg-[#F7EFF8] px-2 py-1 transition hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        class="flex min-h-[44px] min-w-[44px] flex-col items-center rounded-lg bg-brand-50 px-2 py-1 transition hover:bg-brand-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
         :title="spell.desc"
         :aria-label="`${spell.name}效果说明`"
         :aria-expanded="openSpellId === spell.id"
@@ -69,7 +69,7 @@ const openSpellId = ref(null)
         @click="openSpellId = openSpellId === spell.id ? null : spell.id"
       >
         <span class="text-base leading-none">{{ spell.emoji }}</span>
-        <span class="mt-0.5 text-[8px] leading-none text-[#8A8299]">{{ spell.name }}</span>
+        <span class="mt-0.5 text-[8px] leading-none text-muted">{{ spell.name }}</span>
         <span class="text-[10px] font-bold text-brand-600">
           {{ castCounts[spell.id] ?? 0 }}/{{ spell.count }}
         </span>
@@ -80,27 +80,27 @@ const openSpellId = ref(null)
       v-show="openSpellId === spell.id"
       :key="`effect-${spell.id}`"
       :id="`public-spell-effect-${spell.id}`"
-      class="mb-2 rounded-lg border border-[#E6E1F0] bg-[#FAF7FC] px-3 py-2 text-xs leading-relaxed text-[#55506B]"
+      class="mb-2 rounded-lg border border-line bg-brand-50 px-3 py-2 text-xs leading-relaxed text-ink-soft"
     >
-      <strong class="text-[#333333]">{{ spell.name }}</strong>：{{ spell.desc }}
+      <strong class="text-ink">{{ spell.name }}</strong>：{{ spell.desc }}
     </div>
     <!-- 战绩榜：点击展开/收起 -->
     <transition name="slide">
       <div v-if="tableOpen" class="mt-2 space-y-3 overflow-hidden">
         <!-- 本轮实时战绩 -->
         <div>
-          <div class="mb-1.5 text-[9px] font-medium text-[#8A8299] uppercase">本轮实时</div>
+          <div class="mb-1.5 text-[9px] font-medium text-muted uppercase">本轮实时</div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
               <thead>
-                <tr class="text-[#8A8299]">
+                <tr class="text-muted">
                   <th class="pb-1.5 text-[9px] font-medium uppercase">排名</th>
                   <th class="pb-1.5 text-[9px] font-medium uppercase">玩家</th>
                   <th class="pb-1.5 text-[9px] font-medium uppercase text-right">分数</th>
                   <th class="pb-1.5 text-[9px] font-medium uppercase text-right">♥</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-[#E6E1F0]">
+              <tbody class="divide-y divide-line">
                 <tr v-for="(row, i) in standings" :key="row.id">
                   <td class="py-1.5">
                     <span class="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-[9px] font-bold text-amber-600">
@@ -108,7 +108,7 @@ const openSpellId = ref(null)
                     </span>
                   </td>
                   <td class="py-1.5">
-                    <span class="font-medium text-[#333333]">{{ row.nickname }}</span>
+                    <span class="font-medium text-ink">{{ row.nickname }}</span>
                     <span v-if="row.isHost" class="ml-1 text-xs">👑</span>
                   </td>
                   <td class="py-1.5 text-right font-bold text-amber-600">{{ row.score }}</td>
@@ -125,22 +125,22 @@ const openSpellId = ref(null)
 
         <!-- 历史对局 -->
         <div v-if="matchHistory.length > 0">
-          <div class="mb-1.5 text-[9px] font-medium text-[#8A8299] uppercase">历史对局 ({{ matchHistory.length }} 局)</div>
+          <div class="mb-1.5 text-[9px] font-medium text-muted uppercase">历史对局 ({{ matchHistory.length }} 局)</div>
           <div class="space-y-2 text-[10px]">
             <div
               v-for="(match, mi) in matchHistory"
               :key="mi"
-              class="rounded-lg border border-[#E6E1F0] p-2"
+              class="rounded-lg border border-line p-2"
             >
               <div class="mb-1 flex items-center justify-between">
-                <span class="text-[#8A8299]">第 {{ matchHistory.length - mi }} 局 · {{ new Date(match.endedAt).toLocaleDateString() }}</span>
-                <span class="text-[#8A8299]">冠军: {{ match.standings?.[0]?.nickname || '—' }}</span>
+                <span class="text-muted">第 {{ matchHistory.length - mi }} 局 · {{ new Date(match.endedAt).toLocaleDateString() }}</span>
+                <span class="text-muted">冠军: {{ match.standings?.[0]?.nickname || '—' }}</span>
               </div>
               <div class="flex flex-wrap gap-1.5">
                 <span
                   v-for="(s, si) in match.standings"
                   :key="s.id"
-                  class="inline-flex items-center gap-1 rounded-full bg-[#F7EFF8] px-2 py-0.5"
+                  class="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5"
                 >
                   <span class="text-xs">{{ s.nickname }}</span>
                   <span class="text-amber-600">★ {{ s.score }}</span>
@@ -152,19 +152,19 @@ const openSpellId = ref(null)
 
         <!-- 全局总得分 -->
         <div v-if="globalTotals.length > 0">
-          <div class="mb-1.5 text-[9px] font-medium text-[#8A8299] uppercase">全局总得分</div>
+          <div class="mb-1.5 text-[9px] font-medium text-muted uppercase">全局总得分</div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
               <thead>
-                <tr class="text-[#8A8299]">
+                <tr class="text-muted">
                   <th class="pb-1 text-[9px] font-medium uppercase">玩家</th>
                   <th class="pb-1 text-[9px] font-medium uppercase text-right">积分</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-[#E6E1F0]">
+              <tbody class="divide-y divide-line">
                 <tr v-for="(t, i) in globalTotals" :key="t.id">
                   <td class="py-1">
-                    <span class="font-medium text-[#333333]">{{ t.nickname }}</span>
+                    <span class="font-medium text-ink">{{ t.nickname }}</span>
                   </td>
                   <td class="py-1 text-right">
                     <span class="text-amber-600 font-bold">{{ t.score }}</span>

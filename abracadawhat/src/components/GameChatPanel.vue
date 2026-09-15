@@ -52,9 +52,9 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-full flex-col bg-[#f9f9f9]">
+  <div class="flex h-full flex-col bg-surface">
     <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2">
-      <h3 class="text-sm font-bold text-[#333]">聊天室</h3>
+      <h3 class="text-sm font-bold text-ink">聊天室</h3>
       <span class="text-xs text-green-600">● 已连接</span>
     </div>
 
@@ -71,10 +71,10 @@ watch(
         <img :src="avatarUrl(msg.avatarId)" :alt="msg.nickname" class="h-8 w-8 shrink-0 rounded-full object-cover" />
         <div class="min-w-0 flex-1">
           <div class="mb-0.5 flex items-baseline justify-between">
-            <span class="text-xs font-bold text-[#333]">{{ msg.nickname }}</span>
+            <span class="text-xs font-bold text-ink">{{ msg.nickname }}</span>
             <span class="text-[10px] text-gray-400">{{ formatTime(msg.timestamp) }}</span>
           </div>
-          <div class="text-sm text-[#444] break-words">
+          <div class="text-sm text-ink break-words">
             <template v-if="msg.type === 'chat'">{{ msg.text }}</template>
             <template v-else-if="msg.type === 'emoji'">
               <img :src="getEmojiUrl(msg.folder, msg.emojiId)" class="h-20 w-[120px] object-contain" />

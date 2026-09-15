@@ -16,7 +16,7 @@ const props = defineProps({
 })
 
 const SUIT_SYMBOL = { s: '♠', h: '♥', d: '♦', c: '♣' }
-const SUIT_COLOR = { s: 'text-[#333333]', h: 'text-red-600', d: 'text-red-600', c: 'text-[#333333]' }
+const SUIT_COLOR = { s: 'text-ink', h: 'text-red-600', d: 'text-red-600', c: 'text-ink' }
 const RANK_LABEL = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: '10' }
 
 const isConcealed = computed(() => props.card.concealed === true)
@@ -24,7 +24,7 @@ const isDark = computed(() => props.card.hidden === true && !isConcealed.value)
 const isRevealed = computed(() => !props.card.hidden && !isConcealed.value && props.card.revealed)
 const label = computed(() => RANK_LABEL[props.card.rank] ?? String(props.card.rank))
 const symbol = computed(() => SUIT_SYMBOL[props.card.suit] ?? '')
-const colorClass = computed(() => SUIT_COLOR[props.card.suit] ?? 'text-[#333333]')
+const colorClass = computed(() => SUIT_COLOR[props.card.suit] ?? 'text-ink')
 
 const sizeClass = computed(() => ({
   sm: 'h-10 w-7 rounded text-[10px]',
@@ -57,7 +57,7 @@ const sizeClass = computed(() => ({
   <div
     v-else
     class="relative flex flex-col items-center justify-between bg-white p-0.5 shadow transition-transform duration-150 hover:z-50 hover:scale-150"
-    :class="[sizeClass, colorClass, isRevealed ? 'card-revealed border-2 border-brand-400' : 'border border-[#D8D0E4]']"
+    :class="[sizeClass, colorClass, isRevealed ? 'card-revealed border-2 border-brand-400' : 'border border-line']"
   >
     <span class="font-num font-bold leading-none">{{ label }}</span>
     <span class="leading-none">{{ symbol }}</span>

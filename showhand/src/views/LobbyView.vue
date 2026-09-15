@@ -46,8 +46,8 @@ function onIdentityChange(user) {
 <template>
   <div class="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
     <header class="text-center drop-shadow-sm">
-      <h1 class="text-3xl font-bold text-[#333333]">🃏 Showhand 梭哈</h1>
-      <p class="mt-2 text-sm text-[#8A8299]">多人联机梭哈，五张 / 七张双玩法</p>
+      <h1 class="text-3xl font-bold text-ink">🃏 Showhand 梭哈</h1>
+      <p class="mt-2 text-sm text-muted">多人联机梭哈，五张 / 七张双玩法</p>
     </header>
 
     <!-- 邀请提示（来自分享链接） -->
@@ -56,7 +56,7 @@ function onIdentityChange(user) {
       class="rounded-xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center"
     >
       <div class="text-sm font-semibold text-brand-700">📩 你被邀请进入房间 {{ invited }}</div>
-      <p class="mt-1 text-xs text-[#8A8299]">
+      <p class="mt-1 text-xs text-muted">
         设置好昵称和头像，点击下方「加入」即可进入
       </p>
     </div>
@@ -80,7 +80,7 @@ function onIdentityChange(user) {
     <div class="flex gap-2">
       <input
         v-model="roomCode"
-        class="flex-1 rounded-lg border border-brand-300 bg-white px-3 py-2.5 text-center text-sm font-num uppercase tracking-widest text-[#333333] outline-none focus:border-brand-500"
+        class="flex-1 rounded-lg border border-brand-300 bg-white px-3 py-2.5 text-center text-sm font-num uppercase tracking-widest text-ink outline-none focus:border-brand-500"
         placeholder="输入房间码"
         maxlength="6"
         @keyup.enter="joinRoom"
@@ -94,7 +94,7 @@ function onIdentityChange(user) {
       </button>
     </div>
 
-    <p class="text-center text-xs text-[#A29BB5]">
+    <p class="text-center text-xs text-muted">
       房主创建房间后可选择五张或七张梭哈，开局后设定局数与初始筹码
     </p>
   </div>

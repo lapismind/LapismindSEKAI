@@ -230,7 +230,7 @@ async function submitLogin() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: #333333;
+  color: var(--ink, #333333);
 }
 
 /* ── 深色变体 ──
@@ -242,7 +242,7 @@ async function submitLogin() {
 }
 
 .lk-muted {
-  color: #8a8299;
+  color: var(--muted, #8a8299);
 }
 
 .is-dark .lk-muted {
@@ -263,15 +263,17 @@ async function submitLogin() {
   opacity: 0.85;
 }
 
+/* 用 --primary（品牌色"可读档位"）而不是 --primary-brand：#8888cc 太亮，
+   白字压上去只有 3.3:1；--primary 是深一档的可读色，白字约 5.5:1，过 AA。 */
 .lk-btn-primary {
-  background: #6b6bd0;
+  background: var(--primary, #6b6bd0);
   color: #ffffff;
 }
 
 .lk-btn-ghost {
   background: transparent;
   border-color: rgba(127, 127, 127, 0.4);
-  color: #555555;
+  color: var(--ink-soft, #555555);
 }
 
 .is-dark .lk-btn-ghost {
@@ -282,7 +284,7 @@ async function submitLogin() {
 .lk-btn-icon {
   background: transparent;
   border-color: rgba(127, 127, 127, 0.3);
-  color: #666666;
+  color: var(--ink-soft, #666666);
   min-width: 26px;
   padding: 2px 8px;
 }

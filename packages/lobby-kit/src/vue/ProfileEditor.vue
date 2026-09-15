@@ -44,25 +44,28 @@ defineProps({
 </template>
 
 <style scoped>
+/* 浅色（默认）也优先取 design-kit 令牌，取不到再退回原硬编码——
+   与文件末尾的 .is-dark 同一套约定：引了 design-kit 的项目自动同源，
+   没引的项目行为不变。引了 design-kit 的三个游戏现在都在这一档。 */
 .lk-field {
   margin-bottom: 4px;
   font-size: 12px;
-  color: #8a8299;
+  color: var(--muted, #8a8299);
 }
 
 .lk-input {
   width: 100%;
   border-radius: 8px;
-  border: 1px solid #d8d0e4;
-  background: #ffffff;
+  border: 1px solid var(--line, #d8d0e4);
+  background: var(--card-solid, #ffffff);
   padding: 10px 12px;
   font-size: 14px;
-  color: #333333;
+  color: var(--ink, #333333);
   outline: none;
 }
 
 .lk-input:focus {
-  border-color: #8888cc;
+  border-color: var(--primary-brand, #8888cc);
 }
 
 .lk-grid {
@@ -77,18 +80,18 @@ defineProps({
   aspect-ratio: 1 / 1;
   overflow: hidden;
   border-radius: 9999px;
-  border: 2px solid #d8d0e4;
+  border: 2px solid var(--line, #d8d0e4);
   transition: border-color 0.15s ease;
   padding: 0;
   cursor: pointer;
 }
 
 .lk-avatar:hover {
-  border-color: #8a8299;
+  border-color: var(--muted, #8a8299);
 }
 
 .lk-avatar.is-active {
-  border-color: #8888cc;
+  border-color: var(--primary-brand, #8888cc);
   box-shadow: 0 0 0 2px rgba(136, 136, 204, 0.3);
 }
 

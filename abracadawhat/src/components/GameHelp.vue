@@ -14,10 +14,10 @@ const emit = defineEmits(['close'])
     <div class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-xl font-bold text-white">📖 游戏规则</h2>
-        <button type="button" class="text-[#A29BB5] hover:text-[#444444]" @click="emit('close')">✕</button>
+        <button type="button" class="text-muted hover:text-ink" @click="emit('close')">✕</button>
       </div>
 
-      <div class="space-y-3 text-sm text-[#444444]">
+      <div class="space-y-3 text-sm text-ink">
         <p>每人每轮 6❤️、5 张暗手牌。你能看别人的牌，但看不到自己的。</p>
         <p>
           每次行动至少宣告一次魔法。成功后可以继续施法，也可以结束行动并补牌；
@@ -26,11 +26,11 @@ const emit = defineEmits(['close'])
 
         <h3 class="pt-2 font-bold text-brand-300">八种魔法（成功效果）</h3>
         <ul class="space-y-1.5">
-          <li v-for="s in SPELLS" :key="s.id" class="flex gap-2 rounded-lg bg-[#F7EFF8] p-2">
+          <li v-for="s in SPELLS" :key="s.id" class="flex gap-2 rounded-lg bg-brand-50 p-2">
             <span class="text-lg">{{ s.emoji }}</span>
             <div>
-              <div class="font-semibold text-[#333333]">{{ s.name }} <span class="text-xs font-normal text-[#8A8299]">×{{ s.count }}</span></div>
-              <div class="text-xs text-[#8A8299]">{{ s.desc }}</div>
+              <div class="font-semibold text-ink">{{ s.name }} <span class="text-xs font-normal text-muted">×{{ s.count }}</span></div>
+              <div class="text-xs text-muted">{{ s.desc }}</div>
             </div>
           </li>
         </ul>

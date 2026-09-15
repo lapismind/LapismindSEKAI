@@ -96,11 +96,11 @@ function doLook() {
 </script>
 
 <template>
-  <div class="rounded-2xl border border-[#D8D0E4] bg-white/95 p-4 shadow-lg backdrop-blur">
+  <div class="rounded-2xl border border-line bg-white/95 p-4 shadow-lg backdrop-blur">
     <!-- 倒计时 -->
     <div class="mb-3 flex items-center justify-between">
-      <span class="text-xs text-[#8A8299]">行动倒计时</span>
-      <span class="font-num text-sm font-bold" :class="timeLeft <= 5 ? 'text-red-600' : 'text-[#333333]'">
+      <span class="text-xs text-muted">行动倒计时</span>
+      <span class="font-num text-sm font-bold" :class="timeLeft <= 5 ? 'text-red-600' : 'text-ink'">
         {{ timeLeft }}s
       </span>
     </div>
@@ -116,7 +116,7 @@ function doLook() {
       <!-- 闷牌中：先给一个明确的二选一 -->
       <div v-if="halfPrice && myBlind" class="rounded-xl bg-brand-100 px-3 py-2">
         <p class="text-xs font-semibold text-brand-700">闷牌中 · 下注半价</p>
-        <p class="mt-0.5 text-[11px] leading-4 text-[#5F586B]">
+        <p class="mt-0.5 text-[11px] leading-4 text-ink-soft">
           你还没看这张牌。看牌后恢复全价，但要补齐之前省下的差额。
         </p>
         <button
@@ -128,9 +128,9 @@ function doLook() {
         >👁 看牌</button>
       </div>
 
-      <div class="text-sm text-[#5F586B]">
+      <div class="text-sm text-ink-soft">
         跟注 <span class="font-num font-bold text-brand-700">{{ toCall }}</span>
-        <span class="text-xs text-[#8A8299]">（我还有 {{ myChips }}）</span>
+        <span class="text-xs text-muted">（我还有 {{ myChips }}）</span>
       </div>
 
       <div class="grid grid-cols-2 gap-2">
@@ -161,7 +161,7 @@ function doLook() {
         >
           ALL IN <span class="font-num">{{ myChips }}</span>
         </button>
-        <p v-else class="flex min-h-[44px] items-center justify-center rounded-lg bg-brand-50 px-2 text-center text-[11px] leading-4 text-[#8A8299]">
+        <p v-else class="flex min-h-[44px] items-center justify-center rounded-lg bg-brand-50 px-2 text-center text-[11px] leading-4 text-muted">
           闷牌时不能全下<br />先看牌再压
         </p>
 
@@ -172,7 +172,7 @@ function doLook() {
             :min="minRaiseTo"
             :max="maxRaiseTo"
             :disabled="locked"
-            class="font-num w-full rounded-lg border border-[#D8D0E4] bg-white px-2 py-2.5 text-center text-sm font-bold text-[#333333] outline-none focus:border-brand-500 disabled:opacity-40"
+            class="font-num w-full rounded-lg border border-line bg-white px-2 py-2.5 text-center text-sm font-bold text-ink outline-none focus:border-brand-500 disabled:opacity-40"
             placeholder="加注到"
           />
           <button
@@ -189,11 +189,11 @@ function doLook() {
       <p v-if="raisePrice !== null && !raiseAffordable" class="text-[11px] text-red-600">
         加到 {{ raiseAmount }} 需要 {{ raisePrice }} 筹码，不够
       </p>
-      <p v-else-if="halfPrice && myBlind" class="text-[11px] text-[#8A8299]">
+      <p v-else-if="halfPrice && myBlind" class="text-[11px] text-muted">
         加注同样按半价支付
       </p>
     </div>
-    <div v-else class="text-center text-sm text-[#8A8299]">
+    <div v-else class="text-center text-sm text-muted">
       等待其他玩家行动…
     </div>
   </div>

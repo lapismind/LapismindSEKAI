@@ -59,7 +59,7 @@ const betLabel = computed(() => {
           :src="avatar"
           :alt="player.nickname"
           class="h-10 w-10 rounded-full border object-cover"
-          :class="player.connected ? 'border-brand-300' : 'border-[#D8D0E4] opacity-40'"
+          :class="player.connected ? 'border-brand-300' : 'border-line opacity-40'"
         />
         <span
           v-else
@@ -68,11 +68,11 @@ const betLabel = computed(() => {
         <span v-if="player.isHost" class="absolute -top-1 -right-1 text-xs">👑</span>
       </div>
       <div class="text-left">
-        <div class="truncate text-sm font-bold text-[#333333]">
+        <div class="truncate text-sm font-bold text-ink">
           {{ player.nickname }}
           <span v-if="isMe" class="text-xs text-brand-600">(我)</span>
         </div>
-        <div class="flex items-center gap-1 text-xs text-[#8A8299]">
+        <div class="flex items-center gap-1 text-xs text-muted">
           <ChipIcon :size="14" color="#8888cc" />
           <span class="font-num">{{ player.chips }}</span>
         </div>
@@ -96,7 +96,7 @@ const betLabel = computed(() => {
         class="rounded-full bg-brand-100 px-1.5 py-px text-[10px] text-brand-700"
         title="闷牌中：没看牌，下注半价"
       >闷</span>
-      <span :class="player.folded ? 'text-[#A29BB5]' : 'text-brand-700'">{{ betLabel }}</span>
+      <span :class="player.folded ? 'text-muted' : 'text-brand-700'">{{ betLabel }}</span>
     </div>
   </div>
 </template>

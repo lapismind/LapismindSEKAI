@@ -52,16 +52,16 @@ function onIdentityChange(user) {
 <template>
   <div class="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
     <header class="text-center">
-      <h1 class="text-3xl font-bold text-[#333333]">🧙 出包魔法师</h1>
-      <p class="mt-2 text-sm text-[#8A8299]">2–5 人联机猜牌魔法对决</p>
+      <h1 class="text-3xl font-bold text-ink">🧙 出包魔法师</h1>
+      <p class="mt-2 text-sm text-muted">2–5 人联机猜牌魔法对决</p>
     </header>
 
     <div
       v-if="invited"
-      class="rounded-xl border border-[#B3B3DD] bg-brand-100 px-4 py-3 text-center"
+      class="rounded-xl border border-brand-300 bg-brand-100 px-4 py-3 text-center"
     >
       <div class="text-sm font-semibold text-brand-600">📩 你被邀请进入房间 {{ invited }}</div>
-      <p class="mt-1 text-xs text-[#8A8299]">
+      <p class="mt-1 text-xs text-muted">
         设置好昵称和头像，点击下方「加入」即可进入
       </p>
     </div>
@@ -86,21 +86,21 @@ function onIdentityChange(user) {
     <div class="flex gap-2">
       <input
         v-model="roomCode"
-        class="flex-1 rounded-lg border border-[#D8D0E4] bg-white px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-[#333333] outline-none focus:border-brand-500"
+        class="flex-1 rounded-lg border border-line bg-white px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-ink outline-none focus:border-brand-500"
         placeholder="输入房间码"
         maxlength="6"
         @keyup.enter="joinRoom"
       />
       <button
         type="button"
-        class="rounded-lg border border-[#CFCFE9] bg-white px-5 font-bold text-brand-600 transition hover:border-brand-300 hover:text-brand-500"
+        class="rounded-lg border border-brand-200 bg-white px-5 font-bold text-brand-600 transition hover:border-brand-300 hover:text-brand-500"
         @click="joinRoom"
       >
         加入
       </button>
     </div>
 
-    <p class="text-center text-xs text-[#A29BB5]">
+    <p class="text-center text-xs text-muted">
       每人 5 张暗手牌——你看不到自己的，但看得到别人的。喊出魔法名试试运气吧！
     </p>
   </div>

@@ -44,7 +44,7 @@ const dims = computed(() => {
     <button
       v-if="!faceDown && spell"
       type="button"
-      class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-[#D8D0E4] bg-[#FAF7FC] shadow-md transition hover:border-brand-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+      class="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-line bg-brand-50 shadow-md transition hover:border-brand-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
       :class="dims"
       :title="`${spell.name}：${spell.desc}`"
       :aria-label="`${spell.name}效果说明`"
@@ -54,7 +54,7 @@ const dims = computed(() => {
     >
       <div class="text-center leading-tight">
         <div>{{ spell.emoji }}</div>
-        <div v-if="size !== 'sm'" class="mt-0.5 text-[10px] font-medium text-[#55506B]">{{ spell.name }}</div>
+        <div v-if="size !== 'sm'" class="mt-0.5 text-[10px] font-medium text-ink-soft">{{ spell.name }}</div>
       </div>
     </button>
     <div
@@ -64,9 +64,9 @@ const dims = computed(() => {
     >
       <span class="opacity-50">🧙</span>
     </div>
-    <div :id="effectId" v-show="!faceDown && effectOpen && spell" class="mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-[#E6E1F0] bg-white p-2 text-left text-xs leading-relaxed text-[#55506B] shadow-sm">
+    <div :id="effectId" v-show="!faceDown && effectOpen && spell" class="mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-white p-2 text-left text-xs leading-relaxed text-ink-soft shadow-sm">
       <template v-if="!faceDown && spell">
-        <strong class="text-[#333333]">{{ spell.name }}</strong>：{{ spell?.desc }}
+        <strong class="text-ink">{{ spell.name }}</strong>：{{ spell?.desc }}
       </template>
     </div>
   </div>

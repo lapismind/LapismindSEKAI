@@ -42,14 +42,14 @@ function clickSpell(spell) {
 </script>
 
 <template>
-  <div class="rounded-xl border border-[#D8D0E4] bg-white p-4 shadow-sm">
+  <div class="rounded-xl border border-line bg-white p-4 shadow-sm">
     <div class="mb-3 flex items-center justify-between">
       <div class="text-sm font-bold text-white">施法区</div>
       <button
         v-if="isMyTurn"
         type="button"
         :disabled="!endTurnEnabled"
-        class="rounded-lg border border-[#CFCFE9] bg-white px-4 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-300 hover:text-brand-500"
+        class="rounded-lg border border-brand-200 bg-white px-4 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-300 hover:text-brand-500"
         :class="!endTurnEnabled ? 'cursor-not-allowed opacity-50' : ''"
         title="必须先宣告一次魔法才能结束回合"
         @click="emit('end-turn')"
@@ -68,7 +68,7 @@ function clickSpell(spell) {
         :class="[
           isMyTurn && spell.levelOk && !lockedByFailure && !castLocked
             ? 'border-brand-400 bg-brand-100 text-brand-800 hover:border-brand-500 hover:bg-brand-200/70 cursor-pointer'
-            : 'border-[#E4DEEC] bg-[#FAF7FC] text-[#A29BB5] opacity-80',
+            : 'border-line bg-brand-50 text-muted opacity-80',
         ]"
         :title="spell.desc"
         @click="clickSpell(spell)"

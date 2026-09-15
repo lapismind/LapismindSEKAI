@@ -26,22 +26,22 @@ const sortedHand = computed(() =>
   <div
     class="flex flex-row items-center gap-2 rounded-xl border p-2.5 transition"
     :class="[
-      isCurrent ? 'border-brand-500 bg-white shadow-lg' : 'border-[#D8D0E4] bg-white',
+      isCurrent ? 'border-brand-500 bg-white shadow-lg' : 'border-line bg-white',
       !player.alive ? 'opacity-50 grayscale' : '',
     ]"
   >
     <!-- 头像 + 昵称/分数（紧凑纵排） -->
-    <div class="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-[#D8D0E4] bg-[#F7EFF8]">
+    <div class="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border border-line bg-brand-50">
       <img v-if="avatar" :src="avatar" :alt="player.nickname" class="h-full w-full object-cover" />
-      <span v-else class="flex h-full items-center justify-center text-xs text-[#A29BB5]">{{ player.nickname.slice(0,1) }}</span>
+      <span v-else class="flex h-full items-center justify-center text-xs text-muted">{{ player.nickname.slice(0,1) }}</span>
     </div>
     <div class="shrink-0">
-    <div class="truncate text-sm font-semibold leading-tight text-[#333333]">
+    <div class="truncate text-sm font-semibold leading-tight text-ink">
         {{ player.nickname }}
         <span v-if="player.isHost">👑</span>
         <span v-if="isMe" class="text-brand-600">我</span>
       </div>
-      <div class="text-xs text-[#8A8299]">{{ player.score }} 分</div>
+      <div class="text-xs text-muted">{{ player.score }} 分</div>
       <div v-if="scoreDelta > 0" class="text-xs font-bold text-green-600 animate-pulse">+{{ scoreDelta }}</div>
       <!-- 生命 + 秘密牌：数字呈现，收进头像列下方，收紧横向空间适配手机 -->
       <div class="mt-0.5 flex items-center gap-2 text-xs leading-none">
