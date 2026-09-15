@@ -1,5 +1,12 @@
 # Lessons Learned
 
+## 2026-09-15 无 BOM 的 UTF-8 PowerShell 脚本在 5.1 下解析失败（接力命令踩坑）
+
+- `scripts/sync.ps1` 是 UTF-8 **无 BOM** 且含中文字符串。用 Windows PowerShell 5.1 执行（`powershell -File scripts/sync.ps1 ...`）时，5.1 对无 BOM 文件默认按 ANSI/GBK 解码，中文被打成乱码并让引号提前闭合，报的是 `字符串缺少终止符`、`缺少右"}"` 这类**语法错误**——看起来像脚本被改坏了，实际是编码问题。解析阶段就失败，脚本一行都没执行（不会误提交）。
+- 同一文件用 PowerShell 7（`pwsh`）执行正常：7.x 默认按 UTF-8 读无 BOM 文件。本机 `pwsh` 为 7.6.6，5.1 为 5.1.26100。
+- 结论：`.\scripts\sync.ps1 ship` 必须在 `pwsh` 下跑。某台机器若只有 5.1，会得到误导性的语法错误，别去"修"脚本逻辑。要彻底消除这个差异，给脚本加 UTF-8 BOM（`ef bb bf`）即可让 5.1 与 7 都正常。
+- 同类风险适用于仓库内所有含中文的 `.ps1`：新写时带 BOM，或用 `pwsh` 执行。
+
 ## 2026-09-07 D2/D3 full-suite Wrangler flake
 
 - 全量 Auth 测试把多个 spawn 真实 `wrangler dev` 的集成测试文件并跑时，Windows 上会非确定性地出现「wrangler dev did not become ready」或 libuv `UV_HANDLE_CLOSING`（退出码 3221226505 / 0xC0000409），且失败落在哪个文件每次不同。只要相关测试在单独 `node --test` 下全绿，且改动只新增 GET 路由、不触碰 career/上报/迁移路径，就不能把这种失败当成代码回归；验证应优先串行或按文件隔离复跑。
