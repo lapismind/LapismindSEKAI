@@ -69,7 +69,7 @@ function generateCode() {
   <div class="mx-auto flex min-h-full max-w-md flex-col justify-center gap-6 px-4 py-10">
     <header class="text-center">
       <h1 class="text-3xl font-bold text-white">🫕 真冬的海龟汤</h1>
-      <p class="mt-2 text-sm text-slate-400">一起推理神秘的汤面，揭开汤底真相</p>
+      <p class="mt-2 text-sm text-ink-soft">一起推理神秘的汤面，揭开汤底真相</p>
     </header>
 
     <!-- GitHub 引导 -->
@@ -77,17 +77,17 @@ function generateCode() {
       href="https://github.com/lapismind/Mafuyu-Turtle-soup"
       target="_blank"
       rel="noopener"
-      class="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-300 transition hover:border-brand-500/50 hover:bg-slate-800 hover:text-slate-100"
+      class="flex items-center justify-center gap-2 rounded-xl border border-line bg-raised/60 px-4 py-2.5 text-sm text-ink-soft transition hover:border-brand-500/50 hover:bg-raised hover:text-ink"
     >
       <span class="text-lg">⭐</span>
       <span>喜欢这个游戏？欢迎去 GitHub 点个 star 支持</span>
-      <span class="text-slate-500">→</span>
+      <span class="text-muted">→</span>
     </a>
 
     <!-- 反馈入口 -->
     <button
       type="button"
-      class="flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm text-slate-300 transition hover:border-sky-500/50 hover:bg-slate-800 hover:text-slate-100"
+      class="flex items-center justify-center gap-2 rounded-xl border border-line bg-raised/60 px-4 py-2.5 text-sm text-ink-soft transition hover:border-sky-500/50 hover:bg-raised hover:text-ink"
       @click="feedbackOpen = true"
     >
       <span>💬</span>
@@ -98,7 +98,7 @@ function generateCode() {
     <FeedbackModal v-if="feedbackOpen" @close="feedbackOpen = false" />
 
     <!-- 昵称 + 头像（共享组件） -->
-    <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
+    <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" dark />
 
     <!-- 当前身份：博客登录用户自动携带账号；游客可在此登录/注册 -->
     <AuthBadge dark @identity-change="onIdentityChange" />
@@ -109,7 +109,7 @@ function generateCode() {
       class="rounded-xl border border-brand-500/40 bg-brand-500/10 px-4 py-3 text-center"
     >
       <div class="text-sm font-semibold text-brand-300">📩 你被邀请进入房间 {{ invited }}</div>
-      <p class="mt-1 text-xs text-slate-400">
+      <p class="mt-1 text-xs text-ink-soft">
         设置好昵称和头像，点击下方「加入」即可进入
       </p>
     </div>
@@ -127,14 +127,14 @@ function generateCode() {
     <div class="flex gap-2">
       <input
         v-model="roomCode"
-        class="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-white outline-none focus:border-brand-500"
+        class="flex-1 rounded-lg border border-line bg-field px-3 py-2.5 text-center text-sm font-mono uppercase tracking-widest text-white outline-none focus:border-brand-500"
         placeholder="输入房间码"
         maxlength="6"
         @keyup.enter="joinRoom"
       />
       <button
         type="button"
-        class="rounded-lg bg-slate-700 px-5 font-bold text-white transition hover:bg-slate-600"
+        class="rounded-lg bg-neutral px-5 font-bold text-white transition hover:bg-neutral-hover"
         @click="joinRoom"
       >
         加入
@@ -144,7 +144,7 @@ function generateCode() {
     <!-- 提交谜题 -->
     <PuzzleSubmitModal @submitted="lobby.fetchPuzzles().catch(() => {})" />
 
-    <p class="text-center text-xs text-slate-600">
+    <p class="text-center text-xs text-muted">
       房主可选 AI 主持或真人主持，真人模式下房主担任主持人
     </p>
   </div>

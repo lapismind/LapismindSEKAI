@@ -149,12 +149,12 @@ const hasApplied = computed(() =>
 <template>
   <div class="flex h-full flex-col overflow-hidden">
     <!-- 顶栏 -->
-    <header class="flex items-center justify-between border-b border-slate-800 bg-slate-900/80 px-3 py-2">
+    <header class="flex items-center justify-between border-b border-line bg-surface/80 px-3 py-2">
         <div class="flex items-center gap-2">
-        <span class="text-sm font-semibold text-slate-200">房间 {{ game.roomId }}</span>
+        <span class="text-sm font-semibold text-ink">房间 {{ game.roomId }}</span>
         <button
           type="button"
-          class="flex items-center gap-1 rounded-md border border-slate-700 px-2 py-0.5 text-[10px] text-slate-400 transition hover:bg-slate-800 hover:text-slate-200"
+          class="flex items-center gap-1 rounded-md border border-line px-2 py-0.5 text-[10px] text-ink-soft transition hover:bg-raised hover:text-ink"
           :title="'复制房间链接分享给朋友'"
           @click="copyRoomLink"
         >
@@ -166,7 +166,7 @@ const hasApplied = computed(() =>
         >
           {{ game.mode === 'ai' ? 'AI 主持' : '真人主持' }}
         </span>
-        <span v-if="game.questionLimit" class="rounded-full bg-slate-700 px-2 py-0.5 text-[10px] text-slate-300">
+        <span v-if="game.questionLimit" class="rounded-full bg-neutral px-2 py-0.5 text-[10px] text-ink-soft">
           限 {{ game.questionLimit }} 问
         </span>
       </div>
@@ -178,7 +178,7 @@ const hasApplied = computed(() =>
           class="rounded-lg border px-3 py-1 text-xs transition"
           :class="game.isSpectator
             ? 'border-emerald-600/60 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-            : 'border-slate-700 text-slate-300 hover:bg-slate-800'"
+            : 'border-line text-ink-soft hover:bg-raised'"
           @click="game.setSpectator(!game.isSpectator)"
         >
           {{ game.isSpectator ? '加入对局' : '转观战' }}
@@ -194,7 +194,7 @@ const hasApplied = computed(() =>
         </button>
         <button
           type="button"
-          class="rounded-lg border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
+          class="rounded-lg border border-line px-3 py-1 text-xs text-ink-soft transition hover:bg-raised"
           @click="handleLeave"
           >
             离开
@@ -209,7 +209,7 @@ const hasApplied = computed(() =>
     <div v-if="game.phase === 'waiting'" class="flex-1 overflow-y-auto">
       <div class="mx-auto flex max-w-lg flex-col gap-4 px-4 py-4">
         <div class="flex items-center justify-between">
-          <span class="text-sm font-semibold text-slate-300">玩家（{{ game.players.length }}/{{ game.maxPlayers }}）</span>
+          <span class="text-sm font-semibold text-ink-soft">玩家（{{ game.players.length }}/{{ game.maxPlayers }}）</span>
           <span v-if="game.amI?.isHost" class="text-xs text-amber-300">👑 你是房主</span>
         </div>
         <PlayerList :players="game.players" :my-player-id="game.myPlayerId" />
@@ -225,21 +225,21 @@ const hasApplied = computed(() =>
         />
 
         <!-- 真人模式：报名当主持人 -->
-        <div v-if="game.mode === 'human'" class="flex flex-col gap-2 rounded-xl border border-slate-700 bg-slate-800/60 p-4">
+        <div v-if="game.mode === 'human'" class="flex flex-col gap-2 rounded-xl border border-line bg-raised/60 p-4">
           <div class="flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-200">主持报名</span>
-            <span class="text-xs text-slate-500">
+            <span class="text-sm font-semibold text-ink">主持报名</span>
+            <span class="text-xs text-muted">
               已报名 {{ game.moderatorApplicants.length }} 人              <span v-if="game.moderatorApplicants.length > 1">· 开局时随机抽取</span>
             </span>
           </div>
-          <p class="text-xs text-slate-500">
+          <p class="text-xs text-muted">
             {{ game.moderatorApplicants.length === 0 ? '还没人报名，开局时将随机抽一名玩家当主持人' : '报名者会优先成为主持人' }}
           </p>
           <button
             type="button"
             class="rounded-lg py-2 text-sm font-bold transition"
             :class="hasApplied
-              ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              ? 'bg-neutral text-ink-soft hover:bg-neutral-hover'
               : 'bg-sky-600 text-white hover:bg-sky-500'"
             @click="game.applyModerator(!hasApplied)"
           >
@@ -250,7 +250,7 @@ const hasApplied = computed(() =>
         <!-- 选谜题 -->
         <div v-if="game.amI?.isHost">
           <div class="mb-2 flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-300">选择谜题</span>
+            <span class="text-sm font-semibold text-ink-soft">选择谜题</span>
             <button
               type="button"
               class="text-xs text-brand-400 hover:text-brand-300"
@@ -267,17 +267,17 @@ const hasApplied = computed(() =>
               :selected="game.puzzle?.id === p.id"
               @select="(id) => { game.selectPuzzle(id); showPuzzlePicker = false }"
             />
-            <div v-if="lobby.puzzles.length === 0" class="py-4 text-center text-xs text-slate-600">
+            <div v-if="lobby.puzzles.length === 0" class="py-4 text-center text-xs text-muted">
               谜题加载中…
             </div>
           </div>
-          <div v-else-if="game.puzzle" class="text-xs text-slate-500">
+          <div v-else-if="game.puzzle" class="text-xs text-muted">
             已选：{{ game.puzzle.title }}
           </div>
         </div>
 
         <!-- 非房主视角：显示已选谜题 -->
-        <div v-else-if="game.puzzle" class="text-xs text-slate-500">
+        <div v-else-if="game.puzzle" class="text-xs text-muted">
           房主已选谜题：{{ game.puzzle.title }}
         </div>
 
@@ -291,7 +291,7 @@ const hasApplied = computed(() =>
         >
           {{ waitingForPlayers ? `等待玩家加入（${game.players.length}/${game.maxPlayers}）` : '开始游戏' }}
         </button>
-        <div v-else class="py-3 text-center text-sm text-slate-500">
+        <div v-else class="py-3 text-center text-sm text-muted">
           等待房主配置并开始…
         </div>
       </div>
@@ -327,7 +327,7 @@ const hasApplied = computed(() =>
           </button>
 
           <!-- 展开态：浮层覆盖（不挤压下方布局） -->
-          <div v-else class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="storyOpen = false">
+          <div v-else class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" @click.self="storyOpen = false">
             <div class="relative w-full max-w-md overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-b from-amber-50 to-amber-100 shadow-2xl">
               <!-- 纸张纹理角（放在左侧，避免遮挡右上角关闭按钮） -->
               <div class="absolute left-0 top-0 h-8 w-8 rounded-br-xl border-b-8 border-r-8 border-amber-400/30" />
@@ -368,23 +368,23 @@ const hasApplied = computed(() =>
           v-if="game.spectators.length > 0"
           class="absolute left-2 top-1/2 z-20 -translate-y-1/2"
         >
-          <div class="rounded-lg border border-slate-700/60 bg-slate-900/70 px-2 py-1.5 backdrop-blur-sm">
-            <div class="mb-1 text-[10px] font-semibold text-slate-500">👁 观战（{{ game.spectators.length }}）</div>
+          <div class="rounded-lg border border-line/60 bg-surface/70 px-2 py-1.5 backdrop-blur-sm">
+            <div class="mb-1 text-[10px] font-semibold text-muted">👁 观战（{{ game.spectators.length }}）</div>
             <div class="flex flex-wrap gap-2">
               <div v-for="s in game.spectators" :key="s.id" class="flex items-center gap-1">
                 <img
                   v-if="avatarUrlOf(s)"
                   :src="avatarUrlOf(s)"
                   :alt="s.nickname"
-                  class="h-6 w-6 rounded-full border border-slate-600 object-cover"
+                  class="h-6 w-6 rounded-full border border-line-strong object-cover"
                 />
                 <div
                   v-else
-                  class="flex h-6 w-6 items-center justify-center rounded-full border border-slate-600 bg-slate-700 text-[10px] font-bold text-slate-200"
+                  class="flex h-6 w-6 items-center justify-center rounded-full border border-line-strong bg-neutral text-[10px] font-bold text-ink"
                 >
                   {{ s.nickname?.slice(0, 1) }}
                 </div>
-                <span class="text-xs text-slate-300">{{ s.nickname }}</span>
+                <span class="text-xs text-ink-soft">{{ s.nickname }}</span>
               </div>
             </div>
           </div>
@@ -392,9 +392,9 @@ const hasApplied = computed(() =>
       </div>
 
       <!-- 底部操作区 -->
-      <footer class="flex flex-col gap-2 border-t border-slate-800 bg-slate-900/80 px-3 py-2">
+      <footer class="flex flex-col gap-2 border-t border-line bg-surface/80 px-3 py-2">
         <!-- 观战提示 -->
-        <div v-if="game.isSpectator && game.phase === 'playing'" class="py-1 text-center text-xs text-slate-500">
+        <div v-if="game.isSpectator && game.phase === 'playing'" class="py-1 text-center text-xs text-muted">
           👁 观战中，可参与右侧复盘讨论
         </div>
 
@@ -402,7 +402,7 @@ const hasApplied = computed(() =>
         <div v-if="showQuestionInput && !game.questionsExhausted" class="flex gap-2">
           <input
             v-model="questionText"
-            class="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+            class="flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
             placeholder="向主持人提问…"
             maxlength="200"
             @keyup.enter="ask"
@@ -429,7 +429,7 @@ const hasApplied = computed(() =>
           提交了答案：{{ pendingGuess.text }}
           <div class="mt-2 flex gap-2">
             <button class="rounded-md bg-emerald-600 px-3 py-1 text-xs font-bold text-white" @click="confirmGuess(true)">答对了</button>
-            <button class="rounded-md bg-slate-600 px-3 py-1 text-xs font-bold text-white" @click="confirmGuess(false)">不对</button>
+            <button class="rounded-md bg-neutral px-3 py-1 text-xs font-bold text-white" @click="confirmGuess(false)">不对</button>
           </div>
         </div>
 
@@ -440,25 +440,25 @@ const hasApplied = computed(() =>
     <!-- 结束覆盖层：猜中 → win.gif 庆祝；揭底 → 显示汤底 -->
     <div
       v-if="game.phase === 'ended'"
-      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-overlay backdrop-blur-sm"
       @click="game.revealed ? resetAndLeave() : game.reveal()"
     >
       <template v-if="!game.revealed">
         <img
           :src="winGif"
-          class="mb-4 h-40 w-40 rounded-2xl shadow-2xl animate-bounce-slow"
+          class="mb-4 h-40 w-40 rounded-2xl shadow-2xl"
           alt="通关"
         />
         <div class="text-2xl font-bold text-amber-300">
           {{ game.winnerId === game.myPlayerId ? '🎉 你猜中汤底了！' : '🎉 有人猜中汤底！' }}
         </div>
-        <div class="mt-2 text-sm text-slate-400">点击查看汤底真相</div>
+        <div class="mt-2 text-sm text-ink-soft">点击查看汤底真相</div>
       </template>
       <template v-else>
-        <div class="mx-4 max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 text-center">
+        <div class="mx-4 max-w-md rounded-2xl border border-line bg-surface p-6 text-center">
           <div class="text-lg font-bold text-brand-300">汤底真相</div>
-          <div class="mt-2 text-sm font-semibold text-slate-200">{{ game.puzzle?.title }}</div>
-          <p class="mt-3 text-sm leading-relaxed text-slate-300">{{ game.puzzle?.answer }}</p>
+          <div class="mt-2 text-sm font-semibold text-ink">{{ game.puzzle?.title }}</div>
+          <p class="mt-3 text-sm leading-relaxed text-ink-soft">{{ game.puzzle?.answer }}</p>
           <button
             type="button"
             class="mt-5 rounded-xl bg-brand-600 px-6 py-2.5 font-bold text-white transition hover:bg-brand-500"

@@ -1,5 +1,21 @@
 # Lessons Learned
 
+## 2026-09-15 漏装一个包的依赖，报错会出现在"消费它的项目"里（极易误判为共享包改坏了）
+
+- **现象**：在 `abracadawhat` 跑 `npm run build` 报
+  `Rolldown failed to resolve import "@lapismind/lobby-kit" from "packages/chat-kit/src/chat-client.js"`。
+  当时刚改过共享包 `packages/design-kit`（加令牌与语义颜色层），第一反应是"我把共享包改坏了"。
+- **根因**：与 design-kit 无关。`packages/chat-kit` **自己没装依赖**——它的 `dependencies` 里有
+  `@lapismind/lobby-kit`，而仓库不是 npm workspace，9 个目录各自独立安装。chat-kit 缺 node_modules 时，
+  它的 `src/chat-client.js` 里那句 import 在**引用方的构建过程**中无法解析，于是错误显示在 abracadawhat 的构建日志里。
+- **修复**：`cd packages/chat-kit && npm install`，再重建 abracadawhat，通过。
+- **判断方法（省时间的关键）**：
+  - "failed to resolve import X from Y" 指向的是 **Y 所在包缺少自己的 node_modules**，
+    与"共享包里改的 CSS/令牌"无关。改 CSS 不会造成模块解析失败。
+  - 要证明与自己无关：把缺的依赖装上再跑一次，**其他改动保持不动**。通过即证清。
+  - `docs/MIGRATION-NOTES.md` 第一节第 3 步的 9 个目录清单是权威；换机器时**逐个装齐**，
+    漏掉哪一个，报错都会长在别的项目身上。
+
 ## 2026-09-15 无 BOM 的 UTF-8 PowerShell 脚本在 5.1 下解析失败（接力命令踩坑）
 
 - `scripts/sync.ps1` 是 UTF-8 **无 BOM** 且含中文字符串。用 Windows PowerShell 5.1 执行（`powershell -File scripts/sync.ps1 ...`）时，5.1 对无 BOM 文件默认按 ANSI/GBK 解码，中文被打成乱码并让引号提前闭合，报的是 `字符串缺少终止符`、`缺少右"}"` 这类**语法错误**——看起来像脚本被改坏了，实际是编码问题。解析阶段就失败，脚本一行都没执行（不会误提交）。

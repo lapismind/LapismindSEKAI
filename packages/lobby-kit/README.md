@@ -63,11 +63,20 @@
 
 ### src/vue/ —— 共享 Vue 组件（`@lapismind/lobby-kit/vue`）
 
-- `<ProfileEditor v-model="draft" :avatar-choices="choices" />` 昵称 + 头像九宫格
+- `<ProfileEditor v-model="draft" :avatar-choices="choices" :dark="false" />` 昵称 + 头像九宫格
 - `<AuthBadge @identity-change="onIdentityChange" :dark="false" :compact="false" />`
   统一身份徽章：显示当前登录身份（GitHub 头像昵称 / 账号 / 游客），游客可一键
   GitHub 登录或用用户名密码注册升级/登录，登录态变化通过 identity-change 事件
   通知宿主（游戏侧同步大厅身份、必要时重连）
+
+**`dark` 变体（两个组件都有）**：深色大厅（如海龟汤）传 `dark` 即可。
+深色值优先读 design-kit 令牌（`var(--field-bg)` / `var(--ink)` / `var(--muted)` /
+`var(--line)` / `var(--primary-brand)`），**取不到才退回组件内硬编码的深色**——
+所以引了 design-kit 的项目自动与全站设计语言同源，没引的项目行为完全不变。
+lobby-kit 自身不依赖 design-kit，这个 fallback 是刻意留的。
+
+> 浅色值仍是组件内硬编码（与 design-kit 的浅色令牌只是接近、不完全相同），
+> 所以**传 `dark` 的收益比浅色路径大**；将来若要两端都同源，再统一收敛。
 
 ## 测试
 

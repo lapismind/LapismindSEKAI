@@ -155,18 +155,18 @@ const moderatorLabel = computed(() => (props.mode === 'ai' ? AI_NAME : '主持�
             :src="playerAvatar(p)"
             :alt="p.nickname"
             class="h-14 w-14 rounded-full border-2 object-cover shadow-lg"
-            :class="p.id === myPlayerId ? 'border-brand-400' : 'border-slate-600'"
+            :class="p.id === myPlayerId ? 'border-brand-400' : 'border-line-strong'"
           />
           <div
             v-else
             class="flex h-14 w-14 items-center justify-center rounded-full border-2 text-lg font-bold shadow-lg"
             :class="p.id === myPlayerId
               ? 'border-brand-400 bg-brand-500/30 text-white'
-              : 'border-slate-600 bg-slate-800 text-slate-100'"
+              : 'border-line-strong bg-field text-ink'"
           >
             {{ p.nickname?.slice(0, 1) }}
           </div>
-          <div class="rounded-full bg-slate-900/80 px-2 py-0.5 text-xs text-slate-300">
+          <div class="rounded-full bg-surface/80 px-2 py-0.5 text-xs text-ink-soft">
             {{ p.nickname }}<span v-if="p.id === myPlayerId" class="ml-0.5 text-brand-300">(我)</span>
           </div>
         </div>
@@ -196,15 +196,15 @@ const moderatorLabel = computed(() => (props.mode === 'ai' ? AI_NAME : '主持�
         >
           {{ moderator ? moderator.nickname?.slice(0, 1) : '🕵️' }}
         </div>
-        <div class="rounded-full bg-slate-900/90 px-3 py-1 text-sm font-semibold text-slate-200">
+        <div class="rounded-full bg-surface/90 px-3 py-1 text-sm font-semibold text-ink">
           {{ moderatorLabel }}
-          <span v-if="moderator" class="ml-1 text-xs text-slate-500">{{ moderator.nickname }}</span>
+          <span v-if="moderator" class="ml-1 text-xs text-muted">{{ moderator.nickname }}</span>
         </div>
 
         <!-- 最近一次判定气泡 -->
         <div
           v-if="lastJudge"
-          class="rounded-full px-3 py-1 text-xs font-bold text-slate-900 animate-fade-up"
+          class="rounded-full px-3 py-1 text-xs font-bold text-on-accent animate-fade-up"
           :style="{ backgroundColor: judgeColor(lastJudge.judge) }"
         >
           {{ JUDGE_LABEL[lastJudge.judge] }}
@@ -244,10 +244,10 @@ const moderatorLabel = computed(() => (props.mode === 'ai' ? AI_NAME : '主持�
       class="pointer-events-none absolute z-40"
       :style="{ left: 'calc(' + questionBubble.x + '% + 30px)', top: 'calc(' + questionBubble.y + '% - 46px)' }"
     >
-      <div class="relative rounded-xl border border-slate-600/60 bg-slate-800/95 px-3 py-1.5 shadow-lg animate-fade-up">
+      <div class="relative rounded-xl border border-line-strong/60 bg-raised/95 px-3 py-1.5 shadow-lg animate-fade-up">
         <!-- 小尾巴 -->
-        <div class="absolute -bottom-1 left-4 h-2 w-2 rotate-45 border-b border-r border-slate-600/60 bg-slate-800/95" />
-        <div class="max-w-[180px] text-xs leading-snug text-slate-100">
+        <div class="absolute -bottom-1 left-4 h-2 w-2 rotate-45 border-b border-r border-line-strong/60 bg-raised/95" />
+        <div class="max-w-[180px] text-xs leading-snug text-ink">
           <span class="mr-1 font-semibold text-brand-300">{{ questionBubble.fromName }}：</span>{{ questionBubble.text }}
         </div>
       </div>

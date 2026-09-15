@@ -53,9 +53,31 @@ npm install @lapismind/design-kit@file:../packages/design-kit
 
 Tailwind 工具类档位（`theme.css`）：`brand-50 … brand-950`，其中 `brand-500 = #8888CC`、`brand-600 = #7676B8`。
 
-> **两处定义必须同步**：`theme.css` 是静态 hex（Tailwind 的 `@theme` 只吃静态值），`tokens.css` 是 oklch 推导。`tests/tokens.test.mjs` 会校验二者色相一致——改主色时两处一起改，跑 `npm test` 确认。
+### 语义颜色类（写组件时优先用这一组）
 
-深色主题（`--hue-accent` 同源推导）在 `tokens.css` 的 `:root[data-theme='dark']` 里，按需 opt-in。自带深色身份的项目（如 turtle-soup）不引这一段。
+`theme.css` 用 `@theme inline` 把上面的自定义属性暴露成按**角色**命名的 Tailwind 色，值跟着 `data-theme` 自动切换：
+
+| 用途 | 类 | 指向令牌 |
+|---|---|---|
+| 页面底 / 卡片 / 实卡片 | `bg-page` / `bg-surface` / `bg-surface-solid` | `--page-bg` / `--card-bg` / `--card-solid` |
+| 表单字段、分段控件底槽 | `bg-field` | `--field-bg` |
+| 抬起表面（提示条、浮起小片） | `bg-raised` | `--surface-raised` |
+| 半透明顶/底栏（配 `backdrop-blur`） | `bg-chrome`（可用 `/80`） | `--glass-bg` |
+| 模态遮罩 | `bg-overlay` | `--overlay` |
+| 文字三级 | `text-ink` / `text-ink-soft` / `text-muted` | `--ink` / `--ink-soft` / `--muted` |
+| 压在亮色芯片上的文字 | `text-on-accent` | `--on-accent` |
+| 1px 描边 | `border-line` / `border-line-strong` | `--line` / `--line-strong` |
+| 中性（非品牌）按钮 | `bg-neutral` / `hover:bg-neutral-hover` | `--btn-neutral` / `--btn-neutral-hover` |
+
+悬停变体与 `/NN` 透明度修饰符都能用（`hover:bg-surface`、`bg-chrome/80`）：`@theme inline` 会把 `var()` 原样保留进产物、不预先求值，所以主题切换对工具类同样生效（2026-09-15 在 Tailwind 4.3.3 上实测确认）。
+
+> **为什么品牌色阶用普通 `@theme`、语义层却用 `@theme inline`**：普通 `@theme` 要求静态值，写成 `var()` 会在构建期被固化成当前主题的值，切换主题就失效；而品牌 11 档是人工排布、不随主题变，正好该用静态 hex。**判断标准是"这个值要不要跟着主题走"**：要，用 `inline` 并指向 `tokens.css`；不要，用普通 `@theme` 写死。
+
+组件里请写 `bg-surface` 这类语义类，**不要**写 `bg-[var(--card-bg)]`，更不要写死 hex——后两者一个冗长、一个换主题就失效。
+
+> **两处定义必须同步**：品牌色阶在 `theme.css` 里是静态 hex，在 `tokens.css` 里是 oklch 推导。`tests/tokens.test.mjs` 会校验二者色相一致——改主色时两处一起改，跑 `npm test` 确认。（语义颜色层不受这条约束：它的值指向 `tokens.css`，不构成第二份真源。）
+
+深色主题（`--hue-accent` 同源推导）在 `tokens.css` 的 `:root[data-theme='dark']` 里，按需 opt-in：在 `<html>` 上打 `data-theme="dark"` 即生效。博客用 JS 切换亮暗；**自带深色身份的项目（如 turtle-soup）常驻深色，直接把该属性写死在 HTML 上**，不需要主题切换 UI。
 
 ---
 
@@ -166,7 +188,8 @@ CSS 里是 97 个按 `unicode-range` 切分的 `@font-face`，**浏览器只下�
 2. 在 `src/styles/global.css` 里按上面的顺序 `@import`（Tailwind 项目再加 `theme.css`）
 3. 在 `package.json` 加 `predev` / `prebuild` 同步字体，`index.html` 加 `<link>`
 4. 项目 `global.css` **只留应用外壳**（`html/body/#app` 高度、`overscroll-behavior`、整页排版尺度这些布局级设置），设计令牌一律不重写
-5. 用 Tailwind 工具类时只写 `bg-brand-*` / `text-brand-*` / `border-brand-*`；需要非工具类的色值走 `var(--*)`
+5. 组件里优先用**语义颜色类**（`bg-surface` / `text-ink` / `border-line` …，见上方对照表），品牌强调用 `bg-brand-*` / `text-brand-*`；确实需要非工具类的色值才走 `var(--*)`。**不要写死 hex。**
+6. **深色项目**：在 `<html>` 上加 `data-theme="dark"`，表面/文字/描边自动取深色档。**不要再自己声明一套深色表面色**——那正是 turtle-soup 2026-09-15 收敛掉的东西（它当时把 `#1c1c33` 等写在自己 CSS 里，与 design-kit 脱节）。
 
 ## 自检
 

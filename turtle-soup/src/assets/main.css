@@ -1,15 +1,16 @@
 @import "tailwindcss";
-/* 品牌色阶来自 design-kit（本轮只收口色阶：海龟汤是深色主题，
-   自有 --bg-deep 等表面色与字体栈，不引 tokens/base，保持它的夜间气质） */
+/* 设计语言全部来自 @lapismind/design-kit：令牌、品牌色阶、基础层。
+   本文件只留应用外壳——不要在这里重写设计令牌，改设计语言请改 design-kit。
+
+   turtle-soup 常驻深色：data-theme="dark" 写在 index.html 的 <html> 上，
+   表面/文字/描边自动取 tokens.css 的深色档。此前这里自己声明过
+   --bg-deep / --bg-panel / --accent / --accent-strong 一套深色值（其中
+   后三个从未被任何地方引用），与 design-kit 脱节；2026-09-15 收敛掉。 */
+@import "@lapismind/design-kit/tokens.css";
 @import "@lapismind/design-kit/theme.css";
+@import "@lapismind/design-kit/base.css";
 
-:root {
-  --bg-deep: #1c1c33;
-  --bg-panel: #282846;
-  --accent: #8888cc;
-  --accent-strong: #7676b8;
-}
-
+/* 应用外壳：整页铺满 + 禁止橡皮筋滚动（游戏页专属，不属于设计语言） */
 html,
 body,
 #app {
@@ -19,24 +20,24 @@ body,
 }
 
 body {
-  background: var(--bg-deep);
-  color: #e2e8f0;
-  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
-    "Microsoft YaHei", sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
+/* 判定反馈的入场。这不是 base.css 的 .reveal——那个是滚动入场，需要 has-js +
+   IntersectionObserver；这里是状态变化时的即时反馈，所以保留自己的 keyframes，
+   只把缓动/时长收敛到设计令牌，位移压进规范的 6px 内（原为 12px 位移 +
+   写死的 0.3s ease-out，是全站唯一一处自定节奏）。 */
 @keyframes fade-up {
   from {
-    transform: translateY(12px);
     opacity: 0;
+    transform: translateY(6px);
   }
   to {
-    transform: translateY(0);
     opacity: 1;
+    transform: none;
   }
 }
 
 .animate-fade-up {
-  animation: fade-up 0.3s ease-out both;
+  animation: fade-up var(--dur-fast) var(--ease-soft) both;
 }

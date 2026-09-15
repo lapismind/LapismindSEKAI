@@ -7,11 +7,13 @@ const model = defineModel({ type: Object, required: true })
 
 defineProps({
   avatarChoices: { type: Array, required: true },
+  // 深色主题（如海龟汤暗色大厅）：切换标签/输入框/头像描边的配色
+  dark: { type: Boolean, default: false },
 })
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-3" :class="{ 'is-dark': dark }">
     <div>
       <label class="lk-field">昵称</label>
       <input
@@ -95,6 +97,37 @@ defineProps({
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ── 深色变体 ──
+   值优先取 design-kit 的令牌（消费方引了 tokens.css 就有），取不到再退回硬编码。
+   这样：引了 design-kit 的项目（海龟汤）与全站设计语言同源；没引的项目
+   （showhand / abracadawhat 都只传浅色）行为完全不变。
+   lobby-kit 本身不依赖 design-kit，所以 fallback 必须给全。 */
+.is-dark .lk-field {
+  color: var(--muted, #94a3b8);
+}
+
+.is-dark .lk-input {
+  border-color: var(--line, #475569);
+  background: var(--field-bg, #1f2937);
+  color: var(--ink, #e2e8f0);
+}
+
+.is-dark .lk-input:focus {
+  border-color: var(--primary-brand, #8888cc);
+}
+
+.is-dark .lk-avatar {
+  border-color: var(--line, #475569);
+}
+
+.is-dark .lk-avatar:hover {
+  border-color: var(--muted, #94a3b8);
+}
+
+.is-dark .lk-avatar.is-active {
+  border-color: var(--primary-brand, #8888cc);
 }
 </style>
 

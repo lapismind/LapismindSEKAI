@@ -233,8 +233,12 @@ async function submitLogin() {
   color: #333333;
 }
 
+/* ── 深色变体 ──
+   值优先取 design-kit 的令牌（消费方引了 tokens.css 就有），取不到再退回原来的硬编码。
+   引了 design-kit 的项目（海龟汤）因此与全站设计语言同源；没引的项目行为不变。
+   lobby-kit 不依赖 design-kit，fallback 必须给全。 */
 .is-dark .lk-name {
-  color: #e2e8f0;
+  color: var(--ink, #e2e8f0);
 }
 
 .lk-muted {
@@ -242,7 +246,7 @@ async function submitLogin() {
 }
 
 .is-dark .lk-muted {
-  color: #94a3b8;
+  color: var(--muted, #94a3b8);
 }
 
 .lk-btn {
@@ -271,8 +275,8 @@ async function submitLogin() {
 }
 
 .is-dark .lk-btn-ghost {
-  border-color: #475569;
-  color: #cbd5e1;
+  border-color: var(--line, #475569);
+  color: var(--ink-soft, #cbd5e1);
 }
 
 .lk-btn-icon {
@@ -284,8 +288,8 @@ async function submitLogin() {
 }
 
 .is-dark .lk-btn-icon {
-  border-color: #475569;
-  color: #cbd5e1;
+  border-color: var(--line, #475569);
+  color: var(--ink-soft, #cbd5e1);
 }
 
 .lk-btn-wide {

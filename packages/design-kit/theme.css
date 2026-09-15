@@ -1,9 +1,15 @@
 /* ============================================================
-   @lapismind/design-kit —— 品牌色阶（Tailwind 4 @theme）
+   @lapismind/design-kit —— 品牌色阶 + 语义颜色层（Tailwind 4 @theme）
    ============================================================
-   这一段的唯一作用：让 Tailwind 生成 bg-brand-600 / text-brand-500 /
-   border-brand-200 这类工具类。Tailwind 的 @theme 只接受静态值，
-   所以这里必须是确定的 hex，不能用 oklch(var()) 推导。
+   这一段有两部分，用途不同：
+
+   1) 品牌色阶（普通 @theme，静态 hex）
+      让 Tailwind 生成 bg-brand-600 / text-brand-500 / border-brand-200 这类
+      工具类。11 档是人工排布的，必须写成确定的 hex，不能靠 oklch(var()) 推导。
+
+   2) 语义颜色层（@theme inline，值指向 tokens.css 的自定义属性）
+      生成 bg-surface / text-ink / border-line 这类按"角色"命名的类。
+      值用 var() 引用，所以会跟着 data-theme 自动切换。
 
    #8888CC 是品牌主色（真冬的代表色）。色阶是它向两端展开的结果：
    - 500 = #8888CC 原色，用于装饰、光晕、当前态强调
@@ -14,6 +20,7 @@
    否则工具类和自定义属性会指向两个色相。
    ============================================================ */
 
+/* 普通 @theme：静态值。只有"不随主题变化"的才放这里。 */
 @theme {
   --color-brand-50: #f2f2fa;
   --color-brand-100: #e6e6f5;
@@ -26,4 +33,37 @@
   --color-brand-800: #505085;
   --color-brand-900: #3d3d68;
   --color-brand-950: #2a2a48;
+}
+
+/* 语义颜色层：按角色命名，值指向 tokens.css。
+   @theme inline 会把 var() 原样保留进产物、不预先求值（2026-09-15 在
+   Tailwind 4.3.3 上实测）：
+     .bg-surface{background-color:var(--card-bg)}
+     .hover\:bg-surface\/80:hover{background-color:color-mix(in oklab, var(--card-bg) 80%, transparent)}
+   所以悬停变体和 /NN 透明度修饰符都能用，且切换 data-theme 时自动生效。
+   想让一个值跟着主题走，就必须用 inline；用普通 @theme 会被固化成当前值。 */
+@theme inline {
+  /* 表面 */
+  --color-page: var(--page-bg);
+  --color-surface: var(--card-bg);
+  --color-surface-solid: var(--card-solid);
+  --color-field: var(--field-bg);
+  --color-raised: var(--surface-raised);
+  --color-chrome: var(--glass-bg);
+  --color-overlay: var(--overlay);
+
+  /* 文字三级 */
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  /* 压在亮色芯片上的深色文字（两种主题都是深色） */
+  --color-on-accent: var(--on-accent);
+
+  /* 1px 描边 */
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  /* 中性（非品牌）按钮 */
+  --color-neutral: var(--btn-neutral);
+  --color-neutral-hover: var(--btn-neutral-hover);
 }

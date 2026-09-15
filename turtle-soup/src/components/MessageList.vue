@@ -15,10 +15,10 @@ function judgeClass(judge) {
   return {
     yes: 'text-emerald-300',
     no: 'text-red-300',
-    irrelevant: 'text-slate-400',
+    irrelevant: 'text-ink-soft',
     ambiguous: 'text-amber-300',
     correct: 'text-amber-300 font-bold',
-  }[judge] ?? 'text-slate-300'
+  }[judge] ?? 'text-ink-soft'
 }
 
 function senderName(m, players) {
@@ -39,21 +39,21 @@ function showReason(m) {
       v-for="(m, i) in display"
       :key="i"
       class="rounded-lg px-3 py-2"
-      :class="m.judge ? 'bg-slate-800/80' : 'bg-slate-900/60'"
+      :class="m.judge ? 'bg-raised/80' : 'bg-surface/60'"
     >
-      <div class="text-xs text-slate-500">
+      <div class="text-xs text-muted">
         {{ senderName(m, players) }}
         <span v-if="m.kind === 'question'">提问</span>
         <span v-if="m.judge" class="ml-1">
           → <span :class="judgeClass(m.judge)">{{ JUDGE_LABEL[m.judge] }}</span>
         </span>
       </div>
-      <div class="text-sm" :class="m.from === myPlayerId ? 'text-brand-200' : 'text-slate-200'">
+      <div class="text-sm" :class="m.from === myPlayerId ? 'text-brand-200' : 'text-ink'">
         {{ m.text }}
-        <span v-if="showReason(m)" class="ml-1 text-xs text-slate-500">（{{ m.reason }}）</span>
+        <span v-if="showReason(m)" class="ml-1 text-xs text-muted">（{{ m.reason }}）</span>
       </div>
     </div>
-    <div v-if="messages.length === 0" class="py-6 text-center text-sm text-slate-600">
+    <div v-if="messages.length === 0" class="py-6 text-center text-sm text-muted">
       提问开始后，对话会显示在这里
     </div>
   </div>

@@ -38,6 +38,9 @@
 	--ink: oklch(0.25 0.028 250);
 	--ink-soft: oklch(0.42 0.03 245);
 	--muted: oklch(0.55 0.03 240);
+	/* 压在"亮色芯片"上的文字（判定结果、状态徽章这类底色很亮的元素）。
+	   亮芯片在两种主题下都需要深字，所以它不随主题反转——两个主题都给深色。 */
+	--on-accent: oklch(0.2 0.02 var(--hue-bg));
 
 	--line: oklch(0.9 0.012 var(--hue-bg));
 	--line-strong: oklch(0.82 0.02 var(--hue-bg));
@@ -52,6 +55,17 @@
 
 	/* 玻璃面板配方：白玻璃 + 1px 发丝边 + 柔影，不用深色遮罩 */
 	--glass-bg: oklch(0.995 0.004 var(--hue-bg));
+
+	/* 语义表面补充（浅色段）。这些是"组件级"表面，与上面三个"页面级"表面并列：
+	   --field-bg       表单字段 / 分段控件底槽——比卡片略凹，让输入区看得出是"坑"
+	   --surface-raised 抬起表面：提示条、悬停浮起的小片、叠在卡片之上的浮层
+	   --btn-neutral    中性（非品牌）按钮填充，--btn-neutral-hover 是它的悬停档
+	   --overlay        模态遮罩。规范禁止纯黑重遮罩，所以是一层带色相的浅纱 */
+	--field-bg: oklch(0.955 0.02 var(--hue-bg));
+	--surface-raised: #ffffff;
+	--btn-neutral: oklch(0.9 0.012 var(--hue-bg));
+	--btn-neutral-hover: oklch(0.85 0.016 var(--hue-bg));
+	--overlay: oklch(0.45 0.03 var(--hue-bg) / 0.35);
 
 	/* 阴影阶梯：面板 sm → 卡牌 md → 浮层/弹窗 lg。靠阴影做层次，不靠深色底 */
 	--shadow-sm: 0 1px 2px oklch(0.3 0.02 250 / 0.06), 0 4px 12px oklch(0.3 0.02 250 / 0.05);
@@ -81,7 +95,8 @@
 }
 
 /* ── 深色主题（可选，按 data-theme 切换）──
-   turtle-soup 这类自带深色身份的项目不引这一段，保持自持。 */
+   在 <html> 上打 data-theme="dark" 即生效：博客用 JS 切换亮暗；turtle-soup 常驻
+   深色，直接把属性写死在 HTML 上。只要项目引了 tokens.css，这一段就可用。 */
 :root[data-theme='dark'] {
 	--page-bg: oklch(0.175 0.022 var(--hue-bg));
 	--page-bg-deep: oklch(0.145 0.02 var(--hue-bg));
@@ -90,6 +105,7 @@
 	--ink: oklch(0.93 0.012 240);
 	--ink-soft: oklch(0.8 0.02 242);
 	--muted: oklch(0.66 0.022 242);
+	--on-accent: oklch(0.15 0.015 var(--hue-bg));
 	--line: oklch(0.32 0.02 var(--hue-bg));
 	--line-strong: oklch(0.42 0.03 var(--hue-bg));
 	--primary: oklch(0.78 0.1 var(--hue-accent));
@@ -99,6 +115,13 @@
 	--primary-ghost: oklch(0.26 0.04 var(--hue-accent));
 	--gradient: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
 	--glass-bg: oklch(0.25 0.03 var(--hue-bg));
+	/* 语义表面补充的深色取值，与浅色段同名同用。亮度按既有阶梯插空：
+	   页底 0.175 → 字段 0.19 → 卡片 0.235/0.25 → 抬起 0.28 → 中性按钮 0.30 */
+	--field-bg: oklch(0.19 0.022 var(--hue-bg));
+	--surface-raised: oklch(0.28 0.03 var(--hue-bg));
+	--btn-neutral: oklch(0.3 0.03 var(--hue-bg));
+	--btn-neutral-hover: oklch(0.36 0.032 var(--hue-bg));
+	--overlay: oklch(0.08 0.01 var(--hue-bg) / 0.72);
 	--shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25), 0 4px 12px oklch(0 0 0 / 0.22);
 	--shadow-md: 0 2px 6px oklch(0 0 0 / 0.3), 0 12px 32px oklch(0 0 0 / 0.32);
 	--shadow-lg: 0 4px 12px oklch(0 0 0 / 0.35), 0 24px 60px oklch(0 0 0 / 0.45);

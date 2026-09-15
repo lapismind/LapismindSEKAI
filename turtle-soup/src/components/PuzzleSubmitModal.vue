@@ -54,26 +54,26 @@ async function submit() {
     <!-- 触发按钮 -->
     <button
       type="button"
-      class="w-full rounded-lg border border-slate-700 bg-slate-800/60 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:bg-slate-800"
+      class="w-full rounded-lg border border-line bg-raised/60 px-4 py-2.5 text-sm font-semibold text-ink-soft transition hover:border-line-strong hover:bg-raised"
       @click="open = true"
     >
       📝 提交我的海龟汤
     </button>
 
     <!-- 弹窗 -->
-    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="close">
-      <div class="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+    <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" @click.self="close">
+      <div class="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-line bg-surface shadow-2xl">
         <!-- 头部 -->
-        <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3">
-          <span class="text-sm font-bold text-slate-100">📝 提交你的海龟汤</span>
-          <button type="button" class="text-slate-400 hover:text-slate-200" @click="close">✕</button>
+        <div class="flex items-center justify-between border-b border-line px-5 py-3">
+          <span class="text-sm font-bold text-ink">📝 提交你的海龟汤</span>
+          <button type="button" class="text-ink-soft hover:text-ink" @click="close">✕</button>
         </div>
 
         <!-- 成功提示 -->
         <div v-if="done" class="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-10">
           <div class="text-3xl">🎉</div>
-          <div class="text-sm font-semibold text-slate-200">提交成功！</div>
-          <div class="text-center text-xs text-slate-500">
+          <div class="text-sm font-semibold text-ink">提交成功！</div>
+          <div class="text-center text-xs text-muted">
             你的谜题已加入题库，房主选谜题时就能看到。
           </div>
           <button
@@ -88,33 +88,33 @@ async function submit() {
         <!-- 表单 -->
         <div v-else class="flex flex-col gap-3 overflow-y-auto px-5 py-4">
           <div>
-            <label class="mb-1 block text-xs text-slate-500">标题（名字）</label>
+            <label class="mb-1 block text-xs text-muted">标题（名字）</label>
             <input
               v-model="title"
-              class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+              class="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
               placeholder="给谜题取个名字"
               maxlength="30"
             />
           </div>
           <div>
-            <label class="mb-1 block text-xs text-slate-500">汤面（谜题描述）</label>
+            <label class="mb-1 block text-xs text-muted">汤面（谜题描述）</label>
             <textarea
               v-model="story"
-              class="h-24 w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+              class="h-24 w-full resize-none rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
               placeholder="描述一个奇怪的场景或结局…"
               maxlength="500"
             />
           </div>
           <div>
-            <label class="mb-1 block text-xs text-slate-500">汤底（真相答案）</label>
+            <label class="mb-1 block text-xs text-muted">汤底（真相答案）</label>
             <textarea
               v-model="answer"
-              class="h-24 w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+              class="h-24 w-full resize-none rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
               placeholder="写下完整真相…（玩家猜中前不会被看到）"
               maxlength="1000"
             />
           </div>
-          <p class="text-[11px] leading-relaxed text-slate-600">
+          <p class="text-[11px] leading-relaxed text-muted">
             提示：汤底写清楚关键真相，AI 主持人会用它来判断玩家的提问。
           </p>
 

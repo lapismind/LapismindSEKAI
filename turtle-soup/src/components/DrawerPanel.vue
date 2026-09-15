@@ -53,7 +53,7 @@ const remaining = computed(() =>
   <!-- 右侧触发按钮（竖排，fixed 定位避免受祖先 transform 影响 -->
   <button
     type="button"
-    class="fixed right-2 top-1/2 z-40 flex w-8 -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-slate-700 bg-slate-800/90 py-2 text-xs font-semibold text-slate-300 shadow transition hover:bg-slate-700"
+    class="fixed right-2 top-1/2 z-40 flex w-8 -translate-y-1/2 flex-col items-center gap-1 rounded-lg border border-line bg-raised/90 py-2 text-xs font-semibold text-ink-soft shadow transition hover:bg-neutral-hover"
     @click="open = !open"
   >
     <span v-if="!open">☰</span>
@@ -75,15 +75,15 @@ const remaining = computed(() =>
   <transition name="slide-right">
     <div
       v-if="open"
-      class="fixed right-0 top-0 bottom-0 z-50 flex w-80 max-w-[85vw] flex-col border-l border-slate-700 bg-slate-900 shadow-2xl"
+      class="fixed right-0 top-0 bottom-0 z-50 flex w-80 max-w-[85vw] flex-col border-l border-line bg-surface shadow-2xl"
     >
       <!-- 头部：标签切换 + 收起 -->
-      <div class="flex items-center justify-between gap-2 border-b border-slate-800 px-4 py-3">
-        <div class="flex gap-1 rounded-lg bg-slate-800 p-1">
+      <div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+        <div class="flex gap-1 rounded-lg bg-field p-1">
           <button
             type="button"
             class="rounded-md px-3 py-1 text-xs font-semibold"
-            :class="tab === 'log' ? 'bg-brand-500 text-white' : 'text-slate-400'"
+            :class="tab === 'log' ? 'bg-brand-500 text-white' : 'text-ink-soft'"
             @click="tab = 'log'"
           >
             问答记录
@@ -91,7 +91,7 @@ const remaining = computed(() =>
           <button
             type="button"
             class="rounded-md px-3 py-1 text-xs font-semibold"
-            :class="tab === 'review' ? 'bg-brand-500 text-white' : 'text-slate-400'"
+            :class="tab === 'review' ? 'bg-brand-500 text-white' : 'text-ink-soft'"
             @click="tab = 'review'"
           >
             复盘
@@ -108,7 +108,7 @@ const remaining = computed(() =>
           >
             🐟 AI复盘
           </button>
-          <button type="button" class="text-slate-400 hover:text-slate-200" @click="open = false">✕</button>
+          <button type="button" class="text-ink-soft hover:text-ink" @click="open = false">✕</button>
         </div>
       </div>
 
@@ -130,27 +130,27 @@ const remaining = computed(() =>
               v-for="(n, i) in reviewNotes"
               :key="i"
               class="rounded-lg px-3 py-2"
-              :class="n.kind === 'ai' ? 'bg-brand-900/40 border border-brand-700/50' : 'bg-slate-800/70'"
+              :class="n.kind === 'ai' ? 'bg-brand-900/40 border border-brand-700/50' : 'bg-raised/70'"
             >
-              <div class="text-xs text-slate-500">
+              <div class="text-xs text-muted">
                 {{ n.kind === 'ai' ? '🐟 大肥鱼复盘' : (players.find((p) => p.id === n.from)?.nickname ?? '玩家') }}
               </div>
-              <div class="text-sm" :class="n.kind === 'ai' ? 'text-brand-200' : 'text-slate-200'">
+              <div class="text-sm" :class="n.kind === 'ai' ? 'text-brand-200' : 'text-ink'">
                 {{ n.text }}
               </div>
             </div>
-            <div v-if="reviewNotes.length === 0" class="py-6 text-center text-sm text-slate-600">
+            <div v-if="reviewNotes.length === 0" class="py-6 text-center text-sm text-muted">
               复盘笔记区：所有玩家都能看到这里的内容
             </div>
           </div>
         </div>
 
         <!-- 复盘输入区 -->
-        <div class="border-t border-slate-800 p-3">
+        <div class="border-t border-line p-3">
           <div class="flex gap-2">
             <input
               v-model="noteText"
-              class="flex-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+              class="flex-1 rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
               placeholder="复盘笔记，所有人可见…"
               maxlength="500"
               @keyup.enter="sendNote"

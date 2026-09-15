@@ -49,19 +49,19 @@ function close() {
 </script>
 
 <template>
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="close">
-    <div class="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-brand-700/40 bg-slate-900 shadow-2xl">
+  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" @click.self="close">
+    <div class="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-brand-700/40 bg-surface shadow-2xl">
       <!-- 头部 -->
-      <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3">
+      <div class="flex items-center justify-between border-b border-line px-5 py-3">
         <span class="text-sm font-bold text-brand-300">💬 意见反馈</span>
-        <button type="button" class="text-slate-400 transition hover:text-slate-200" @click="close">✕</button>
+        <button type="button" class="text-ink-soft transition hover:text-ink" @click="close">✕</button>
       </div>
 
       <!-- 成功 -->
       <div v-if="done" class="flex flex-col items-center gap-3 px-6 py-10">
         <div class="text-3xl">🎉</div>
-        <div class="text-sm font-semibold text-slate-200">感谢你的反馈！</div>
-        <div class="text-center text-xs text-slate-500">我们会认真查看每条建议，让游戏变得更好。</div>
+        <div class="text-sm font-semibold text-ink">感谢你的反馈！</div>
+        <div class="text-center text-xs text-muted">我们会认真查看每条建议，让游戏变得更好。</div>
         <button type="button" class="mt-2 rounded-lg bg-brand-600 px-5 py-2 text-sm font-bold text-white transition hover:bg-brand-500" @click="close">
           完成
         </button>
@@ -73,7 +73,7 @@ function close() {
         <div class="rounded-xl border border-sky-700/50 bg-sky-900/20 p-3">
           <div class="text-sm font-semibold text-sky-300">📮 想直接聊？</div>
           <div class="mt-1 flex items-center justify-between">
-            <span class="text-xs text-slate-400">加 QQ：</span>
+            <span class="text-xs text-ink-soft">加 QQ：</span>
             <button
               type="button"
               class="rounded-md px-3 py-1 text-xs font-bold transition"
@@ -86,20 +86,20 @@ function close() {
         </div>
 
         <div>
-          <label class="mb-1 block text-xs text-slate-500">反馈内容</label>
+          <label class="mb-1 block text-xs text-muted">反馈内容</label>
           <textarea
             v-model="content"
-            class="h-28 w-full resize-none rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+            class="h-28 w-full resize-none rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
             placeholder="遇到问题？有建议？写下想说的话…"
             maxlength="2000"
           />
         </div>
 
         <div>
-          <label class="mb-1 block text-xs text-slate-500">联系方式（选填，方便我们回复你）</label>
+          <label class="mb-1 block text-xs text-muted">联系方式（选填，方便我们回复你）</label>
           <input
             v-model="contact"
-            class="w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
+            class="w-full rounded-lg border border-line bg-field px-3 py-2 text-sm text-white outline-none focus:border-brand-500"
             placeholder="QQ / 微信 / 邮箱"
             maxlength="100"
           />

@@ -67,7 +67,7 @@ const SECTIONS = [
   <!-- 悬浮帮助按钮（右上角顶栏下方，不遮挡底部操作区） -->
   <button
     type="button"
-    class="fixed right-4 top-14 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-brand-500/40 bg-slate-900/80 text-base text-brand-300 shadow-lg backdrop-blur-sm transition hover:scale-110 hover:bg-slate-800"
+    class="fixed right-4 top-14 z-40 flex h-9 w-9 items-center justify-center rounded-full border border-brand-500/40 bg-surface/80 text-base text-brand-300 shadow-lg backdrop-blur-sm transition hover:scale-110 hover:bg-raised"
     title="游戏说明"
     @click="open = true"
   >
@@ -75,26 +75,26 @@ const SECTIONS = [
   </button>
 
   <!-- 弹窗 -->
-  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" @click.self="open = false">
-    <div class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-brand-700/40 bg-slate-900 shadow-2xl">
+  <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4" @click.self="open = false">
+    <div class="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-brand-700/40 bg-surface shadow-2xl">
       <!-- 头部 -->
-      <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3">
+      <div class="flex items-center justify-between border-b border-line px-5 py-3">
         <span class="text-sm font-bold text-brand-300">🫕 真冬的海龟汤 · 游戏说明</span>
-        <button type="button" class="text-slate-400 transition hover:text-slate-200" @click="open = false">✕</button>
+        <button type="button" class="text-ink-soft transition hover:text-ink" @click="open = false">✕</button>
       </div>
 
       <!-- 内容 -->
       <div class="flex-1 overflow-y-auto px-5 py-4">
         <div class="flex flex-col gap-4">
-          <div v-for="sec in SECTIONS" :key="sec.title" class="rounded-xl border border-slate-800 bg-slate-800/40 p-3">
-            <div class="mb-1.5 text-sm font-bold text-slate-100">
+          <div v-for="sec in SECTIONS" :key="sec.title" class="rounded-xl border border-line bg-raised/40 p-3">
+            <div class="mb-1.5 text-sm font-bold text-ink">
               {{ sec.icon }} {{ sec.title }}
             </div>
             <ul class="flex flex-col gap-1.5">
               <li
                 v-for="(item, i) in sec.items"
                 :key="i"
-                class="flex gap-1.5 text-xs leading-relaxed text-slate-300"
+                class="flex gap-1.5 text-xs leading-relaxed text-ink-soft"
               >
                 <span class="shrink-0 text-brand-400">·</span>
                 <span>{{ item }}</span>
@@ -105,7 +105,7 @@ const SECTIONS = [
       </div>
 
       <!-- 底部 -->
-      <div class="flex flex-col gap-2 border-t border-slate-800 px-5 py-3">
+      <div class="flex flex-col gap-2 border-t border-line px-5 py-3">
         <button
           type="button"
           class="rounded-lg border border-sky-600/40 bg-sky-900/20 px-3 py-2 text-xs font-semibold text-sky-300 transition hover:bg-sky-900/40"
@@ -113,7 +113,7 @@ const SECTIONS = [
         >
           💬 意见反馈
         </button>
-        <div class="text-center text-[11px] text-slate-600">
+        <div class="text-center text-[11px] text-muted">
           祝推理愉快 🍲
         </div>
       </div>

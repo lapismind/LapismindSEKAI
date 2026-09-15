@@ -14,3 +14,6 @@ planning-new-game/
 
 # 工具会话状态（zcode plan 文件等），不属于项目源码
 .zcode/
+
+# 浏览器验证脚本的输出（截图等）：只提交脚本，不提交产物
+docs/agent/scripts/out/

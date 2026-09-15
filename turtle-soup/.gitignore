@@ -4,6 +4,9 @@ dist
 dist-ssr
 *.local
 
+# 字体：唯一真源在 packages/design-kit/fonts/，dev/build 前由 predev/prebuild 同步进来
+public/fonts/
+
 # Wrangler 本地开发缓存（勿提交）
 .wrangler
 
