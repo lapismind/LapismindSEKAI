@@ -37,8 +37,13 @@
 
 - `scripts/sync.ps1` 是 UTF-8 **无 BOM** 且含中文字符串。用 Windows PowerShell 5.1 执行（`powershell -File scripts/sync.ps1 ...`）时，5.1 对无 BOM 文件默认按 ANSI/GBK 解码，中文被打成乱码并让引号提前闭合，报的是 `字符串缺少终止符`、`缺少右"}"` 这类**语法错误**——看起来像脚本被改坏了，实际是编码问题。解析阶段就失败，脚本一行都没执行（不会误提交）。
 - 同一文件用 PowerShell 7（`pwsh`）执行正常：7.x 默认按 UTF-8 读无 BOM 文件。本机 `pwsh` 为 7.6.6，5.1 为 5.1.26100。
-- 结论：`.\scripts\sync.ps1 ship` 必须在 `pwsh` 下跑。某台机器若只有 5.1，会得到误导性的语法错误，别去"修"脚本逻辑。要彻底消除这个差异，给脚本加 UTF-8 BOM（`ef bb bf`）即可让 5.1 与 7 都正常。
-- 同类风险适用于仓库内所有含中文的 `.ps1`：新写时带 BOM，或用 `pwsh` 执行。
+- 结论：~~`.\scripts\sync.ps1 ship` 必须在 `pwsh` 下跑~~ **已修复（2026-09-15）**：按下面第 4 条给
+  `scripts/sync.ps1` 加了 UTF-8 BOM（`ef bb bf`），实测 **5.1 与 7 都能正常跑**，不再有版本限制。
+  修复方式（不要用 Set-Content）：`fs.writeFileSync(p, Buffer.concat([Buffer.from([0xEF,0xBB,0xBF]), fs.readFileSync(p)]))`。
+- 判据：遇到"含中文的 .ps1 在 5.1 下报语法错误 / 引号缺终止符"，先查 BOM，别去改脚本逻辑。
+  同类风险适用于仓库内所有含中文的 `.ps1`：**新写时一律带 BOM**。
+- 附注：5.1 下**控制台回显**中文乱码是代码页显示问题，不代表脚本坏。要判断文件是否真的损坏，
+  用 Node `readFileSync(path,'utf8')` 读回来查 `\uFFFD`，别信终端显示（turtle-soup 教训第 2 条同源）。
 
 ## 2026-09-07 D2/D3 full-suite Wrangler flake
 
