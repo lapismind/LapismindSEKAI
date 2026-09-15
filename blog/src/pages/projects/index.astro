@@ -44,13 +44,14 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				box-shadow: var(--shadow-sm);
 				text-decoration: none;
 				overflow: hidden;
-				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-					box-shadow 0.3s ease, border-color 0.3s ease;
+				transition: transform var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft);
 			}
 			.project-card:hover {
-				transform: translateY(-6px);
+				transform: translateY(calc(-1 * var(--lift-hover)));
 				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-lg), 0 0 0 1px var(--primary-soft);
+				box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-soft);
 			}
 			.card-media {
 				position: relative;
@@ -63,10 +64,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				height: 100%;
 				object-fit: cover;
 				display: block;
-				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+				transition: transform var(--dur-slow) var(--ease-soft);
 			}
 			.project-card:hover .card-media :global(img) {
-				transform: scale(1.06);
+				transform: scale(1.02);
 			}
 			.card-media-fallback {
 				display: grid;
@@ -142,10 +143,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			<div class="card-grid">
 				{
 					games.map((p, i) => (
-						<a class="project-card reveal" style={`--reveal-delay:${i * 90}ms`} href={`/projects/${p.slug}/`}>
+						<a class="project-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/projects/${p.slug}/`}>
 							<div class="card-media">
 								{projectImages[p.slug] ? (
-									<Image src={projectImages[p.slug]} alt={`${p.name} 截图`} />
+									<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 截图`} />
 								) : (
 									<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
 								)}

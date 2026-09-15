@@ -40,9 +40,65 @@ body {
 .glass {
 	background: var(--glass-bg);
 	backdrop-filter: blur(14px) saturate(1.15);
+	-webkit-backdrop-filter: blur(14px) saturate(1.15);
 	border: 1px solid var(--line);
 	border-radius: var(--radius);
 	box-shadow: var(--shadow-sm);
+}
+
+/* ============================================================
+   动效基元
+   ============================================================
+   只放"所有页面都会用同一套写法"的两件事：滚动入场的淡入上升，
+   以及列表的错峰。具体某个组件动什么（抬升、下划线、装饰线）留在项目里，
+   因为那些是内容语言，不是设计语言。
+
+   两个类，各自独立，不要求搭配使用：
+
+     .reveal          元素自身入场。JS 观察到进入视口后加 .is-visible。
+     .reveal-stagger  容器。其直接子元素按 DOM 顺序依次入场
+                      （间隔 --stagger，顺序由 JS 写 --reveal-index 决定）。
+
+   配合 IntersectionObserver 使用，触发一次即取消观察，阈值 0.1 左右。
+
+   为什么要有 html.has-js：入场内容在 CSS 里是 opacity:0，一旦观察脚本
+   没跑起来（JS 报错、被拦截、ClientRouter 换页时漏绑），内容就永久不可见——
+   这是静默失败里最难发现的一种。所以：脚本先给 <html> 打 has-js，
+   CSS 只在 has-js 存在时才隐藏。没脚本 = 直接是最终态，绝不空白。 */
+
+.reveal {
+	opacity: 0;
+	transform: translateY(26px);
+	transition:
+		opacity var(--dur-slow) var(--ease-soft),
+		transform var(--dur-slow) var(--ease-soft);
+	transition-delay: var(--reveal-delay, 0s);
+	will-change: opacity, transform;
+}
+.reveal.is-visible {
+	opacity: 1;
+	transform: none;
+}
+
+.reveal-stagger > * {
+	opacity: 0;
+	transform: translateY(26px);
+	transition:
+		opacity var(--dur-slow) var(--ease-soft),
+		transform var(--dur-slow) var(--ease-soft);
+	transition-delay: calc(var(--reveal-index, 0) * var(--stagger));
+	will-change: opacity, transform;
+}
+.reveal-stagger.is-visible > * {
+	opacity: 1;
+	transform: none;
+}
+
+/* 无 JS（或脚本没跑起来）兜底：入场内容直接是最终态 */
+html:not(.has-js) .reveal,
+html:not(.has-js) .reveal-stagger > * {
+	opacity: 1;
+	transform: none;
 }
 
 /* 可交互元素的统一焦点样式（opt-in，避免覆盖各项目已有的分区样式） */
@@ -52,7 +108,8 @@ body {
 }
 
 /* 动效降级：用户在系统里要求减少动效时，关掉装饰性动画与过渡。
-   保留必要的即时态变化（不做 display/opacity 的彻底移除）。 */
+   保留必要的即时态变化（不做 display/opacity 的彻底移除）。
+   入场类直接给最终态，否则"减少动效"会变成"滚动到才有内容"。 */
 @media (prefers-reduced-motion: reduce) {
 	*,
 	*::before,
@@ -61,5 +118,10 @@ body {
 		animation-iteration-count: 1 !important;
 		transition-duration: 0.01ms !important;
 		scroll-behavior: auto !important;
+	}
+	.reveal,
+	.reveal-stagger > * {
+		opacity: 1;
+		transform: none;
 	}
 }

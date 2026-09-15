@@ -39,8 +39,11 @@ const { title, description, image = FallbackImage } = Astro.props;
 <!-- LXGW WenKai Screen（霞鹜文楷屏显），自托管，子集按需加载 -->
 <link rel="stylesheet" href="/fonts/lxgwwenkaiscreen.css" />
 
-<!-- 主题初始化：首帧前同步设置，避免闪白/闪黑 -->
+<!-- 主题初始化：首帧前同步设置，避免闪白/闪黑；
+     has-js 同时打上：入场动效的 opacity:0 只在有 JS 时才生效，
+     脚本没跑起来时内容直接是最终态（见 design-kit base.css 的动效基元） -->
 <script is:inline>
+	document.documentElement.classList.add('has-js');
 	(() => {
 		try {
 			const stored = localStorage.getItem('theme');
@@ -64,7 +67,7 @@ const { title, description, image = FallbackImage } = Astro.props;
 	const sw = window as Window & { __snowCleanup?: () => void };
 	function initGlobalBehaviors() {
 		// 滚动显现
-		const reveals = document.querySelectorAll('.reveal');
+		const reveals = document.querySelectorAll('.reveal, .reveal-stagger');
 		if ('IntersectionObserver' in window) {
 			const io = new IntersectionObserver(
 				(entries) => {
@@ -77,9 +80,31 @@ const { title, description, image = FallbackImage } = Astro.props;
 				},
 				{ threshold: 0.08, rootMargin: '0px 0px -5% 0px' },
 			);
-			reveals.forEach((el) => io.observe(el));
+			reveals.forEach((el) => {
+				// 错峰容器：给直接子元素编号，CSS 用 --reveal-index × --stagger 排延迟。
+				// 编号交给 JS 而不是 nth-child，是为了条目数变化时不用改 CSS。
+				if (el.classList.contains('reveal-stagger')) {
+					[...el.children].forEach((child, i) =>
+						(child as HTMLElement).style.setProperty('--reveal-index', String(i)),
+					);
+				}
+				io.observe(el);
+			});
 		} else {
 			reveals.forEach((el) => el.classList.add('is-visible'));
+		}
+
+		// 图片淡入（img.img-fade）：解码完成后再淡入，避免硬闪。
+		// 守卫写在元素自己身上（不是全局布尔）——ClientRouter 换页后新图片也要处理，
+		// 而同一元素重复处理会导致动画重播（见 docs/lessons-learned.md 第 8 条同类问题）。
+		for (const img of document.querySelectorAll<HTMLImageElement>('img.img-fade')) {
+			if (img.classList.contains('is-loaded')) continue;
+			const markLoaded = () => img.classList.add('is-loaded');
+			if (img.complete && img.naturalWidth > 0) markLoaded();
+			else {
+				img.addEventListener('load', markLoaded, { once: true });
+				img.addEventListener('error', markLoaded, { once: true });
+			}
 		}
 
 		// 页头滚动状态

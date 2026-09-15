@@ -2,80 +2,29 @@
 
 /* ============================================================
    Design tokens
-   一套“色相变量”撑起整套主题：改 --hue 即可换全站主色，
-   OKLCH 生成亮/暗两套完整配色。
-   ============================================================ */
-:root {
-	/* 主题色：朝比奈真冬代表色 #8888CC ≈ oklch(0.654 0.1 283.3) */
-	--hue-accent: 283;
-	/* 品牌品牌色（#8888CC 本身）：用于装饰与光晕 */
-	--primary-brand: oklch(0.654 0.1 var(--hue-accent));
-	/* 页面底色从主色推导（稍冷一点的同族色），一般不用手动改 */
-	--hue-bg: calc(var(--hue-accent) - 34);
-	--font-body: 'LXGW WenKai Screen', 'Atkinson', system-ui, 'PingFang SC',
-		'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-	--font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono',
-		monospace;
+   ============================================================
+   令牌唯一真源在 packages/design-kit——这里只做两件事：
+     1. 引进来（tokens.css 颜色/圆角/阴影/动效，base.css 底色+面板配方+入场基元）
+     2. 补本站独有的两个东西：自定义鼠标、以及历史遗留的 --accent 别名
+   不要在下面重新定义令牌。本站之前把整份令牌抄在这里，改一次要改两处，
+   design-kit 的 README 明确禁止这种写法（2026-09-15 收敛）。 */
+@import '@lapismind/design-kit/tokens.css';
+@import '@lapismind/design-kit/base.css';
 
-	/* light theme */
-	--page-bg: oklch(0.972 0.014 var(--hue-bg));
-	--page-bg-deep: oklch(0.955 0.02 var(--hue-bg));
-	--card-bg: oklch(0.995 0.005 var(--hue-bg));
-	--card-solid: #ffffff;
-	--ink: oklch(0.25 0.028 250);
-	--ink-soft: oklch(0.42 0.03 245);
-	--muted: oklch(0.55 0.03 240);
-	--line: oklch(0.9 0.012 var(--hue-bg));
-	--line-strong: oklch(0.82 0.02 var(--hue-bg));
-	/* 文字用主色取深一档，保证浅色背景上的可读性 */
-	--primary: oklch(0.52 0.12 var(--hue-accent));
-	--primary-bright: oklch(0.6 0.11 var(--hue-accent));
-	--primary-2: oklch(0.55 0.12 calc(var(--hue-accent) + 38));
-	--primary-soft: oklch(0.93 0.03 var(--hue-accent));
-	--primary-ghost: oklch(0.965 0.02 var(--hue-accent));
-	--gradient: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
-	--glass-bg: oklch(0.995 0.004 var(--hue-bg));
-	--shadow-sm: 0 1px 2px oklch(0.3 0.02 250 / 0.06), 0 4px 12px oklch(0.3 0.02 250 / 0.05);
-	--shadow-md:
-		0 2px 6px oklch(0.3 0.02 250 / 0.07), 0 12px 32px oklch(0.3 0.02 250 / 0.09);
-	--shadow-lg:
-		0 4px 12px oklch(0.3 0.02 250 / 0.08), 0 24px 60px oklch(0.3 0.02 250 / 0.13);
+:root {
 	/* 自定义鼠标：图片失效/不支持时回退系统光标 */
 	--cursor-default: url('/cursors/mfy-normal.png') 6 3, default;
 	--cursor-pointer: url('/cursors/mfy-link.png') 10 6, pointer;
-	--radius-sm: 10px;
-	--radius: 18px;
-	--radius-lg: 26px;
-	--tap-min: 44px;
-}
 
-:root[data-theme='dark'] {
-	--page-bg: oklch(0.175 0.022 var(--hue-bg));
-	--page-bg-deep: oklch(0.145 0.02 var(--hue-bg));
-	--card-bg: oklch(0.235 0.026 var(--hue-bg));
-	--card-solid: oklch(0.25 0.028 var(--hue-bg));
-	--ink: oklch(0.93 0.012 240);
-	--ink-soft: oklch(0.8 0.02 242);
-	--muted: oklch(0.66 0.022 242);
-	--line: oklch(0.32 0.02 var(--hue-bg));
-	--line-strong: oklch(0.42 0.03 var(--hue-bg));
-	--primary: oklch(0.78 0.1 var(--hue-accent));
-	--primary-bright: oklch(0.84 0.09 var(--hue-accent));
-	--primary-2: oklch(0.8 0.09 calc(var(--hue-accent) + 38));
-	--primary-soft: oklch(0.3 0.05 var(--hue-accent));
-	--primary-ghost: oklch(0.26 0.04 var(--hue-accent));
-	--gradient: linear-gradient(120deg, var(--primary) 0%, var(--primary-2) 100%);
-	--glass-bg: oklch(0.25 0.03 var(--hue-bg));
-	--shadow-sm: 0 1px 2px oklch(0 0 0 / 0.25), 0 4px 12px oklch(0 0 0 / 0.22);
-	--shadow-md: 0 2px 6px oklch(0 0 0 / 0.3), 0 12px 32px oklch(0 0 0 / 0.32);
-	--shadow-lg: 0 4px 12px oklch(0 0 0 / 0.35), 0 24px 60px oklch(0 0 0 / 0.45);
-}
+	/* 卡片悬停位移（本站自己的手感，不进 design-kit：游戏里的"卡牌"不该抬）。
+	   基调是"几乎察觉不到"——3px 配中档阴影，6px 是上限，别再加。 */
+	--lift-hover: 3px;
 
-/* aliases，兼容旧页面遗留引用 */
-:root {
+	/* aliases，兼容旧页面遗留引用 */
 	--accent: var(--primary);
 	--accent-dark: var(--primary-2);
 }
+
 
 /* ============================================================
    Base
@@ -100,7 +49,7 @@ body {
 	text-rendering: optimizeLegibility;
 	word-wrap: break-word;
 	overflow-wrap: break-word;
-	transition: background-color 0.35s ease, color 0.35s ease;
+	transition: background-color var(--dur-base) ease, color var(--dur-base) ease;
 }
 
 ::selection {
@@ -283,6 +232,36 @@ hr {
 }
 .section-title h2 {
 	margin: 0;
+	position: relative;
+	/* 收缩到文字宽度：h2 的盒子默认会被上面那行 eyebrow 撑宽，
+	   那样下面 ::after 取 100% 就会比标题长出一截。 */
+	width: fit-content;
+	padding-bottom: 0.3em;
+}
+/* 标题下的渐变短线：进入视口时从左"画"出来（scaleX 不触发布局，
+   比动 width 便宜）。长度等于标题文字宽度。
+   无 JS / 减少动效时直接是画完的最终态。 */
+.section-title h2::after {
+	content: '';
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	height: 3px;
+	border-radius: 2px;
+	background: var(--gradient);
+	transform: scaleX(0);
+	transform-origin: left center;
+	transition: transform var(--dur-slow) var(--ease-out) 0.12s;
+}
+.reveal.is-visible .section-title h2::after,
+html:not(.has-js) .section-title h2::after {
+	transform: scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+	.section-title h2::after {
+		transform: scaleX(1);
+	}
 }
 .section-title .more-link {
 	margin-left: auto;
@@ -295,11 +274,19 @@ hr {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.35em;
-	transition: gap 0.25s ease;
+	/* 下划线由左向右滑出（不动正文链接——正文下划线必须常驻，
+	   否则读者无法一眼看出"这里是链接"） */
+	background-image: linear-gradient(var(--primary), var(--primary));
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 0% 1px;
+	transition: gap 0.25s ease, background-size var(--dur-base) var(--ease-soft),
+		color var(--dur-fast) ease;
 }
 .more-link:hover {
 	gap: 0.65em;
 	color: var(--primary-bright);
+	background-size: 100% 1px;
 }
 
 .btn {
@@ -377,15 +364,7 @@ hr {
 	color: oklch(0.85 0.1 80);
 }
 
-/* 玻璃质感卡片 */
-.glass {
-	background: var(--glass-bg);
-	backdrop-filter: blur(14px) saturate(1.15);
-	-webkit-backdrop-filter: blur(14px) saturate(1.15);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow-sm);
-}
+/* 玻璃质感卡片：配方来自 design-kit base.css 的 .glass（含 -webkit- 前缀） */
 
 /* ============================================================
    文章正文排版（.prose）
@@ -531,24 +510,31 @@ hr {
 	background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
 }
 
-/* ============================================================
-   滚动显现
-   ============================================================ */
-.reveal {
+/* 滚动显现 .reveal / 列表错峰 .reveal-stagger
+   —— 基元在 design-kit base.css，这里不再重写 */
+
+/* ── 图片加载淡入 ──
+   卡片图解码完成的那一刻淡入，避免硬闪。用 animation 而不是 transition：
+   卡片图本来就有一条 transform 过渡（悬停放大），transition 会互相覆盖，
+   animation 只碰 opacity，两不相干。
+   Hero 大图 / 文章头图不挂这个类——它们等淡入会拖慢首屏观感。 */
+img.img-fade {
 	opacity: 0;
-	transform: translateY(26px);
-	transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-		transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-	transition-delay: var(--reveal-delay, 0s);
-	will-change: opacity, transform;
 }
-.reveal.is-visible {
+img.img-fade.is-loaded {
+	animation: img-fade-in var(--dur-slow) var(--ease-out) forwards;
+}
+@keyframes img-fade-in {
+	to {
+		opacity: 1;
+	}
+}
+html:not(.has-js) img.img-fade {
 	opacity: 1;
-	transform: none;
 }
 
 /* ============================================================
-   动效基元
+   本站动效基元（只有博客在用的关键帧）
    ============================================================ */
 @keyframes blob-drift {
 	0%,
@@ -624,22 +610,7 @@ hr {
 	}
 }
 
-@media (prefers-reduced-motion: reduce) {
-	html {
-		scroll-behavior: auto;
-	}
-	*,
-	*::before,
-	*::after {
-		animation-duration: 0.01ms !important;
-		animation-iteration-count: 1 !important;
-		transition-duration: 0.01ms !important;
-	}
-	.reveal {
-		opacity: 1;
-		transform: none;
-	}
-}
+/* 动效降级（含 .reveal / .reveal-stagger 的最终态）在 design-kit base.css */
 
 .sr-only {
 	border: 0;

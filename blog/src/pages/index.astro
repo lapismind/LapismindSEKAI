@@ -344,13 +344,14 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				box-shadow: var(--shadow-sm);
 				text-decoration: none;
 				overflow: hidden;
-				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-					box-shadow 0.3s ease, border-color 0.3s ease;
+				transition: transform var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft);
 			}
 			.project-card:hover {
-				transform: translateY(-6px);
+				transform: translateY(calc(-1 * var(--lift-hover)));
 				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-lg), 0 0 0 1px var(--primary-soft);
+				box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-soft);
 			}
 			.card-media {
 				position: relative;
@@ -363,10 +364,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				height: 100%;
 				object-fit: cover;
 				display: block;
-				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+				transition: transform var(--dur-slow) var(--ease-soft);
 			}
 			.project-card:hover .card-media :global(img) {
-				transform: scale(1.06);
+				transform: scale(1.02);
 			}
 			.card-media-fallback {
 				display: grid;
@@ -418,10 +419,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			}
 			.card-arrow {
 				margin-left: auto;
-				transition: transform 0.25s ease;
+				transition: transform var(--dur-fast) var(--ease-soft);
 			}
 			.project-card:hover .card-arrow {
-				transform: translateX(4px);
+				transform: translateX(3px);
 			}
 
 			.post-card {
@@ -433,10 +434,12 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				border-radius: var(--radius);
 				background: var(--glass-bg);
 				border: 1px solid var(--line);
-				transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+				transition: transform var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft);
 			}
 			.post-card:hover {
-				transform: translateX(6px);
+				transform: translateX(var(--lift-hover));
 				border-color: var(--primary-soft);
 				box-shadow: var(--shadow-md);
 			}
@@ -583,10 +586,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				<div class="card-grid">
 					{
 						featured.map((p, i) => (
-							<a class="project-card reveal" style={`--reveal-delay:${i * 90}ms`} href={`/projects/${p.slug}/`}>
+							<a class="project-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/projects/${p.slug}/`}>
 								<div class="card-media">
 									{projectImages[p.slug] ? (
-										<Image src={projectImages[p.slug]} alt={`${p.name} 截图`} />
+										<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 截图`} />
 									) : (
 										<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
 									)}
@@ -622,7 +625,7 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				<div class="posts-list">
 					{
 						posts.map((post, i) => (
-							<a class="post-card reveal" style={`--reveal-delay:${i * 80}ms`} href={`/blog/${post.id}/`}>
+							<a class="post-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/blog/${post.id}/`}>
 								<span class="idx">0{i + 1}</span>
 								<div class="body">
 									<h3>{post.data.title}</h3>

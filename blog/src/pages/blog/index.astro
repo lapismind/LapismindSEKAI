@@ -39,13 +39,14 @@ const [first, ...rest] = posts;
 				overflow: hidden;
 				text-decoration: none;
 				margin-bottom: 3rem;
-				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-					box-shadow 0.3s ease, border-color 0.3s ease;
+				transition: transform var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft);
 			}
 			.featured:hover {
-				transform: translateY(-5px);
+				transform: translateY(calc(-1 * var(--lift-hover)));
 				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-lg);
+				box-shadow: var(--shadow-md);
 			}
 			.featured-media {
 				min-height: 260px;
@@ -57,10 +58,10 @@ const [first, ...rest] = posts;
 				height: 100%;
 				object-fit: cover;
 				display: block;
-				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+				transition: transform var(--dur-slow) var(--ease-soft);
 			}
 			.featured:hover .featured-media :global(img) {
-				transform: scale(1.04);
+				transform: scale(1.02);
 			}
 			.featured-body {
 				padding: 2rem 2.2rem;
@@ -117,13 +118,14 @@ const [first, ...rest] = posts;
 				box-shadow: var(--shadow-sm);
 				text-decoration: none;
 				overflow: hidden;
-				transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-					box-shadow 0.3s ease, border-color 0.3s ease;
+				transition: transform var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft);
 			}
 			.post-card:hover {
-				transform: translateY(-5px);
+				transform: translateY(calc(-1 * var(--lift-hover)));
 				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-lg);
+				box-shadow: var(--shadow-md);
 			}
 			.post-card .media {
 				aspect-ratio: 16 / 9;
@@ -135,10 +137,10 @@ const [first, ...rest] = posts;
 				height: 100%;
 				object-fit: cover;
 				display: block;
-				transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+				transition: transform var(--dur-slow) var(--ease-soft);
 			}
 			.post-card:hover .media :global(img) {
-				transform: scale(1.06);
+				transform: scale(1.02);
 			}
 			.post-card .body {
 				padding: 1.3rem 1.45rem 1.45rem;
@@ -187,6 +189,8 @@ const [first, ...rest] = posts;
 				first && (
 					<a class="featured reveal" href={`/blog/${first.id}/`}>
 						<div class="featured-media">
+							{/* 头条大图不挂 img-fade：它是本页最靠上的大图，
+							    等淡入会把首屏观感往后推（其余卡片图照常淡入） */}
 							{first.data.heroImage && <Image width={760} height={430} src={first.data.heroImage} alt={first.data.heroImageAlt ?? ''} />}
 						</div>
 						<div class="featured-body">
@@ -202,9 +206,9 @@ const [first, ...rest] = posts;
 			<div class="card-grid">
 				{
 					rest.map((post, i) => (
-						<a class="post-card reveal" style={`--reveal-delay:${i * 70}ms`} href={`/blog/${post.id}/`}>
+						<a class="post-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/blog/${post.id}/`}>
 							<div class="media">
-								{post.data.heroImage && <Image width={640} height={360} src={post.data.heroImage} alt={post.data.heroImageAlt ?? ''} />}
+								{post.data.heroImage && <Image class="img-fade" width={640} height={360} src={post.data.heroImage} alt={post.data.heroImageAlt ?? ''} />}
 							</div>
 							<div class="body">
 								<h3>{post.data.title}</h3>

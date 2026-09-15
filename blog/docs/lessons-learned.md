@@ -94,3 +94,32 @@
 - 游客昵称存 localStorage（guestNickname），与头像同模式，不落库。
 - 评论列表展示名 = display_name || nickname（listComments 已合并返回）。
 - UI：/profile 点击昵称或铅笔图标（仅 aria-label）进入内联编辑，Enter/失焦保存、Esc 取消，不加提示文案（见 16 条规范）。
+
+## 2026-09-15（动效落地 + 令牌源收敛）
+
+### 18. 博客把整份 design-kit 令牌抄在 global.css，值"恰好相同"所以无人察觉
+- 现象：`src/styles/global.css` 里有 60 个令牌的完整副本，与 `packages/design-kit/tokens.css` 逐值一致，但博客从未 `@import` 它。
+- 危害：平时完全无感（值一样），直到有人改主色/阴影——改了 design-kit，博客纹丝不动，而且没人知道该同步；design-kit README 明文禁止这种写法。
+- 修法：改为 `@import '@lapismind/design-kit/tokens.css'` + `base.css`，博客 global.css 只留 `--cursor-*` 和 `--accent*` 两个本站专有令牌。
+- 顺带补齐：base.css 的 `.glass` 缺 `-webkit-backdrop-filter`（Safari 需要），补上后博客才能删掉自己那份。
+- 验证方式见第 19 条（这是本次最有价值的一条）。
+
+### 19. "换了令牌源"这类重构，用计算样式全量快照验收，别用整页截图
+- 做法：Playwright 遍历每页所有元素，按 DOM 路径取样 40 个计算属性（颜色/字体/圆角/阴影/过渡/动画/尺寸…），导出 JSON，改前改后 `diff`。11 页 × 4000+ 元素，两轮基线跑出**零差异**，改后只列出预期内的 72 处。
+- 为什么不用截图：整页像素比对会被**页脚每秒跳动的"本站已运行 N 秒"**污染（0.0x% 差异白白排查半天），而且同一次改动在两次截图之间还有 ~9px 的页脚抖动。截图适合看观感，不适合当"无回归"的判据。
+- 副作用小抄：`#site-runtime` 是本站唯一的时间型不确定源，做任何像素级比对前先 mask 掉（或 mask 整个 `footer`）；Live2dMascot 是 WebGL，也要遮。
+
+### 20. `.reveal` 原本没有无 JS 兜底——脚本一挂，整页内容永久不可见
+- 现象：`.reveal { opacity: 0 }` 靠 JS 加 `.is-visible` 才可见；JS 报错/被拦截/换页漏绑时，内容不会报错，只是**看不见**，是静默失败里最难发现的一种。
+- 修法：`<html>` 在 `<head>` 内联脚本里先打 `has-js`，CSS 只写 `html:not(.has-js) .reveal { opacity: 1 }`。没脚本 = 直接是最终态。
+- 同类必须一起处理：`.reveal-stagger > *`、`img.img-fade`、`.section-title h2::after`，以及 `prefers-reduced-motion` 下同样要给最终态（否则"减少动效"退化成"滚到才有内容"）。
+
+### 21. 给图片加淡入别用 transition——会被卡片图的 transform 过渡覆盖
+- 现象：卡片图本来就有 `transition: transform .5s`（悬停放大）。再给 `img` 加 `transition: opacity`，两条 `transition` 声明互相覆盖，后写的赢，结果是"淡入没了"或"悬停放大变瞬跳"，且取决于 CSS 源码顺序，很隐蔽。
+- 正解：淡入用 `animation`（只碰 opacity），`.is-loaded` 时挂 `animation: img-fade-in .7s forwards`。animation 优先级高于普通声明，和 transition 井水不犯河水。
+- 注意：首屏最大的那张图（/blog/ 的头条图）不挂，等淡入会推后首屏观感；只给列表卡片图用。
+
+### 22. 提动效方案前先读代码——"错峰显现"博客早就有了
+- 现象：我准备好一套 `.reveal-stagger` + JS 编号的新机制，结果发现首页/列表页早已用 `style="--reveal-delay:${i * 90}ms"` 做了逐项错峰（90/80/70ms 三套数字各写各的）。
+- 结论：错峰不用新做，只需把三处硬编码换成共享令牌 `--reveal-delay: calc(var(--stagger) * ${i})`，节奏收敛成一个数。
+- 教训：**先读现状再提方案**。否则会同时犯两个错——重复造轮子，以及在报告里把"已有功能"说成"新增功能"。
