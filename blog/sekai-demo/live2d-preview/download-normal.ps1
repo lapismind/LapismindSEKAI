@@ -1,5 +1,5 @@
 $ProgressPreference = "SilentlyContinue"
-$dir = "D:/LapismindSEKAI/blog/sekai-demo/live2d-preview/mafuyu"
+$dir = Join-Path $PSScriptRoot "mafuyu"
 if (Test-Path "$dir/18mafuyu_darkunit_3.0_f_t02.moc3") { Remove-Item "$dir/18mafuyu_darkunit_3.0_f_t02.moc3" -Force }
 if (Test-Path "$dir/18mafuyu_darkunit_3.0_f_t02.physics3.json") { Remove-Item "$dir/18mafuyu_darkunit_3.0_f_t02.physics3.json" -Force }
 $b = "https://storage.exmeaning.com/sekai-jp-assets/live2d/model/18mafuyu_normal"

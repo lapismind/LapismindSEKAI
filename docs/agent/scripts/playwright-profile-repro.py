@@ -3,7 +3,7 @@
 用法:
   python docs/agent/scripts/playwright-profile-repro.py
 
-依赖: 本机只有 Python 3.13 的 playwright (C:\Program Files\Python313)，没有 node 版。
+依赖: 本机只有 Python 3.13 的 playwright，没有 node 版。
   浏览器二进制缺失时先装:  python -m playwright install chromium
   （下载超时换镜像:  set PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright）
 

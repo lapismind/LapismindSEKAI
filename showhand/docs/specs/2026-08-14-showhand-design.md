@@ -2,7 +2,7 @@
 
 > 日期：2026-08-14
 > 状态：已确认（用户拍板）
-> 项目：D:\LapismindSEKAI\showhand
+> 项目：本仓库 `showhand/`
 
 ## 1. 概述
 

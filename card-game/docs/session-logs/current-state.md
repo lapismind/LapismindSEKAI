@@ -23,7 +23,7 @@
 
 ## 如何继续
 ```
-cd D:\LapismindSEKAI\card-game
+cd card-game       # 在仓库根目录执行
 npx wrangler dev   # 本地联调
 npx wrangler deploy  # 部署上线
 ```

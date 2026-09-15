@@ -89,7 +89,7 @@
 ## 7. 部署
 
 ```sh
-cd D:\LapismindSEKAI\blog
+cd blog              # 在仓库根目录执行
 npm run build        # 产物在 dist/（含 public 下所有资源）
 npx wrangler deploy  # 或 wrangler pages deploy dist
 ```

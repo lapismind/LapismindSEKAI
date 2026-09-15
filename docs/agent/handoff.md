@@ -60,6 +60,9 @@
 
 - 对话上下文不跨机器：**没写下来的等于没发生**。
 - 不同步：`~/.local/share/opencode/`（会话历史/快照/缓存）、`node_modules`、各项目 `.dev.vars`（密钥）。
-- `~/.config/opencode`、`~/.agents`、`D:\AGENT` 这类 Agent 配置若两台不一致，只是"你用的技能/提示词不同"，
-  不影响接力——**但 `D:\AGENT` 里的记录（关于我.md、通用错误记忆库.md）不同步，其中的内容不会自动跨机器。**
+- `~/.config/opencode`、`~/.agents`、`AGENT` 配置目录这类 Agent 配置若两台不一致，只是"你用的技能/提示词不同"，
+  不影响接力——**但那里的记录（关于我.md、通用错误记忆库.md）不同步，其中的内容不会自动跨机器。**
   需要跨机器的结论，写进仓库里的 `lessons-learned.md` / `docs/`。
+- **两台设备的仓库路径不同**（如 `D:\LapismindSEKAI` 与 `C:\Projects\Web\LapismindSEKAI`）：仓库内的脚本与文档
+  **一律写相对路径**，不写盘符。脚本用 `$PSScriptRoot`（PowerShell）或 `__file__`（Python）定位自身；
+  文档用仓库内相对路径（`blog/`）或"在仓库根目录执行"。详见 [`../MIGRATION-NOTES.md`](../MIGRATION-NOTES.md) 第二节。

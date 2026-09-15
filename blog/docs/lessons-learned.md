@@ -1,13 +1,13 @@
 # blog 错误记忆
 
-> 供本项目复用。跨项目通用教训同步到 D:\tianxunruida\docs\通用错误记忆库.md（Q、R 类别）。
+> 供本项目复用。跨项目通用教训同步到外部通用错误记忆库（Agent 配置目录下的 `docs/通用错误记忆库.md`，不在本仓库内）（Q、R 类别）。
 
 ## 2026-08-14
 
 ### 1. npm 命令没带 workdir，包装错到用户目录
-- 现象：`npm install tailwindcss @tailwindcss/vite` 报成功，但 blog 的 package.json / node_modules 里都没有，包被装到了 `C:\Users\lapismind\node_modules`，还在那里误建了 package.json。
+- 现象：`npm install tailwindcss @tailwindcss/vite` 报成功，但 blog 的 package.json / node_modules 里都没有，包被装到了 `%USERPROFILE%\node_modules`，还在那里误建了 package.json。
 - 根因：PowerShell 会话的默认 cwd 是用户目录，npm 命令没指定 workdir 时就在那里安装。
-- 修复：删掉 `C:\Users\lapismind\package.json` 和 `node_modules`，在 blog 目录内重装并三步验证（package.json 有、node_modules 有、build 过）。
+- 修复：删掉 `%USERPROFILE%\package.json` 和 `node_modules`，在 blog 目录内重装并三步验证（package.json 有、node_modules 有、build 过）。
 - 教训：npm install 必须带 workdir，装完验证落盘位置，别信"up to date"。
 
 ### 2. `npx astro add tailwind` 只打印 diff 没实际装
