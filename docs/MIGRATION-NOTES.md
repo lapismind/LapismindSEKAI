@@ -81,6 +81,7 @@
 - [ ] `blog` 可本地启动（`npm run dev` 或对应脚本）
 - [ ] 各联机游戏可本地起服务并进入房间
 - [ ] **部署能力**：`npx wrangler whoami` 打印出账号邮箱（未登录则先 `npx wrangler login`；
-      凭证不在仓库里，见第三节"wrangler 登录状态"）
+      凭证不在仓库里，见第三节"wrangler 登录状态"）。
+      **部署到底需要本地有哪些配置，见 [`agent/deploy.md`](./agent/deploy.md)**
 - [ ] **字体已同步**：`ls <游戏>/public/fonts/files/*.woff2 | wc -l` 为 97
       （gitignore 的产物；由 `predev`/`prebuild` 生成。若部署前缺失，站点会退回系统字体）
