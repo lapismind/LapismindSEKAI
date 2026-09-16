@@ -22,6 +22,16 @@ const MIN_PLAYERS = 2
 const MAX_PLAYERS = 8
 const QUESTION_THROTTLE_MS = 3000 // 提问节流：3 秒内只允许一个玩家提问
 
+/**
+ * AI 主持开关（2026-09-16 关闭）。
+ * 理由：token 成本还太高、AI 判定提问的准确率不够，而且玩家更愿意和真人朋友一起玩。
+ * 关闭时服务端强制真人模式——只藏前端按钮不够，否则新建房间仍会落到 AI。
+ * 实现（../ai/**）与协议字段（mode: 'ai' | 'human'）全部保留；
+ * 重新开放时把这里和 `../core/features.js` 的 AI_MODE_ENABLED 一起改回 true。
+ * 背景见 .planning/2026-09-16-turtle-soup-vote-apples/
+ */
+const AI_MODE_ENABLED = false
+
 export class SoupRoom {
   constructor(ctx, env) {
     this.ctx = ctx
@@ -215,7 +225,9 @@ export class SoupRoom {
     if (!this.isHost(state, playerId)) return
     if (state.phase !== 'waiting') return
 
-    const mode = data?.mode === 'human' ? 'human' : 'ai'
+    // AI 主持关闭期间一律真人模式：客户端就算传来 'ai' 也归一化为 'human'，
+    // 否则"关掉入口"只是前端假象
+    const mode = AI_MODE_ENABLED && data?.mode === 'ai' ? 'ai' : 'human'
     // AI 模式最低 1 人（单人玩），真人模式最低 2 人
     const minPlayers = mode === 'ai' ? 1 : MIN_PLAYERS
     const maxPlayers = Math.max(minPlayers, Math.min(MAX_PLAYERS, Number(data?.maxPlayers) || minPlayers))
@@ -719,7 +731,7 @@ export class SoupRoom {
     const fresh = {
       players: [],
       phase: 'waiting', // waiting | playing | ended
-      mode: 'ai', // ai | human
+      mode: 'human', // ai | human（AI 主持当前关闭，见文件顶部 AI_MODE_ENABLED）
       maxPlayers: MAX_PLAYERS,
       questionLimit: null, // null 表示不限
       questionsExhausted: false,

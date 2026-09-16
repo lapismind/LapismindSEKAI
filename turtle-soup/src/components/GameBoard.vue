@@ -16,7 +16,7 @@ const props = defineProps({
   players: { type: Array, default: () => [] },
   myPlayerId: { type: String, default: null },
   moderatorId: { type: String, default: null },
-  mode: { type: String, default: 'ai' },
+  mode: { type: String, default: 'human' },
   messages: { type: Array, default: () => [] },
 })
 

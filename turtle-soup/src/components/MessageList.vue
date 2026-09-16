@@ -5,7 +5,7 @@ import { JUDGE_LABEL } from '../game/judge'
 const props = defineProps({
   messages: { type: Array, default: () => [] },
   myPlayerId: { type: String, default: null },
-  mode: { type: String, default: 'ai' },
+  mode: { type: String, default: 'human' },
   players: { type: Array, default: () => [] },
 })
 

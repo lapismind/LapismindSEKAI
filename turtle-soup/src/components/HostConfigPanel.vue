@@ -1,6 +1,8 @@
 <script setup>
+import { AI_MODE_ENABLED } from '../core/features'
+
 const props = defineProps({
-  mode: { type: String, default: 'ai' },
+  mode: { type: String, default: 'human' },
   maxPlayers: { type: Number, default: 2 },
   questionLimit: { type: [Number, null], default: null },
 })
@@ -14,11 +16,19 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
       <div class="flex gap-1 rounded-lg bg-surface p-1">
         <button
           type="button"
+          :disabled="!AI_MODE_ENABLED"
+          :title="AI_MODE_ENABLED ? '由 AI 扮演主持人' : 'AI 主持暂时关闭，目前只能玩真人主持'"
           class="rounded-md px-3 py-1 text-xs font-semibold transition"
-          :class="mode === 'ai' ? 'bg-brand-500 text-white' : 'text-ink-soft hover:text-ink'"
+          :class="[
+            mode === 'ai' ? 'bg-brand-500 text-white' : 'text-ink-soft hover:text-ink',
+            !AI_MODE_ENABLED ? 'cursor-not-allowed opacity-45' : '',
+          ]"
           @click="emit('update:mode', 'ai')"
         >
-          AI 主持
+          AI 主持<span
+            v-if="!AI_MODE_ENABLED"
+            class="ml-1 rounded bg-surface px-1 py-px text-[10px] font-normal text-muted"
+          >beta</span>
         </button>
         <button
           type="button"
@@ -33,7 +43,8 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
 
     <div class="flex items-center justify-between">
       <span class="text-sm font-semibold text-ink">
-        本局人数（{{ mode === 'human' ? '含主持人' : '全部玩家' }}      </span>
+        本局人数（{{ mode === 'human' ? '含主持人' : '全部玩家' }}）
+      </span>
       <div class="flex flex-wrap gap-1">
         <button
           v-if="mode === 'ai'"
@@ -81,6 +92,9 @@ const emit = defineEmits(['update:mode', 'update:maxPlayers', 'update:questionLi
       </div>
     </div>
 
+    <p v-if="!AI_MODE_ENABLED" class="text-xs text-muted">
+      AI 主持暂时关闭（beta）：判定准确率和成本都还没到，先只玩真人主持。
+    </p>
     <p v-if="mode === 'human'" class="text-xs text-muted">
       真人模式下可报名当主持人，多人报名时随机抽取；无人报名则随机选一位玩家。
     </p>

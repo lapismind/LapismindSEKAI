@@ -6,7 +6,7 @@ const props = defineProps({
   messages: { type: Array, default: () => [] },
   reviewNotes: { type: Array, default: () => [] },
   myPlayerId: { type: String, default: null },
-  mode: { type: String, default: 'ai' },
+  mode: { type: String, default: 'human' },
   players: { type: Array, default: () => [] },
   canAIHint: { type: Boolean, default: false }, // 主持人/房主可触发 AI 复盘
   questionCount: { type: Number, default: 0 },

@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
+import { AI_MODE_ENABLED } from '../core/features'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
 import { AuthBadge } from '@lapismind/lobby-kit/vue'
 import { avatarUrl } from '../game/avatars'
@@ -478,7 +479,7 @@ const hasApplied = computed(() =>
       :my-player-id="game.myPlayerId"
       :mode="game.mode"
       :players="game.players"
-      :can-ai-hint="game.amModerator || game.isHost"
+      :can-ai-hint="AI_MODE_ENABLED && (game.amModerator || game.isHost)"
       :question-count="game.questionCount"
       :question-limit="game.questionLimit"
       @note="game.reviewNote"

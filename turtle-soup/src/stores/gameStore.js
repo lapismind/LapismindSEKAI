@@ -7,13 +7,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { wsClient } from '../network/wsClient'
 import { Msg } from '../core/protocol'
+import { AI_MODE_ENABLED } from '../core/features'
 
 export const useGameStore = defineStore('game', () => {
   const inRoom = ref(false)
   const roomId = ref(null)
   const myPlayerId = ref(null)
   const phase = ref('waiting')
-  const mode = ref('ai')
+  const mode = ref('human')
   const maxPlayers = ref(8)
   const questionLimit = ref(null)
   const questionsExhausted = ref(false)
@@ -48,7 +49,8 @@ export const useGameStore = defineStore('game', () => {
 
   function resetRoom() {
     phase.value = 'waiting'
-    mode.value = 'ai'
+    // 默认真人主持：AI 主持入口已关闭，重新开放见 core/features.js
+    mode.value = 'human'
     maxPlayers.value = 2
     questionLimit.value = null
     questionsExhausted.value = false
@@ -126,6 +128,8 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function aiHint() {
+    // 关掉 AI 后前端不该再发这个指令；这里兜一层，避免入口藏了但请求照发
+    if (!AI_MODE_ENABLED) return
     wsClient.send(Msg.SEND_AI_HINT, {})
   }
 

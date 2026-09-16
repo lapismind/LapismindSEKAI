@@ -115,7 +115,7 @@ async function submit() {
             />
           </div>
           <p class="text-[11px] leading-relaxed text-muted">
-            提示：汤底写清楚关键真相，AI 主持人会用它来判断玩家的提问。
+            提示：汤底写清楚关键真相，主持人会用它来判断玩家的提问。
           </p>
 
           <div v-if="error" class="rounded-lg bg-red-900/40 px-3 py-2 text-xs text-red-300">{{ error }}</div>

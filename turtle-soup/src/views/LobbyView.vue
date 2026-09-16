@@ -145,7 +145,7 @@ function generateCode() {
     <PuzzleSubmitModal @submitted="lobby.fetchPuzzles().catch(() => {})" />
 
     <p class="text-center text-xs text-muted">
-      房主可选 AI 主持或真人主持，真人模式下房主担任主持人
+      真人主持：房主担任主持人，其余人当玩家推理
     </p>
   </div>
 </template>
