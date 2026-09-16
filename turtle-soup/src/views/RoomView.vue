@@ -13,6 +13,7 @@ import HostConfigPanel from '../components/HostConfigPanel.vue'
 import ModeratorPanel from '../components/ModeratorPanel.vue'
 import PuzzleCard from '../components/PuzzleCard.vue'
 import PlayerList from '../components/PlayerList.vue'
+import VotePanel from '../components/VotePanel.vue'
 
 const avatarUrlOf = (p) => avatarUrl(p.avatarId) ?? null
 
@@ -438,37 +439,27 @@ const hasApplied = computed(() =>
       </footer>
     </div>
 
-    <!-- 结束覆盖层：猜中 → win.gif 庆祝；揭底 → 显示汤底 -->
+    <!-- 结束覆盖层：庆祝（若未揭底）→ 汤面+汤底 + 投票面板 -->
     <div
       v-if="game.phase === 'ended'"
-      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-overlay backdrop-blur-sm"
-      @click="game.revealed ? resetAndLeave() : game.reveal()"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-overlay p-4 backdrop-blur-sm"
     >
       <template v-if="!game.revealed">
-        <img
-          :src="winGif"
-          class="mb-4 h-40 w-40 rounded-2xl shadow-2xl"
-          alt="通关"
-        />
-        <div class="text-2xl font-bold text-amber-300">
-          {{ game.winnerId === game.myPlayerId ? '🎉 你猜中汤底了！' : '🎉 有人猜中汤底！' }}
-        </div>
-        <div class="mt-2 text-sm text-ink-soft">点击查看汤底真相</div>
+        <!-- 点击推进只挂在这一块上：以前整个覆盖层都绑了 click，
+             揭底后点到卡片里任何位置都会直接"返回大厅" -->
+        <button type="button" class="flex flex-col items-center" @click="game.reveal()">
+          <img
+            :src="winGif"
+            class="mb-4 h-40 w-40 rounded-2xl shadow-2xl"
+            alt="通关"
+          />
+          <div class="text-2xl font-bold text-amber-300">
+            {{ game.winnerId === game.myPlayerId ? '🎉 你猜中汤底了！' : '🎉 有人猜中汤底！' }}
+          </div>
+          <div class="mt-2 text-sm text-ink-soft">点击查看汤底真相</div>
+        </button>
       </template>
-      <template v-else>
-        <div class="mx-4 max-w-md rounded-2xl border border-line bg-surface p-6 text-center">
-          <div class="text-lg font-bold text-brand-300">汤底真相</div>
-          <div class="mt-2 text-sm font-semibold text-ink">{{ game.puzzle?.title }}</div>
-          <p class="mt-3 text-sm leading-relaxed text-ink-soft">{{ game.puzzle?.answer }}</p>
-          <button
-            type="button"
-            class="mt-5 rounded-xl bg-brand-600 px-6 py-2.5 font-bold text-white transition hover:bg-brand-500"
-            @click="resetAndLeave()"
-          >
-            返回大厅
-          </button>
-        </div>
-      </template>
+      <VotePanel v-else @leave="resetAndLeave" />
     </div>
 
     <!-- 右侧侧边栏（问答记录 / 复盘），按钮与面板均自身 fixed 定位 -->

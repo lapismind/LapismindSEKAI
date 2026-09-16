@@ -31,6 +31,18 @@ export const useGameStore = defineStore('game', () => {
   const revealed = ref(false)
   const error = ref(null)
   const amI = ref({ isHost: false, isModerator: false })
+  // —— 揭底后的投票 ——
+  // 服务端只把"我自己的名单"下发给我；appleCounts 在投票结束前是 null，
+  // 这是有意的（投的过程中互相看得见会从众），不要在前端把它补成 0。
+  const myApples = ref([])
+  const myFlowers = ref([])
+  const appleQuota = ref(0)
+  const appleCounts = ref(null)
+  const flowerCounts = ref({})
+  const votingClosed = ref(false)
+  const votingComplete = ref(false)
+  const voted = ref(0)
+  const voters = ref(0)
 
   const me = computed(() => players.value.find((p) => p.id === myPlayerId.value) ?? null)
   const isHost = computed(() => amI.value?.isHost ?? false)
@@ -67,6 +79,15 @@ export const useGameStore = defineStore('game', () => {
     revealed.value = false
     error.value = null
     amI.value = { isHost: false, isModerator: false }
+    myApples.value = []
+    myFlowers.value = []
+    appleQuota.value = 0
+    appleCounts.value = null
+    flowerCounts.value = {}
+    votingClosed.value = false
+    votingComplete.value = false
+    voted.value = 0
+    voters.value = 0
   }
 
   function connect(roomIdVal, nickname, playerId, avatarId = '0') {
@@ -137,6 +158,20 @@ export const useGameStore = defineStore('game', () => {
     wsClient.send(Msg.SEND_CHAT, { text })
   }
 
+  // ---- 揭底后的投票 ----
+  // 点同一个人第二次 = 撤回（服务端按"名单"处理，不是按"票数"累加）
+  function giveApple(to) {
+    wsClient.send(Msg.SEND_GIVE_APPLE, { to })
+  }
+
+  function giveFlower(to) {
+    wsClient.send(Msg.SEND_GIVE_FLOWER, { to })
+  }
+
+  function closeVoting() {
+    wsClient.send(Msg.SEND_CLOSE_VOTING, {})
+  }
+
   /** 用服务器下发的 game_state 替换视图状态 */
   function hydrate(s) {
     phase.value = s.phase ?? phase.value
@@ -156,6 +191,16 @@ export const useGameStore = defineStore('game', () => {
     winnerId.value = s.winnerId ?? null
     revealed.value = s.revealed ?? false
     amI.value = s.amI ?? { isHost: false, isModerator: false }
+    myApples.value = s.myApples ?? []
+    myFlowers.value = s.myFlowers ?? []
+    appleQuota.value = s.appleQuota ?? 0
+    // 注意 ?? null 而不是 ?? {}：null 是"还没公开"的信号，别把它退化成空对象
+    appleCounts.value = s.appleCounts ?? null
+    flowerCounts.value = s.flowerCounts ?? {}
+    votingClosed.value = s.votingClosed ?? false
+    votingComplete.value = s.votingComplete ?? false
+    voted.value = s.voted ?? 0
+    voters.value = s.voters ?? 0
   }
 
   function setError(msg) {
@@ -202,6 +247,17 @@ export const useGameStore = defineStore('game', () => {
     revealed,
     error,
     amI,
+    // 投票（Phase 2 服务端下发，Phase 3 面板消费）——漏导出会表现为
+    // "面板渲染到一半整个消失"，而构建和单元测试都不会报错
+    myApples,
+    myFlowers,
+    appleQuota,
+    appleCounts,
+    flowerCounts,
+    votingClosed,
+    votingComplete,
+    voted,
+    voters,
     me,
     isHost,
     isModerator,
@@ -222,6 +278,9 @@ export const useGameStore = defineStore('game', () => {
     reveal,
     reviewNote,
     aiHint,
+    giveApple,
+    giveFlower,
+    closeVoting,
     sendChat,
     bindServer,
     onConnected,
