@@ -21,6 +21,10 @@ export const useGameStore = defineStore('game', () => {
   const chatMessages = ref([])
   const chatMessageVersion = ref(0)
   const error = ref(null)
+  // 真实连接状态：由 ws 的 _open/_close 驱动，供界面显示"是否还连着"。
+  // 断线时 ws-client 会静默重试（最多 5 次）后彻底放弃，此前界面无从得知，
+  // 玩家看到的是"点了没反应"的冻结桌面——聊天面板的"已连接"字样也曾是写死的。
+  const connected = ref(false)
   // 施法提交锁：发出 cast 后立刻禁用施法按钮，收到 cast_result 或超时后释放，
   // 防止手机/手快连点把同一张牌发出去两次（第二次必然判“猜错”自伤）。
   const castLocked = ref(false)
@@ -52,6 +56,7 @@ export const useGameStore = defineStore('game', () => {
     if (token) sessionStorage.setItem('identity_token', token)
     roomId.value = roomCode
     inRoom.value = true
+    connected.value = false
     wsClient.connect({ roomId: roomCode, nickname, playerId, avatarId, token })
   }
 
@@ -61,6 +66,7 @@ export const useGameStore = defineStore('game', () => {
     declared.value = false
     releaseCastLock()
     wsClient.disconnect()
+    connected.value = false
     inRoom.value = false
   }
 
@@ -163,6 +169,8 @@ export const useGameStore = defineStore('game', () => {
     previousUnsubs = []
 
     const newUnsubs = [
+      wsClient.on('_open', () => { connected.value = true }),
+      wsClient.on('_close', () => { connected.value = false }),
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
         roomState.value = data
         phase.value = data.phase
@@ -291,7 +299,7 @@ export const useGameStore = defineStore('game', () => {
     inRoom, roomId, phase, roomState,
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, matchReportStatus, newAchievements,
-    error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared,
+    error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared, connected,
     sendChat, sendEmoji,
     connect, disconnect, leaveRoom,
     startRound, cast, endTurn, nextRound, rematch,

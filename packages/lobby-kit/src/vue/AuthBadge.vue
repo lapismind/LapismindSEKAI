@@ -151,7 +151,7 @@ async function submitLogin() {
     <div class="lk-modal">
       <div class="lk-modal-head">
         <span>账号登录</span>
-        <button type="button" class="lk-btn lk-btn-icon" @click="modalOpen = false">×</button>
+        <button type="button" class="lk-btn lk-btn-icon" aria-label="关闭" @click="modalOpen = false">×</button>
       </div>
       <p class="lk-hint">游客注册后，战绩和成就直接保留到新账号。</p>
 
@@ -307,7 +307,7 @@ async function submitLogin() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 20, 30, 0.45);
+  background: var(--overlay, rgba(20, 20, 30, 0.45));
   padding: 16px;
 }
 
@@ -317,7 +317,7 @@ async function submitLogin() {
   max-height: 88vh;
   overflow-y: auto;
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--card-solid, #ffffff);
   box-shadow: 0 18px 50px rgba(20, 20, 40, 0.35);
   padding: 16px 18px;
 }
@@ -327,14 +327,14 @@ async function submitLogin() {
   align-items: center;
   justify-content: space-between;
   font-weight: 600;
-  color: #333333;
+  color: var(--ink, #333333);
 }
 
 .lk-hint {
   margin: 8px 0 12px;
   font-size: 12px;
   line-height: 1.6;
-  color: #8a8299;
+  color: var(--muted, #8a8299);
 }
 
 .lk-form {
@@ -348,28 +348,28 @@ async function submitLogin() {
   flex-direction: column;
   gap: 4px;
   font-size: 12px;
-  color: #555555;
+  color: var(--ink-soft, #555555);
 }
 
 .lk-form input {
   padding: 8px 10px;
   border-radius: 8px;
-  border: 1px solid #d8d0e4;
-  background: #ffffff;
+  border: 1px solid var(--line, #d8d0e4);
+  background: var(--field-bg, #ffffff);
   font-size: 13px;
-  color: #333333;
+  color: var(--ink, #333333);
   outline: none;
 }
 
 .lk-form input:focus {
-  border-color: #6b6bd0;
+  border-color: var(--primary, #6b6bd0);
 }
 
 .lk-divider {
   margin: 10px 0;
   text-align: center;
   font-size: 12px;
-  color: #b0a8bd;
+  color: var(--muted, #b0a8bd);
 }
 
 .lk-msg {

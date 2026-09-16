@@ -175,3 +175,46 @@ test('B5 浏览器夹具使用编译 SFC 并提供回合与比赛确定状态', 
   assert.match(source, /B5Harness\.vue/)
   assert.doesNotMatch(source, /component:\s*\{\s*template:/)
 })
+
+test('施法区标题在实体卡面上可见，不是白底白字', async () => {
+  const source = await readFile(new URL('../src/components/CastPanel.vue', import.meta.url), 'utf8')
+  assert.match(source, /rounded-xl border border-line bg-surface-solid p-4/)
+  assert.match(source, /font-bold text-ink">施法区/)
+  assert.doesNotMatch(source, /text-white">施法区/)
+})
+
+test('规则弹层标题可读，卡面与遮罩走令牌', async () => {
+  const source = await readFile(new URL('../src/components/GameHelp.vue', import.meta.url), 'utf8')
+  assert.match(source, /bg-overlay/)
+  assert.match(source, /bg-surface-solid/)
+  assert.match(source, /font-bold text-ink">📖 游戏规则/)
+  assert.doesNotMatch(source, /text-white/)
+  assert.doesNotMatch(source, /bg-black\//)
+  // brand-300 在白卡上只有约 2:1，小标题曾用它
+  assert.doesNotMatch(source, /text-brand-300/)
+})
+
+test('聊天面板不使用迁移前色板，且不再写死“已连接”', async () => {
+  const panel = await readFile(new URL('../src/components/GameChatPanel.vue', import.meta.url), 'utf8')
+  const store = await readFile(new URL('../src/stores/gameStore.js', import.meta.url), 'utf8')
+  assert.doesNotMatch(panel, /(bg|text|border)-(gray|slate|blue|green|indigo|zinc)-\d/)
+  assert.doesNotMatch(panel, /text-green-600">● 已连接/)
+  assert.match(panel, /connected \? 'text-emerald-600' : 'text-red-500'/)
+  assert.match(panel, /connected \? '● 已连接' : '○ 连接中…'/)
+  assert.match(store, /const connected = ref\(false\)/)
+  assert.match(store, /wsClient\.on\('_open'/)
+  assert.match(store, /wsClient\.on\('_close'/)
+})
+
+test('古代巨龙关键帧的 transform 合法（rotate 不能脱离 transform 单独声明）', async () => {
+  const source = await readFile(new URL('../src/components/CastFeedback.vue', import.meta.url), 'utf8')
+  const keyframes = source.slice(source.indexOf('@keyframes dragon-pop'))
+  assert.doesNotMatch(keyframes, /transform:[^;}]*;\s*rotate:/)
+  assert.match(keyframes, /transform: scale\(1\) rotate\(0deg\)/)
+})
+
+test('施法结果横幅对读屏可播报', async () => {
+  const source = await readFile(new URL('../src/components/CastFeedback.vue', import.meta.url), 'utf8')
+  assert.match(source, /role="status"/)
+  assert.match(source, /aria-live="polite"/)
+})

@@ -8,13 +8,18 @@ const emit = defineEmits(['close'])
 <template>
   <div
     v-if="open"
-    class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
     @click.self="emit('close')"
   >
-    <div class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
+    <div class="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface-solid p-6 shadow-2xl">
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xl font-bold text-white">📖 游戏规则</h2>
-        <button type="button" class="text-muted hover:text-ink" @click="emit('close')">✕</button>
+        <h2 class="text-xl font-bold text-ink">📖 游戏规则</h2>
+        <button
+          type="button"
+          class="flex min-h-[44px] min-w-[44px] items-center justify-center text-muted hover:text-ink"
+          aria-label="关闭规则"
+          @click="emit('close')"
+        >✕</button>
       </div>
 
       <div class="space-y-3 text-sm text-ink">
@@ -24,7 +29,7 @@ const emit = defineEmits(['close'])
           继续施法时，下次不能比这次更罕见。失败会扣血，并阻止本次行动继续施法；此时必须结束行动并补牌。
         </p>
 
-        <h3 class="pt-2 font-bold text-brand-300">八种魔法（成功效果）</h3>
+        <h3 class="pt-2 font-bold text-brand-700">八种魔法（成功效果）</h3>
         <ul class="space-y-1.5">
           <li v-for="s in SPELLS" :key="s.id" class="flex gap-2 rounded-lg bg-brand-50 p-2">
             <span class="text-lg">{{ s.emoji }}</span>
@@ -35,7 +40,7 @@ const emit = defineEmits(['close'])
           </li>
         </ul>
 
-        <h3 class="pt-2 font-bold text-brand-300">计分</h3>
+        <h3 class="pt-2 font-bold text-brand-700">计分</h3>
         <p>击败他人：你 +3、存活者 +1；清空所有魔法：你 +3、其他人 0；用错魔法自杀：其他人 +1。</p>
         <p>🔮 秘密牌不能打出——轮末你还活着时，每张秘密牌额外 +1 分。</p>
         <p>先达到 {{ 8 }} 分者获胜 🏆</p>

@@ -391,3 +391,43 @@ test('new match transient clearing includes report status while A4 retains lastG
   assert.equal(store.matchReportStatus, null)
   cleanup()
 })
+
+test('连接状态由 ws 的 _open/_close 驱动并暴露给界面', () => {
+  const { store, cleanup } = createStore()
+
+  // 未连接时不假装已连接（聊天面板曾把"已连接"写死在模板里）
+  assert.equal(store.connected, false)
+
+  wsClient._emit('_open', {})
+  assert.equal(store.connected, true)
+
+  // 断线：ws-client 会在后台静默重试，界面此时必须能看出"没连上"
+  wsClient._emit('_close', {})
+  assert.equal(store.connected, false)
+
+  wsClient._emit('_open', {})
+  assert.equal(store.connected, true)
+
+  cleanup()
+})
+
+test('新建连接未握手、以及离开房间时连接状态都复位为未连接', async () => {
+  const { store, cleanup } = createStore()
+  wsClient._emit('_open', {})
+  assert.equal(store.connected, true)
+
+  await withControlledConnections(async ({ identityRequests }) => {
+    const connecting = store.connect('ROOMA', 'A', 'a', '0')
+    identityRequests[0].resolve({ ok: false })
+    await connecting
+    assert.equal(store.connected, false)
+  })
+
+  wsClient._emit('_open', {})
+  assert.equal(store.connected, true)
+
+  store.disconnect()
+  assert.equal(store.connected, false)
+
+  cleanup()
+})

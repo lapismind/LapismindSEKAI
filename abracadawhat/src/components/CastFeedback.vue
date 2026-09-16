@@ -53,6 +53,8 @@ watch(result, (val) => {
 
   <div
     v-if="result"
+    role="status"
+    aria-live="polite"
     class="pointer-events-none fixed inset-x-0 z-40 flex justify-center transition-all duration-300"
     :class="visible ? 'top-16 opacity-100' : '-top-10 opacity-0'"
   >
@@ -90,7 +92,7 @@ watch(result, (val) => {
 @keyframes dragon-pop {
   0% { transform: scale(0.3) rotate(-12deg); opacity: 0; }
   25% { transform: scale(1.15) rotate(4deg); opacity: 1; }
-  55% { transform: scale(1); rotate: 0deg; opacity: 1; }
+  55% { transform: scale(1) rotate(0deg); opacity: 1; }
   100% { transform: scale(1.6); opacity: 0; }
 }
 </style>

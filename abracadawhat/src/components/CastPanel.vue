@@ -42,9 +42,9 @@ function clickSpell(spell) {
 </script>
 
 <template>
-  <div class="rounded-xl border border-line bg-white p-4 shadow-sm">
+  <div class="rounded-xl border border-line bg-surface-solid p-4 shadow-sm">
     <div class="mb-3 flex items-center justify-between">
-      <div class="text-sm font-bold text-white">施法区</div>
+      <div class="text-sm font-bold text-ink">施法区</div>
       <button
         v-if="isMyTurn"
         type="button"
