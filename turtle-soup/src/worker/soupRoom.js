@@ -150,6 +150,15 @@ export class SoupRoom {
         case 'review_note':
           await this.handleReviewNote(playerId, msg.data)
           break
+        case 'give_apple':
+          await this.handleGiveApple(playerId, msg.data)
+          break
+        case 'give_flower':
+          await this.handleGiveFlower(playerId, msg.data)
+          break
+        case 'close_voting':
+          await this.handleCloseVoting(playerId)
+          break
         case 'ai_hint':
           await this.handleAIHint(socket, playerId)
           break
@@ -403,6 +412,10 @@ export class SoupRoom {
     state.messages = []
     state.lastQuestionAt = null
     state.ended = false
+    // 新一局清空上一局的投票
+    state.apples = []
+    state.flowers = []
+    state.votingClosed = false
     await this.saveState(state)
     this.broadcastState()
   }
@@ -609,6 +622,145 @@ export class SoupRoom {
     this.broadcastState()
   }
 
+  // ---- 揭底后的投票 ----
+  //
+  // 设计（用户拍板）：目的只是"让一起玩的人高兴高兴、看看谁猜得好"，
+  // 不是战绩、不计入任何历史、也不做防刷。海龟汤一局就是一道汤，
+  // 所以投票只在 ended 阶段、一局一次。
+  //
+  // 🍎 的语义是"我的名单"而不是"投一票"：
+  //   目标已在名单里 → 再点一下撤回
+  //   名单没满       → 加入
+  //   名单已满       → 顶掉最早的那个（玩家=点别人即换人；主持人=保留最近两个）
+  // 名额由 appleQuota 决定：玩家 1、主持人 2、观众 0（观众只能送小红花）。
+
+  /** 每人能送出几个 🍎：观众 0、真人主持 2、其余玩家 1 */
+  appleQuota(state, playerId) {
+    const me = state.players.find((p) => p.id === playerId)
+    if (!me || me.isSpectator) return 0
+    const isHumanModerator = state.mode === 'human' && me.isModerator === true
+    return isHumanModerator ? 2 : 1
+  }
+
+  /** 是否还能送 🍎 */
+  votingOpen(state, playerId) {
+    return state.phase === 'ended'
+      && !state.votingClosed
+      && this.appleQuota(state, playerId) > 0
+  }
+
+  /** 有投票资格的人（观战不占名额，也不参与） */
+  voters(state) {
+    return state.players.filter((p) => !p.isSpectator)
+  }
+
+  /** 某个人已经送出了几个 🍎 */
+  applesFrom(state, playerId) {
+    return (state.apples ?? []).filter((a) => a.from === playerId)
+  }
+
+  /** 所有有资格的人都送满了自己的名额——房主忘了点结束时，结果也不至于永远出不来 */
+  isVotingComplete(state) {
+    const list = this.voters(state)
+    if (list.length === 0) return false
+    return list.every((p) => this.applesFrom(state, p.id).length >= this.appleQuota(state, p.id))
+  }
+
+  /**
+   * 投票结束时才公开 🍎 计数。
+   * 投的过程中互相看得见会从众——这正是把它压到"关闭后才显示"的原因。
+   * 小红花不在此列：它是"临时点个赞"，本来就该看得见（见 flowerCounts）。
+   */
+  appleCounts(state) {
+    const out = {}
+    for (const a of state.apples ?? []) {
+      out[a.to] = (out[a.to] ?? 0) + 1
+    }
+    return out
+  }
+
+  flowerCounts(state) {
+    const out = {}
+    for (const f of state.flowers ?? []) {
+      out[f.to] = (out[f.to] ?? 0) + 1
+    }
+    return out
+  }
+
+  /** 送 🍎 */
+  async handleGiveApple(playerId, data) {
+    const state = await this.getState()
+    const to = typeof data?.to === 'string' ? data.to : null
+    if (!to) return
+    if (state.phase !== 'ended') {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: '揭底之后才能送 🍎' } })
+      return
+    }
+    if (state.votingClosed) {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: '投票已经结束了' } })
+      return
+    }
+    if (this.appleQuota(state, playerId) === 0) {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: '观战不能送 🍎，可以送小红花' } })
+      return
+    }
+    const target = state.players.find((p) => p.id === to)
+    if (!target || target.isSpectator) return
+    if (to === playerId) {
+      this.sendToByPlayerId(playerId, { type: 'error', data: { message: '不能给自己送 🍎' } })
+      return
+    }
+
+    state.apples = state.apples ?? []
+    const mine = this.applesFrom(state, playerId)
+    if (mine.some((a) => a.to === to)) {
+      state.apples = state.apples.filter((a) => !(a.from === playerId && a.to === to))
+    } else {
+      const quota = this.appleQuota(state, playerId)
+      const others = state.apples.filter((a) => a.from !== playerId)
+      const kept = [...mine, { from: playerId, to, at: Date.now() }].slice(-quota)
+      state.apples = [...others, ...kept]
+    }
+
+    // 所有人都送满了就自动收口，省得房主忘了点「结束投票」
+    if (this.isVotingComplete(state)) state.votingClosed = true
+
+    await this.saveState(state)
+    this.broadcastState()
+  }
+
+  /** 送小红花：观众专用，只是临时点个赞——不计入历史，也不参与 🍎 的计数 */
+  async handleGiveFlower(playerId, data) {
+    const state = await this.getState()
+    const to = typeof data?.to === 'string' ? data.to : null
+    if (!to) return
+    if (state.phase !== 'ended') return
+    const me = state.players.find((p) => p.id === playerId)
+    if (!me || !me.isSpectator) return
+    const target = state.players.find((p) => p.id === to)
+    if (!target || target.isSpectator) return
+
+    state.flowers = state.flowers ?? []
+    const existing = state.flowers.some((f) => f.from === playerId && f.to === to)
+    // 同一名观众对同一个玩家只有一朵，再点即收回——天然限流，不需要额外规则
+    state.flowers = existing
+      ? state.flowers.filter((f) => !(f.from === playerId && f.to === to))
+      : [...state.flowers, { from: playerId, to, at: Date.now() }]
+
+    await this.saveState(state)
+    this.broadcastState()
+  }
+
+  /** 房主结束投票（此后 🍎 计数才公开） */
+  async handleCloseVoting(playerId) {
+    const state = await this.getState()
+    if (!this.isHost(state, playerId)) return
+    if (state.phase !== 'ended' || state.votingClosed) return
+    state.votingClosed = true
+    await this.saveState(state)
+    this.broadcastState()
+  }
+
   /** 复盘：AI 辅助提示（仅主持人/房主可触发），结果作为 AI 笔记广播 */
   async handleAIHint(socket, playerId) {
     const state = await this.getState()
@@ -742,6 +894,11 @@ export class SoupRoom {
       messages: [], // {from, text/judge/reason, kind, source, at}
       pendingGuess: null, // 真人模式：待主持人确认的答案
       reviewNotes: [], // 复盘共享笔记
+      // 揭底后的投票。apples 是"我送给谁"的有序名单（不是投票记录），
+      // flowers 是观众的小红花（临时点赞，不计入任何历史）
+      apples: [], // [{ from, to, at }]
+      flowers: [], // [{ from, to, at }]
+      votingClosed: false,
       winnerId: null,
       revealed: false,
     }
@@ -816,6 +973,21 @@ export class SoupRoom {
         })),
       messages: state.messages,
       reviewNotes: state.reviewNotes ?? [],
+
+      // —— 揭底后的投票 ——
+      // 只下发"我自己的名单"：投的过程中互相看得见会从众，
+      // 所以 🍎 计数压到 votingClosed 之后才给（appleCounts 在此之前是 null）。
+      // 小红花是"临时点个赞"，本来该看得见，所以不跟着藏。
+      myApples: this.applesFrom(state, playerId).map((a) => a.to),
+      myFlowers: (state.flowers ?? []).filter((f) => f.from === playerId).map((f) => f.to),
+      appleQuota: this.appleQuota(state, playerId),
+      appleCounts: state.votingClosed ? this.appleCounts(state) : null,
+      flowerCounts: this.flowerCounts(state),
+      votingClosed: state.votingClosed ?? false,
+      votingComplete: this.isVotingComplete(state),
+      voters: this.voters(state).length,
+      voted: this.voters(state).filter((p) => this.applesFrom(state, p.id).length > 0).length,
+
       questionCount: state.questionCount,
       questionLimit: state.questionLimit,
       questionsExhausted: state.questionsExhausted,

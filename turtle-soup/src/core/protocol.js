@@ -15,6 +15,10 @@ export const Msg = {
   SEND_GUESS_ANSWER: 'guess_answer',
   SEND_REVEAL: 'reveal',
   SEND_REVIEW_NOTE: 'review_note',
+  // 揭底后投票：送 🍎（玩家/主持人）、送小红花（观众）、房主结束投票
+  SEND_GIVE_APPLE: 'give_apple',
+  SEND_GIVE_FLOWER: 'give_flower',
+  SEND_CLOSE_VOTING: 'close_voting',
   SEND_AI_HINT: 'ai_hint',
   SEND_ADD_PUZZLE: 'add_puzzle',
   SEND_CHAT: 'chat',
