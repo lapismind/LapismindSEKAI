@@ -27,6 +27,9 @@
 第 3 条为什么算前置：`public/fonts/` 是 gitignore 的，**全新 clone 上是空的**。
 只要走 `npm run build` 就会自动同步；但如果绕过构建直接发布，站点会静默退回系统字体。
 
+上面第 2 条的命令**要在某个项目目录里跑**（如 `turtle-soup/`）——仓库根没有安装 wrangler，
+在根目录 `npx wrangler` 会失败（`npx canceled due to missing packages`），不是登录有问题。
+
 ## 二、四个站怎么部署
 
 | 站 | Cloudflare name | 域名 | 命令（在对应目录） |

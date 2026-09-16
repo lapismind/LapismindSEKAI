@@ -49,7 +49,8 @@ npx wrangler whoami   # 应打印账号邮箱
 
 ## 环境与权限（本轮更新）
 
-- **工作机 wrangler 已登录**；家机当时未登录 → 那边需要先 `npx wrangler login`。
+- **两台机器 wrangler 均已登录**（家机于 2026-09-16 补上，账号 `soiciactlybm@gmail.com`）。
+  注意登录命令要在**项目目录**里跑，仓库根没有安装 wrangler。
 - **缺 `.dev.vars` 时的 500 是环境缺口，不是回归**：三个游戏 `/api/identity` 返回
   `server not configured`（handler 有显式守卫）；游戏功能正常，走降级路径。
 - 联机页面验证必须 `npx wrangler dev`（`vite dev` / `vite preview` 都没有 `/ws`、`/api` 代理）。
