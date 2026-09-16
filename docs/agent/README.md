@@ -9,7 +9,8 @@
 |---|---|
 | [`handoff.md`](./handoff.md) | **跨设备/跨会话接手**时；离开一台机器前收尾时 |
 | [`archiving.md`](./archiving.md) | 要写交接日志、归档本轮工作时（含日志该记什么、放哪、文件名规则） |
-| [`scripts/`](./scripts) | 要用 Playwright 复现线上问题、跑一次性冒烟时 |
+| [`deploy.md`](./deploy.md) | 要部署任何一个站、或换机器后要恢复部署能力时 |
+| [`scripts/`](./scripts) | 要用 Playwright 复现线上问题、跑一次性冒烟、做部署后验收时 |
 | [`../../.planning/README.md`](../../.planning/README.md) | 长任务要落地计划文件时 |
 | [`../MIGRATION-NOTES.md`](../MIGRATION-NOTES.md) | 换新电脑、搭新环境时 |
 | [`../lessons-learned.md`](../lessons-learned.md) | 踩坑记录（仓库级）；各项目另有自己的同名文件 |

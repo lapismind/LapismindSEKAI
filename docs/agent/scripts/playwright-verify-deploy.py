@@ -35,6 +35,15 @@ EMOJI_URLS = [
 OUT = Path(__file__).resolve().parent / "out" / "deploy-verify"
 OUT.mkdir(parents=True, exist_ok=True)
 
+# 必须伪装成浏览器 UA：站前有 Cloudflare，Python-urllib 的默认 UA 会被直接 403。
+# 实测同一 URL：UA=Python-urllib/3.13 → 403（server: cloudflare）；
+#              浏览器 UA → 200 image/png。
+# 不加这个头会把「部署正常」误报成「表情资源 403」，白查一轮。
+BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/140.0 Safari/537.36"
+)
+
 ok = True
 
 
@@ -48,13 +57,19 @@ def check(label, passed, detail=""):
 print("══ 1. 表情资源（deployment-v2.md 强制项）══")
 for url in EMOJI_URLS:
     try:
-        with urllib.request.urlopen(url, timeout=30) as r:
+        req = urllib.request.Request(url, headers={"User-Agent": BROWSER_UA})
+        with urllib.request.urlopen(req, timeout=30) as r:
             ctype = r.headers.get("Content-Type", "")
             body = r.read()
         good = r.status == 200 and "image/png" in ctype and len(body) > 0
         check(url.split("/emojis/")[1], good, f"{r.status} {ctype} {len(body)}B")
         if r.status == 200 and "text/html" in ctype:
             print("        ↑ 200 text/html = SPA fallback，说明图片没进 dist")
+    except urllib.error.HTTPError as e:
+        extra = ""
+        if e.code == 403:
+            extra = "  ← 403 多为 Cloudflare 拦 UA，确认请求带了浏览器 UA"
+        check(url, False, f"HTTP {e.code}{extra}")
     except Exception as e:
         check(url, False, f"{type(e).__name__}: {e}")
 
