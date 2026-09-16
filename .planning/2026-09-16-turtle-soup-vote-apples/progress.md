@@ -103,19 +103,40 @@
   结果 `handleAIHint` 的 `/** 复盘：AI 辅助提示 */` 被删。是 `grep -B 3` 复查时发现的。
   **高重复度的锚点必须连带复查前后文**，不能只看 Edit 返回成功。
 
-## Phase 3：面板 UI —— ⬜ 未开始 ← **下一步从这里接**
+## Phase 3：面板 UI —— ✅ 完成并上线（2026-09-16）
 
-`ended` 阶段现有的"回答卡"改成面板：上半区汤面 + 汤底，下半区 🍎 网格 + 观众小红花区。
-**不阻塞「返回大厅」**。
+**Git**：`ff057e2`（面板）、`4a8f7e6`（data-testid + 修脆断言）
+**部署**：`soup.qmzhj.top` = `85ee3a96`
 
-Phase 2 已经把要用的数据都下发好了，前端直接取：
-`game.myApples` / `game.myFlowers` / `game.appleQuota` / `game.appleCounts`（未关闭时为 null）/
-`game.flowerCounts` / `game.votingClosed` / `game.votingComplete` / `game.voted` / `game.voters`。
+- 新增 `src/components/VotePanel.vue`：上半区汤面 + 汤底，下半区"这一局谁发挥最好？"的候选人网格，
+  底部是结果与出口。「返回大厅」固定在底部，不随滚动跑掉、也不被投票状态挡住。
+- 玩家/主持人点格子送 🍎，观众点格子送小红花 🌸 —— 同一套网格，动作看角色。
+- `gameStore` 补 `giveApple` / `giveFlower` / `closeVoting` 三个 action 与九个字段的 hydrate。
+- 顺手修掉结束覆盖层 `@click` 没有 `.self` 的隐患（揭底后点到卡片里任何位置都会返回大厅）。
 
-前端还需要补的（Phase 2 未做）：
-- `protocol.js` 的三个 `SEND_*` 常量已在，但 `gameStore` 还**没有**对应的 action
-  （`giveApple` / `giveFlower` / `closeVoting`），`hydrate()` 也还没有把上面那些字段
-  写进 store —— 这两件是 Phase 3 的第一步。
+### 两个被自己的盲点各绊一次的教训（都已转成断言）
+
+1. **store 里声明并 hydrate 了字段，却忘了加进 return。** pinia 上取到 `undefined`，
+   面板渲染到一半**整块消失**（只剩空覆盖层），而构建绿、单测绿、`pageerror` 也没有
+   （Vue 记进 console.error 而非 pageerror）。回归测试改成「声明 / hydrate / 导出」三件分别断言。
+2. **验证脚本按昵称找按钮**：生产有 auth、游客身份覆盖昵称 → 本地过、生产挂。
+   改挂 `data-testid`（仓库里出包就是这么做的）。同时修掉我自己那条
+   "从 `<button` 起算 200 字符内出现某文案"的范围断言——加一个属性就把它撑爆。
+
+### 验收
+
+本地 4 连接集成 22 项、本地浏览器三视角 27 项、**生产浏览器三视角 30 项**全部通过；
+`npm test` 30 条；通用线上验收 `all_passed: true`。完整记录见
+[`docs/session-logs/2026-09-16-海龟汤投票-部署-handoff.md`](../../docs/session-logs/2026-09-16-海龟汤投票-部署-handoff.md)。
+
+## Phase 4–5：历史 🍎 —— ⏸️ 用户决定不做
+
+前置仍未解决：auth 的 v2 逐玩家上报在生产没落过行（`player_match_reports` 0 行）。
+判别方法：完整打一局出包，看结算弹窗有没有「战报暂未保存」。见 `findings.md` 第 3、6 节。
+
+**下一步不是继续做功能，而是先看这个投票有没有人用** —— 这是本方案唯一的主要死法
+（揭底之后大家懒得投）。没人用就停在这里。
+
 
 
 ## Phase 3：面板 UI —— ⬜ 未开始

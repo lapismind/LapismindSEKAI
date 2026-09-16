@@ -74,6 +74,27 @@ for url in EMOJI_URLS:
         check(url, False, f"{type(e).__name__}: {e}")
 
 print("\n══ 2. 站点冒烟（首页 + 字体 + 截图）══")
+
+
+def open_site(page, url, timeout=45000):
+    """导航只用 domcontentloaded 判成败，之后"再等一会儿"是尽力而为。
+
+    别用 networkidle 当判据：这些站挂着常驻 WebSocket、字体按 unicode-range
+    分片按需加载，再叠加代理，45 秒也可能等不到"网络静默"。2026-09-16 实测
+    同一个脚本连跑两次，在不同站点各假失败一次（blog 与 soup），而同一时刻
+    curl 两个站都是 200。**验收脚本给出假 FAIL 比漏报更糟**——会让人开始无视结果，
+    真出问题时也照过。
+    """
+    resp = page.goto(url, wait_until="domcontentloaded", timeout=timeout)
+    for state in ("load", "networkidle"):
+        try:
+            page.wait_for_load_state(state, timeout=8000)
+        except Exception:
+            pass  # 只是"多等一会儿更好"，不作为判据
+    page.wait_for_timeout(1500)
+    return resp
+
+
 with sync_playwright() as p:
     browser = p.chromium.launch()
     for name, url in SITES:
@@ -81,24 +102,30 @@ with sync_playwright() as p:
         errs, failed = [], []
         page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
         page.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
-        page.on("requestfailed", lambda r: failed.append(r.url))
+        page.on("requestfailed", lambda r: failed.append((r.url, r.failure or "?")))
         try:
-            resp = page.goto(url, wait_until="networkidle", timeout=45000)
-            page.wait_for_timeout(1200)
+            resp = open_site(page, url)
             font = page.evaluate("getComputedStyle(document.body).fontFamily")
             font_ok = "LXGW WenKai Screen" in font
             page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
             # 本地 auth 未接入时线上不该出现这些；线上是真环境，所以任何报错都值得看
             real_errs = [e for e in errs if "favicon" not in e.lower()]
+            # net::ERR_ABORTED 是**浏览器主动取消**，不是资源缺失：媒体预加载
+            # （blog 的 music/*.mp3、IntroOverlay 的 intro-*.webp）都会出现。
+            # 实测这些 URL 直接 curl 都是 200 image/webp。分开计数，别混进"失败请求"里
+            # ——否则每次验收都要重新判断一遍同样几条噪音。
+            aborted = [u for u, f in failed if "ABORTED" in f]
+            hard = [u for u, f in failed if "ABORTED" not in f]
             check(
                 f"{name:14} HTTP {resp.status if resp else '?'}",
                 bool(resp and resp.status == 200),
-                f"pageerror/console {len(real_errs)}，失败请求 {len(failed)}",
+                f"pageerror/console {len(real_errs)}，失败请求 {len(hard)}"
+                + (f"（另有 {len(aborted)} 个被浏览器取消，非缺失）" if aborted else ""),
             )
             check(f"{name:14} 字体 LXGW WenKai Screen 生效", font_ok, font[:60])
             for e in real_errs[:3]:
                 print(f"        err: {e[:110]}")
-            for f_ in failed[:3]:
+            for f_ in hard[:3]:
                 print(f"        failed: {f_[:110]}")
         except Exception as e:
             check(f"{name:14} 打开", False, f"{type(e).__name__}: {e}")
