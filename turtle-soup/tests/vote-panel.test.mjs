@@ -32,12 +32,20 @@ test('面板结构：上半区汤面+汤底，下半区投票', async () => {
 
 test('返回大厅始终可点，不被投票状态挡住', async () => {
   const src = await read('../src/components/VotePanel.vue')
-  const leave = src.match(/<button[\s\S]{0,200}?返回大厅[\s\S]{0,40}?<\/button>/)?.[0] ?? ''
-  assert.ok(leave, '找不到返回大厅按钮')
+  // 按 testid 精确定位到那一个 <button>：别用"从 <button 起算 N 个字符内出现某文案"
+  // 这种范围表达式——加一个属性就会把它撑爆，而且失败信息只会说"找不到"。
+  const buttonAround = (testid) => {
+    const at = src.indexOf(`data-testid="${testid}"`)
+    assert.ok(at > 0, `找不到 ${testid}`)
+    return src.slice(src.lastIndexOf('<button', at), src.indexOf('</button>', at))
+  }
+
+  const leave = buttonAround('vote-leave')
   assert.doesNotMatch(leave, /v-if/, '返回大厅不能被 v-if 包住')
   assert.match(leave, /@click="emit\('leave'\)"/)
+
   // 「结束投票」才是房主专属、会随状态隐藏的那个
-  assert.match(src, /v-if="isHost && !game\.votingClosed"[\s\S]{0,300}?结束投票/)
+  assert.match(buttonAround('vote-close'), /v-if="isHost && !game\.votingClosed"/)
 })
 
 test('未公开的 🍎 计数不能被当成 0', async () => {
@@ -65,6 +73,15 @@ test('store 接上了三个投票指令，并在 hydrate/reset 里覆盖了全�
   for (const action of ['giveApple', 'giveFlower', 'closeVoting']) {
     assert.match(store, new RegExp(`^\\s*${action},\\s*$`, 'm'), `${action} 没有从 store 导出`)
   }
+})
+
+test('候选与出口带稳定的 data-testid —— 浏览器验证不该依赖昵称', async () => {
+  // 教训：生产环境有 auth，游客身份会把玩家在大厅输入的名字覆盖掉，
+  // 于是"按昵称找候选按钮"的脚本在本地过、在生产找不到。锚点要跟显示名解耦。
+  const src = await read('../src/components/VotePanel.vue')
+  assert.match(src, /:data-testid="'vote-candidate-' \+ p\.id"/)
+  assert.match(src, /data-testid="vote-close"/)
+  assert.match(src, /data-testid="vote-leave"/)
 })
 
 test('面板点击不再重复实现名额规则，一律交给服务端仲裁', async () => {

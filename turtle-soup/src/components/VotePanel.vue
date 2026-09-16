@@ -113,6 +113,8 @@ function chipClass(playerId) {
           v-for="p in candidates"
           :key="p.id"
           type="button"
+          :data-testid="'vote-candidate-' + p.id"
+          :data-player-id="p.id"
           :disabled="!canPickOne(p.id)"
           :class="chipClass(p.id)"
           class="flex items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition"
@@ -166,6 +168,7 @@ function chipClass(playerId) {
         <button
           v-if="isHost && !game.votingClosed"
           type="button"
+          data-testid="vote-close"
           class="flex-1 rounded-xl border border-brand-400/60 bg-brand-500/15 px-4 py-2.5 text-sm font-bold text-brand-200 transition hover:bg-brand-500/25"
           @click="game.closeVoting()"
         >
@@ -173,6 +176,7 @@ function chipClass(playerId) {
         </button>
         <button
           type="button"
+          data-testid="vote-leave"
           class="flex-1 rounded-xl bg-brand-700 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-brand-800"
           @click="emit('leave')"
         >
