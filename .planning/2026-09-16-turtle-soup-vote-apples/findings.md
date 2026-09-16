@@ -119,3 +119,42 @@ GET  /api/match-reports    （个人页读自己的最近战报）
 
 迁移命名接力：现有 001–007，下一个是 `008_*.sql`。
 注意 `auth/migrations/README.md` 记录了 001–004 是直接 `d1 execute` 的、没有基线。
+
+## 6. 补充核查：出包那 8 条到底是谁写的
+
+```bash
+npx wrangler d1 execute sekai-db --remote \
+  --command "SELECT id, report_id, report_status, expected_players, rounds, finished_at FROM matches ORDER BY id"
+# → 8 条全部 report_id = null、expected_players = 0（v2 的两列没被填），
+#   时间全部落在 2026-09-01 / 09-02
+```
+
+`report_id` / `expected_players` 是迁移 005 加的 v2 列，全部为 null 说明
+**这 8 条是 v1 老路径写的，v2 一条都没写过**。加上 `player_match_reports` 为 0 行，
+结论收敛为两条可能，**目前无法区分**：
+
+- (a) 自 2026-09-02 之后**没有任何人完整打过一局**出包（站点是个人项目，完全可能）；
+- (b) v2 上报自上线起就在**静默失败**。
+
+```bash
+cd abracadawhat && npx wrangler secret list
+# → IDENTITY_SECRET / MATCH_REPORT_SECRET / SESSION_SECRET   ← secret 是齐的
+```
+
+**secret 齐、表也在**，所以"缺配置"这条假设被排除——剩下 (a)/(b) 只能靠
+**真的打一局 2 人局、看 `player_match_reports` 是否落行**来判定。这就是 D4 里
+"full-chain E2E + prod acceptance"那一步，无法用看代码替代。
+
+## 7. 顺带核到、与本方案无关但记录备查
+
+```bash
+cd turtle-soup && npx wrangler secret list
+# → AI_API_KEY / SESSION_SECRET     ← 有真实的 AI key；没有 MATCH_REPORT_SECRET（符合预期）
+```
+
+- `src/worker/index.js:23` 的 `/ws` 身份校验用的是 **`SESSION_SECRET`**（不是 `IDENTITY_SECRET`，
+  后者只服务 `:34` 的 legacy token 路径）。`SESSION_SECRET` 在生产**已配置**，
+  所以"生产没开身份校验"这个担心不成立——查过了，不成立。
+- `turtle-soup` **没有 `/api/identity` 路由**（`index.js` 只注册了 `/ws` 和 `/api/ping`），
+  生产实测该路径返回 `404 not found`。`docs/agent/deploy.md` 第四节写的
+  "三个游戏 `/api/identity` 返回 500" 并不适用于海龟汤——那份文档这一条需要更正（待办）。
