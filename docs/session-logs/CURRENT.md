@@ -5,38 +5,41 @@
 > 接手时先读本文件即可，不用猜哪个日期文件最新。流程见 `docs/agent/handoff.md`。
 > 两机代号：公司机 = **司机**，家里机 = **家机**。
 
-> 日期：2026-09-16
-> 性质：**没有进行中的任务**（海龟汤揭底后投票已收口、已上线、已验收）
-> 上一轮 → [`2026-09-16-海龟汤投票-部署-handoff.md`](./2026-09-16-海龟汤投票-部署-handoff.md)
+> 日期：2026-09-17
+> 性质：**没有进行中的任务**（设计语言文章已上线、四站已同步部署并验收）
+> 上一轮 → [`2026-09-17-设计语言文章-上线-handoff.md`](./2026-09-17-设计语言文章-上线-handoff.md)
 
 ## 当前状态
 
-海龟汤新增「揭底后投票（🍎）」，三个阶段（关 AI 入口 → 服务端 → 面板）全部完成并上线。
+把"设计语言收口"这件事写成了博客文章并上线，随后把四站统一部署到 `b7496e3`。
 
 | 站 | 线上版本 | 备注 |
 |---|---|---|
-| soup.qmzhj.top | `85ee3a96` | 本轮：AI 主持入口关闭 + 投票面板 |
-| showhand.qmzhj.top | `cf366ef4` | 本轮未动 |
-| abracadawhat.qmzhj.top | `2ac90038` | 本轮未动 |
-| blog.qmzhj.top | `bc42df85` | 本轮未动 |
+| soup.qmzhj.top | `86571697` | 随本轮重新部署（投票功能已确认在线） |
+| showhand.qmzhj.top | `c1b95265` | 同上 |
+| abracadawhat.qmzhj.top | `bf97819c` | 同上 |
+| blog.qmzhj.top | `1b70b73a` | 新增文章《同一个颜色抄了四遍之后》 |
 
-验收：`npm test` 30 条全过；本地 4 连接集成 22 项断言、本地浏览器三视角 27 项、
-**生产浏览器三视角 30 项**全过（含逐人裁剪、计数隐藏、小红花、结束投票）；
-通用线上验收 `all_passed: true`。工作区干净。
+验收：五个项目测试全 0 fail（abracadawhat 126 / turtle-soup 30 / showhand 8）；博客四项门禁全过
+（build / check 0 errors / lint / test）；线上验收 `all_passed: true`；新文章与梭哈补记均已上线。
+工作区干净，已推送。
 
-## 这件事的要点（接手前先看，细节在 handoff 里）
+## 接手前先看
 
-- **🍎 是"我的名单"不是"一票"**：再点即撤回、满了顶掉最早的。玩家因此"点别人即换人"，
-  主持人天然保留最近两个。**改这块前先读 handoff 的"关键决策"**，它是几处规则的共同前提。
-- **两处 AI 开关必须一起改**：`src/core/features.js` 与 `src/worker/soupRoom.js` 的
-  `AI_MODE_ENABLED`。`tests/ai-mode-closed.test.mjs` 就是守这个的。
-- **关 AI 必须连 `handleAIHint` 一起关**（它独立于主持模式、真的会打 AI 请求）。
-- **投票计数在结束前是 `null`，前端不要 `?? 0`**——那是"还没公开"，不是"没人投他"。
+- **`AGENTS.md` 的"会话启动"第一条不是形式**：本轮的教训是漏读 `CURRENT.md`，导致拿着**过期 15 个提交**的
+  认知继续工作，差点用过期工作树部署、把另一台机器的 11 个提交（海龟汤投票等）静默回退。
+  **第一条命令就该是 `git fetch` + 读本文件。** 详见 `lessons-learned.md` 2026-09-17。
+- **部署前后都要对齐 HEAD**：部署产物应等于仓库 HEAD。`git status -sb` 看 `behind` 不为 0 就先 rebase，
+  再跑测试、再部署。验收脚本能挡"站点挂了"，挡不住"功能被回退"。
+- **design-kit 是设计语言的唯一真源**（`packages/design-kit/README.md`）。项目 `global.css` 只留应用外壳，
+  不要在项目里重写令牌；色值也不要写进文档（`docs/LOBBY-KIT-COLORS.md` 已改为只讲"为什么"）。
+- **博客文章的封面由脚本生成**（`blog/scripts/gen-token-cover.py`，读令牌真值渲染），
+  不要手画封面——那会变成又一份色值副本。
 
-## 下一步最该做的两件
+## 下一步最该做的两件（承接上轮，仍未做）
 
-1. **真上线玩一局，看投票有没有人用。** 这是这个方案唯一的主要死法——揭底之后大家懒得投。
-   面板已经落地且**不持久化**，正好拿来试：没人用就停在这里，不往 Phase 4–5 走。
+1. **真上线玩一局海龟汤，看投票有没有人用。** 这是投票方案唯一的主要死法——揭底之后大家懒得投。
+   面板不持久化，正好拿来试：没人用就停在这里，不往 Phase 4–5 走。
 2. **`win.gif` 庆祝页要不要救回来。** 人类模式两条结束路径都直接置 `revealed=true`，
    所以 `phase==='ended' && !revealed` 不会出现——这段是 Phase 1 关 AI 之后的死代码。
    改法是让「主持人确认猜中」时先不揭底、多点一下看 GIF，**但那是一次交互变更**，等用户拍板。
@@ -70,21 +73,22 @@
 
 更早的候选（仍未做）：跨游戏战绩与成就看板（**用户已明确反对**）、
 `playwright-two-player-table.py` 补成能跑完整局、`migrate-hex.mjs` 沉淀成正式工具、
-把动效/瘦身写成博客文章、首页手机端减法。
+首页手机端减法。
 
 ## 环境与权限
 
-- **两台机器 wrangler 均已登录**，家机部署能力已实测（多个站 `npm run deploy` 成功）。
+- **两台机器 wrangler 均已登录**，家机部署能力已实测。
 - 海龟汤本地起服务：`npx wrangler dev --port 8790`（换端口避免和残留进程撞）。
-- `whoami` 的 `missing Oauth scopes: websearch.run` **无影响**（npx 4.132.0 与项目锁的 4.123.0 期望的 scope 集不同）。
+- 联机页面验证必须 `npx wrangler dev`（`vite dev` / `vite preview` 都没有 `/ws`、`/api` 代理）。
 - **Playwright 读计算色不要假定是 `rgb()`**：Chromium 对 oklch 会原样返回，而 `canvas.fillStyle` 不接受 oklch。
-- **验证脚本的三条纪律**（本轮反复踩到，都是"本地过、生产挂"）：
+- **验证脚本的三条纪律**（反复踩到，都是"本地过、生产挂"）：
   1. 不要用固定 `sleep` 等广播 —— 轮询到条件成立；
   2. 不要按显示名定位元素 —— 生产有 auth，游客身份会覆盖昵称，用 `data-testid`；
   3. 不要用 `networkidle` 判成败 —— 见 `playwright-verify-deploy.py` 里的说明。
 - 生产的 `/ws` 需要会话（`SESSION_SECRET` 已配置），裸 WS 探针连不上；
   要探生产就在页面上下文里 `new WebSocket(...)`，浏览器会自动带 cookie。
 - 用 `urllib` / `curl` 手查线上资源**必须带浏览器 UA**，否则被 Cloudflare 403。
+  （本机 Git Bash 的 `curl` 另有 TLS 握手失败问题，直接用 Python urllib 更稳。）
 
 ## 阻塞项
 
