@@ -23,9 +23,14 @@
 
 ## 2. 设计系统
 
-- 主题色：**#8888CC（朝比奈真冬代表色）**，由 `--hue-accent: 283` 一个变量经 OKLCH 推导全站主色/渐变/光晕（`src/styles/global.css`）。
+> **令牌的真源已移到 `packages/design-kit`**（2026-09-14）。本节只描述本站如何消费它；
+> 色值表、层次规则、字体应用规则以 `packages/design-kit/README.md` 为准。
+> 本站自有的令牌（`--cursor-*`、`--lift-hover`、`--corner-*`）仍留在 `src/styles/global.css`。
+
+- 主题色：**#8888CC（朝比奈真冬代表色）**，由 `--hue-accent: 283` 一个变量经 OKLCH 推导全站主色/渐变/光晕（现定义在 `@lapismind/design-kit/tokens.css`，本站 `global.css` 通过 `@import` 引入）。
 - 亮/暗双主题：右上角太阳/月亮切换，localStorage 记忆，首帧前同步避免闪烁。
-- 字体：霞鹜文楷屏显（`public/fonts/` 自托管 97 片子集按需加载）+ Atkinson 拉丁 + 系统中文回退；等宽字体用于 eyebrow 类小标签。
+- 字体：霞鹜文楷屏显（97 片子集按需加载）+ Atkinson 拉丁 + 系统中文回退；等宽字体用于 eyebrow 类小标签。
+  **字体资产的唯一真源在 `packages/design-kit/fonts/`**，`public/fonts/` 由 `predev`/`prebuild` 同步生成、已 gitignore，不要手动往里放文件。
 - 视觉基调：玻璃卡片（blur + 半透明）、弱阴影大圆角、滚动显现动画、渐变淡出衔接。
 - 自定义鼠标：`public/cursors/arrow.png`（默认）+ `pointer.png`（手型），带白描边适配暗色。
 - 细雪飘落：全站固定 canvas（约 20–70 片，视口宽度自适应），`prefers-reduced-motion` 停用，后台页签暂停，不挡交互。

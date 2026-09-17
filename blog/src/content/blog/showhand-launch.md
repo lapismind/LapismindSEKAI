@@ -2,6 +2,7 @@
 title: '第二个上线作品：梭哈 Showhand —— 复用大厅层，一周做完一个联机游戏'
 description: '五张/七张梭哈的开发记录：lobby-kit 大厅复用、Durable Objects 牌局状态机、All-in 边界处理和 UI 迭代。'
 pubDate: 'Aug 22 2026'
+updatedDate: 'Sep 17 2026'
 heroImage: '../../assets/covers/showhand-cover.jpg'
 heroImageAlt: '多人梭哈 Showhand 的牌桌游戏界面'
 ---
@@ -65,6 +66,10 @@ showhand 只写"发牌、下注、摊牌、结算"，大厅部分零重复代码
 5. 浅粉紫主题统一（#F2EBF7），白卡片浮在浅紫底上
 
 筹码也从 emoji 🪙 换成了 SVG 绘制的真筹码样式。
+
+> **2026-09-17 补记**：第 4 条的"以后再解决"已经解决了——绿毡木框的贴图整个删掉，改成纯 SVG 的浅紫牌桌（顺带消掉 880KB，也修了非等比拉伸和手机端被裁）。
+> 另外第 5 条里那个 `#F2EBF7` **是错的**：博客实际用的是 `oklch(0.972 0.014 249)` = `#EFF7FF`，写这篇文章时我照文档抄的，而文档本身就与实现分叉了。
+> 这件事的完整过程和教训写在[《同一个颜色抄了四遍之后》](/blog/design-kit/)。
 
 ## 上线
 

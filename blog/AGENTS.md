@@ -13,7 +13,10 @@
 - src/layouts/BlogPost.astro — 文章布局（目录 / 阅读进度 / 评论区挂载）
 - src/components — Header / Footer / BaseHead 全站骨架；CommentSection / UserAvatar 是 Vue 交互岛（认证相关）；Live2dMascot / MusicDock / IntroOverlay 是花活组件
 - src/data — profile.ts / projects.ts / music-player.json：页面多为数据驱动，改文案优先改这里
-- src/styles/global.css — 设计令牌：`--hue-accent` 单源 OKLCH 亮暗主题；以及本站自有令牌（`--cursor-*`、`--lift-hover`、`--corner-*`）
+- src/styles/global.css — 本站自有令牌（`--cursor-*`、`--lift-hover`、`--corner-*`）与全局样式。
+  **设计令牌（品牌色阶 / 表面色 / 圆角 / 阴影 / 字体栈）的真源在 `packages/design-kit`**，
+  本站通过 `@import "@lapismind/design-kit/tokens.css"` 引入，不要在 global.css 里重写这些值
+  （2026-09-14 收口；`public/fonts/` 也是由 design-kit 同步生成、已 gitignore）
 - src/worker.ts — `/live2d/*` 防盗链 + moc3 返回预压缩 `.br` + 设缓存头（详见 docs/site-features.md 第 8 节）
 - scripts/precompress-live2d.mjs — 构建后置步骤（`postbuild`），把 moc3 预压成 `.br`
 
