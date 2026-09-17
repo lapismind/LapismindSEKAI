@@ -10,7 +10,7 @@ import PublicArea from '../components/PublicArea.vue'
 import GameHelp from '../components/GameHelp.vue'
 import GameChatPanel from '../components/GameChatPanel.vue'
 import SpellCard from '../components/SpellCard.vue'
-import { avatarUrl } from '../game/avatars'
+import { avatarChoices, avatarUrl } from '../game/avatars'
 import { SPELLS } from '../core/rules'
 import { formatStory } from '../core/storyPresentation'
 import {
@@ -18,7 +18,7 @@ import {
   copyToClipboard,
   generateRoomCode,
 } from '@lapismind/lobby-kit'
-import { AuthBadge, ConnectionBanner } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ConnectionBanner, ProfileEditor } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,6 +121,25 @@ function onGameOverKeydown(event) {
   }
 }
 
+const showProfile = ref(false)
+const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
+
+function openProfile() {
+  profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
+  showProfile.value = true
+}
+
+/** 昵称/头像要重连才会同步到服务端（与本文件 onIdentityChange 同一套做法） */
+function saveProfile() {
+  lobby.setNickname(profileDraft.value.nickname)
+  lobby.setAvatar(profileDraft.value.avatarId)
+  showProfile.value = false
+  game.disconnect()
+  game.connect(roomCode.value, lobby.myNickname, lobby.myPlayerId, lobby.myAvatarId)
+  unsubs.forEach(u => u())
+  unsubs = game.hydrate({ onCastResult: () => {}, onRoundEnd: () => {} })
+}
+
 function onIdentityChange(user) {
   const prev = lastIdentityPlayerId
   lobby.syncIdentity(user)
@@ -202,8 +221,17 @@ async function copyInvite() {
             🚪 <span class="hidden sm:inline">退出</span>
           </button>
         </div>
-        <div class="flex items-center">
-          <AuthBadge compact @identity-change="onIdentityChange" />
+        <div class="flex items-center gap-1.5">
+          <!-- 手机上顶栏放不下登录徽章（约 215px，会独占一行），
+               改到「⚙️ 我」弹层里，登录/改名入口不丢失 -->
+          <button
+            type="button"
+            class="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-600 sm:hidden"
+            @click="openProfile"
+          >⚙️ 我</button>
+          <div class="hidden items-center sm:flex">
+            <AuthBadge compact @identity-change="onIdentityChange" />
+          </div>
         </div>
     </header>
 
@@ -506,6 +534,21 @@ async function copyInvite() {
       :max-retry="game.connMaxRetry"
       @retry="game.retryConnection()"
     />
+
+    <!-- 我的资料（含登录入口；手机上顶栏只留这个入口） -->
+    <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-brand-950/25 p-4">
+      <div class="w-full max-w-sm rounded-2xl border border-brand-200 bg-white p-6">
+        <h2 class="mb-4 text-lg font-bold text-ink">⚙️ 我的资料</h2>
+        <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" />
+        <div class="mt-4 border-t border-line pt-4">
+          <AuthBadge compact @identity-change="onIdentityChange" />
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button type="button" class="flex-1 rounded-lg border border-brand-200 bg-white py-2.5 text-sm font-bold text-brand-600" @click="showProfile = false">取消</button>
+          <button type="button" class="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold text-white hover:bg-brand-500" @click="saveProfile">保存</button>
+        </div>
+      </div>
+    </div>
 
     <GameHelp :open="helpOpen" @close="helpOpen = false" />
 

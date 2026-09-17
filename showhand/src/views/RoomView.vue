@@ -321,7 +321,11 @@ function seatHand(playerId) {
         >
           🏆 整场结束
         </span>
-        <AuthBadge compact @identity-change="onIdentityChange" />
+        <!-- 手机上顶栏放不下登录徽章（约 215px，会独占一行把顶栏撑到 3 行），
+             改到「⚙️ 我」的资料弹层里，入口不丢失 -->
+        <div class="hidden items-center sm:flex">
+          <AuthBadge compact @identity-change="onIdentityChange" />
+        </div>
       </div>
     </header>
 
@@ -333,6 +337,10 @@ function seatHand(playerId) {
           v-model="profileDraft"
           :avatar-choices="avatarChoices"
         />
+
+        <div class="mt-4 border-t border-[#E6E1F0] pt-4">
+          <AuthBadge compact @identity-change="onIdentityChange" />
+        </div>
         <div class="mt-6 flex gap-2">
           <button class="flex-1 rounded-lg bg-brand-100 hover:bg-brand-200 py-2.5 text-sm font-bold" @click="showProfile = false">取消</button>
           <button class="flex-1 rounded-lg bg-brand-600 py-2.5 text-sm font-bold hover:bg-brand-500" @click="saveProfile">保存</button>

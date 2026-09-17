@@ -4,8 +4,8 @@ import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
 import { AI_MODE_ENABLED } from '../core/features'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
-import { AuthBadge, ConnectionBanner } from '@lapismind/lobby-kit/vue'
-import { avatarUrl } from '../game/avatars'
+import { AuthBadge, ConnectionBanner, ProfileEditor } from '@lapismind/lobby-kit/vue'
+import { avatarChoices, avatarUrl } from '../game/avatars'
 import winGif from '../assets/win.gif'
 import GameBoard from '../components/GameBoard.vue'
 import DrawerPanel from '../components/DrawerPanel.vue'
@@ -52,6 +52,22 @@ onBeforeUnmount(() => {
 })
 
 // 身份变化（游客在房间内登录/注册升级）：同步大厅后以新身份重连
+const showProfile = ref(false)
+const profileDraft = ref({ nickname: lobby.myNickname, avatarId: lobby.myAvatarId })
+
+function openProfile() {
+  profileDraft.value = { nickname: lobby.myNickname, avatarId: lobby.myAvatarId }
+  showProfile.value = true
+}
+
+/** 昵称/头像要重连才会同步到服务端（与本文件 onIdentityChange 同一套做法） */
+function saveProfile() {
+  lobby.setNickname(profileDraft.value.nickname)
+  lobby.setAvatar(profileDraft.value.avatarId)
+  showProfile.value = false
+  if (game.inRoom) game.reconnect(game.roomId, lobby.myNickname, game.myPlayerId, lobby.myAvatarId)
+}
+
 function onIdentityChange(user) {
   const prev = lastIdentityPlayerId
   lobby.syncIdentity(user)
@@ -202,8 +218,17 @@ const hasApplied = computed(() =>
             离开
           </button>
         </div>
-        <div class="flex items-center">
-          <AuthBadge dark compact @identity-change="onIdentityChange" />
+        <div class="flex items-center gap-1.5">
+          <!-- 手机上顶栏放不下登录徽章（约 215px，会独占一行），
+               改到「⚙️ 我」弹层里，登录/改名入口不丢失 -->
+          <button
+            type="button"
+            class="rounded-lg border border-line px-3 py-1 text-xs text-ink-soft transition hover:bg-raised sm:hidden"
+            @click="openProfile"
+          >⚙️ 我</button>
+          <div class="hidden items-center sm:flex">
+            <AuthBadge dark compact @identity-change="onIdentityChange" />
+          </div>
         </div>
     </header>
 
@@ -476,6 +501,21 @@ const hasApplied = computed(() =>
       @note="game.reviewNote"
       @ai-hint="aiHint"
     />
+
+    <!-- 我的资料（含登录入口；手机上顶栏只留这个入口） -->
+    <div v-if="showProfile" class="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
+      <div class="w-full max-w-sm rounded-2xl border border-line bg-surface-solid p-6">
+        <h2 class="mb-4 text-lg font-bold text-ink">⚙️ 我的资料</h2>
+        <ProfileEditor v-model="profileDraft" :avatar-choices="avatarChoices" dark />
+        <div class="mt-4 border-t border-line pt-4">
+          <AuthBadge dark compact @identity-change="onIdentityChange" />
+        </div>
+        <div class="mt-4 flex gap-2">
+          <button type="button" class="flex-1 rounded-lg border border-line py-2.5 text-sm font-bold text-ink-soft transition hover:bg-raised" @click="showProfile = false">取消</button>
+          <button type="button" class="flex-1 rounded-lg bg-primary py-2.5 text-sm font-bold text-on-accent" @click="saveProfile">保存</button>
+        </div>
+      </div>
+    </div>
 
     <!-- 连接中断/已断开：掉线必须说出来，否则玩家会以为只是别人慢 -->
     <ConnectionBanner
