@@ -2,8 +2,8 @@
 title: '从零到一：我的第一个上线作品「真冬的海龟汤」'
 description: '海龟汤游戏的开发与上线记录：从想法到 Cloudflare Workers 免费部署，第一个真正跑在公网上的作品。'
 pubDate: 'Aug 14 2026'
-heroImage: '../../assets/covers/turtle-soup-cover.png'
-heroImageAlt: '真冬的海龟汤联机游戏界面'
+heroImage: '../../assets/covers/turtle-soup-title.png'
+heroImageAlt: '「真冬的海龟汤」游戏标题卡，深海蓝底上一只海龟'
 ---
 
 ## 为什么做海龟汤

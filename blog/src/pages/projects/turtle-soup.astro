@@ -4,6 +4,7 @@ import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import SoupLobby from '../../assets/soup-lobby.png';
+import TurtleSoupCover from '../../assets/covers/turtle-soup-cover.png';
 import { SITE_TITLE } from '../../consts';
 import { games } from '../../data/projects';
 
@@ -53,6 +54,23 @@ const features = [
 				border-radius: var(--radius-lg);
 				box-shadow: var(--shadow-md);
 				margin-bottom: 2.2rem;
+			}
+			.shot {
+				margin: 1.9rem 0 0;
+			}
+			.shot :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+			}
+			.shot figcaption {
+				margin-top: 0.7rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+				text-align: center;
 			}
 			.links {
 				display: flex;
@@ -105,7 +123,7 @@ const features = [
 			</header>
 
 			<div class="hero-img reveal">
-				<Image src={SoupLobby} alt={`${name} 大厅截图`} />
+				<Image src={TurtleSoupCover} alt={`${name} 封面`} />
 			</div>
 
 			<div class="links reveal">
@@ -126,6 +144,10 @@ const features = [
 			<section class="reveal">
 				<h2>项目简介</h2>
 				<p>{description}</p>
+				<figure class="shot">
+					<Image src={SoupLobby} alt={`${name} 大厅实机截图`} />
+					<figcaption>实机画面：大厅与头像选择</figcaption>
+				</figure>
 			</section>
 
 			<section class="reveal">
