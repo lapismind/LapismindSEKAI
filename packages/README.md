@@ -95,14 +95,41 @@ wsClient.connect({ roomId, nickname, playerId, avatarId, url })
 // url 缺省时自动拼同源 /ws?roomId=..&nickname=..&playerId=..&avatarId=..
 // url 只用于自定义连接地址（如测试）
 
-wsClient.send(type, data)         // 封包发送，未连接时丢弃
+wsClient.send(type, data)         // 封包发送；未连接时返回 false 并发 _send_failed
 wsClient.on(type, handler)        // 订阅，返回取消订阅函数
 wsClient.disconnect()             // 主动断开，不再重连
-wsClient.connected                // getter，连接状态
+wsClient.retry()                  // 手动重连（重试耗尽后唯一出路）；无会话可恢复时返回 false
+wsClient.connected                // getter，是否已连接
+wsClient.status                   // getter，见下表
+wsClient.retryCount / maxRetry    // getter，用于显示"第 N / M 次"
 ```
 
 - 收到消息自动按信封校验，非法消息丢弃不触发 handler
 - 断线自动重连（指数退避，最多 maxRetry=5 次，上限 10s），重连后自动恢复原会话参数
+  （含自定义 `url`——早期版本重连时会退回按 location 拼 URL）
+
+### 连接状态与事件
+
+**「放弃重连」必须是明确状态，不能是什么都不做。** 早期版本在重试耗尽时直接 return，
+客户端永远停在"连接中…"，界面上还留着最后一个画面——玩家以为只是别人慢，实际这局已经废了。
+
+| `status` | 含义 |
+|---|---|
+| `idle` | 未连接，或已主动 `disconnect()` |
+| `connecting` | 首次连接中 |
+| `open` | 已连接 |
+| `reconnecting` | 断线重连中（带 `attempt` / `nextDelayMs`） |
+| `offline` | **重试耗尽，已放弃**（带 `attempt` / `maxRetry`）→ UI 必须提示并给重连入口 |
+
+| 事件 | 时机 |
+|---|---|
+| `_open` / `_close` | 连接建立 / 每次关闭 |
+| `_status` | 状态变化（payload：`status` / `attempt` / `maxRetry` / 可选 `nextDelayMs`） |
+| `_send_failed` | 消息因未连接或发送异常而没发出去（payload：`type`）——调用方应告知玩家，否则玩家点了按钮却什么都没发生，只会以为游戏卡了 |
+
+配套 UI 组件：`@lapismind/lobby-kit/vue` 的 **`ConnectionBanner`**（`status` / `attempt` / `maxRetry` 三个 prop，
+`retry` 事件）。接它就有两档表现：重连中=顶部细条不挡操作，已断开=居中卡片挡住界面并给出重连按钮
+（此时点任何按钮都发不出去，让人继续点只会加深"游戏卡了"的误解）。
 
 ### 测试
 

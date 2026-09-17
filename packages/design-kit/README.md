@@ -48,6 +48,10 @@ npm install @lapismind/design-kit@file:../packages/design-kit
 | 品牌装饰/光晕 | `--primary-brand` | `oklch(0.654 0.1 283)` | `#8888CC` |
 | 浅色填充块 | `--primary-soft` / `--primary-ghost` | `oklch(0.93 0.03 283)` / `oklch(0.965 0.02 283)` | `#E4E6FC` / `#F1F2FF` |
 | 品牌渐变 | `--gradient` | `linear-gradient(120deg, 紫 → 粉紫)` | — |
+| 危险/错误 | `--danger` / `--danger-soft` / `--danger-line` | `oklch(0.52 0.19 27)` / `oklch(0.96 0.025 27)` / `oklch(0.86 0.055 27)` | `#B0311F` 系 |
+
+> **危险色为什么不跟 `--hue-accent` 走**：出错在任何色相下都该是红，跟着主色变会失去警示含义。
+> 加它之前三个游戏里散着 8 种不同的红（`red-300/400/500/600/900`），join 卡片与提示条的颜色因此各不相同。
 
 > **页面底为什么是"极浅冷调白"而不是明显的香芋紫**：`--hue-bg = hue_accent - 34°`，从紫（283）往冷的方向走了 34 度落进蓝区。这是本站的既有观感（博客就是这个底色），香芋紫的存在感由品牌色、渐变与卡片承担，页面底只负责"干净"。调这个偏移量能整体改冷暖，但会同时影响博客与所有游戏。
 
@@ -68,6 +72,7 @@ Tailwind 工具类档位（`theme.css`）：`brand-50 … brand-950`，其中 `b
 | 压在亮色芯片上的文字 | `text-on-accent` | `--on-accent` |
 | 1px 描边 | `border-line` / `border-line-strong` | `--line` / `--line-strong` |
 | 中性（非品牌）按钮 | `bg-neutral` / `hover:bg-neutral-hover` | `--btn-neutral` / `--btn-neutral-hover` |
+| 危险/错误 | `text-danger` / `bg-danger-soft` / `border-danger-line` | `--danger` / `--danger-soft` / `--danger-line` |
 
 悬停变体与 `/NN` 透明度修饰符都能用（`hover:bg-surface`、`bg-chrome/80`）：`@theme inline` 会把 `var()` 原样保留进产物、不预先求值，所以主题切换对工具类同样生效（2026-09-15 在 Tailwind 4.3.3 上实测确认）。
 

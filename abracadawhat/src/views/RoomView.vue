@@ -18,7 +18,7 @@ import {
   copyToClipboard,
   generateRoomCode,
 } from '@lapismind/lobby-kit'
-import { AuthBadge } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ConnectionBanner } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -498,6 +498,14 @@ async function copyInvite() {
         </div>
       </div>
     </template>
+
+    <!-- 连接中断/已断开：掉线必须说出来，否则玩家会以为只是别人慢 -->
+    <ConnectionBanner
+      :status="game.connStatus"
+      :attempt="game.connAttempt"
+      :max-retry="game.connMaxRetry"
+      @retry="game.retryConnection()"
+    />
 
     <GameHelp :open="helpOpen" @close="helpOpen = false" />
 

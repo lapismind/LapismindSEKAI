@@ -137,6 +137,9 @@ const { overHero = false } = Astro.props;
 	.internal-links :global(a) {
 		position: relative;
 		display: inline-block;
+		/* 标签绝不能断行：flex 在窄屏会把容器挤到标签宽度以下，
+		   一旦允许换行就会变成"首/页"竖排并顶出头部（2026-09-17 修） */
+		white-space: nowrap;
 		padding: 0.5em 0.8em;
 		text-decoration: none;
 		color: var(--ink);
@@ -234,18 +237,29 @@ const { overHero = false } = Astro.props;
 			gap: 0;
 		}
 	}
-	@media (max-width: 360px) {
+	/* 手机上隐藏 logo：.brand 与「首页」链接指向同一个地址，
+	   隐藏它不损失任何导航能力，却能把 30px 还给四个导航项
+	   （这正是 360px 此前正常、390/320 却挤压换行的原因）。 */
+	@media (max-width: 480px) {
 		.brand {
 			display: none;
 		}
 		nav {
-			gap: 0.35rem;
+			gap: 0.5rem;
 		}
 		.internal-links {
 			margin-right: auto;
 		}
 		.internal-links :global(a) {
-			padding-inline: 0.65em;
+			padding-inline: 0.7em;
+		}
+	}
+	@media (max-width: 360px) {
+		nav {
+			gap: 0.35rem;
+		}
+		.internal-links :global(a) {
+			padding-inline: 0.6em;
 		}
 	}
 </style>

@@ -52,6 +52,9 @@ const REQUIRED_TOKENS = [
   '--dur-base',
   '--dur-slow',
   '--stagger',
+  '--danger',
+  '--danger-soft',
+  '--danger-line',
 ]
 for (const token of REQUIRED_TOKENS) {
   assert.ok(tokens.includes(`${token}:`), `tokens.css 缺少必需令牌 ${token}`)

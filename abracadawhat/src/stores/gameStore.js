@@ -25,6 +25,11 @@ export const useGameStore = defineStore('game', () => {
   // 断线时 ws-client 会静默重试（最多 5 次）后彻底放弃，此前界面无从得知，
   // 玩家看到的是"点了没反应"的冻结桌面——聊天面板的"已连接"字样也曾是写死的。
   const connected = ref(false)
+  // 连接状态机（ws-client 的 _status）。只有 connected 布尔值不够：
+  // 重试耗尽后它一直是 false，界面上却没有任何解释，玩家会以为只是别人慢。
+  const connStatus = ref('idle')
+  const connAttempt = ref(0)
+  const connMaxRetry = ref(wsClient.maxRetry ?? 5)
   // 施法提交锁：发出 cast 后立刻禁用施法按钮，收到 cast_result 或超时后释放，
   // 防止手机/手快连点把同一张牌发出去两次（第二次必然判“猜错”自伤）。
   const castLocked = ref(false)
@@ -67,6 +72,8 @@ export const useGameStore = defineStore('game', () => {
     releaseCastLock()
     wsClient.disconnect()
     connected.value = false
+    connStatus.value = 'idle'
+    connAttempt.value = 0
     inRoom.value = false
   }
 
@@ -93,6 +100,11 @@ export const useGameStore = defineStore('game', () => {
   function startRound() {
     clearNewMatchTransientState()
     wsClient.send(Msg.SEND_START_ROUND, {})
+  }
+
+  /** 重试耗尽后玩家点"重新连接" */
+  function retryConnection() {
+    return wsClient.retry()
   }
 
   function cast(spellId) {
@@ -171,6 +183,17 @@ export const useGameStore = defineStore('game', () => {
     const newUnsubs = [
       wsClient.on('_open', () => { connected.value = true }),
       wsClient.on('_close', () => { connected.value = false }),
+      wsClient.on('_status', (st) => {
+        connStatus.value = st.status
+        connAttempt.value = st.attempt ?? 0
+        connMaxRetry.value = st.maxRetry ?? connMaxRetry.value
+      }),
+      wsClient.on('_send_failed', () => {
+        // 操作没发出去就要说，否则玩家点了按钮什么都没发生，只会以为游戏卡了
+        error.value = '网络未连接，这一步没有发出去'
+        if (errorClearTimer) clearTimeout(errorClearTimer)
+        errorClearTimer = setTimeout(() => { error.value = null; errorClearTimer = null }, 5000)
+      }),
       wsClient.on(Msg.RCV_ROOM_STATE, (data) => {
         roomState.value = data
         phase.value = data.phase
@@ -300,6 +323,7 @@ export const useGameStore = defineStore('game', () => {
     myHandSize, mySecrets,
     lastCastResult, roundEndSummary, roundScoreDeltas, lastGameOver, gameOverOpen, matchReportStatus, newAchievements,
     error, myPlayerId, chatMessages, chatMessageVersion, castLocked, declared, connected,
+    connStatus, connAttempt, connMaxRetry, retryConnection,
     sendChat, sendEmoji,
     connect, disconnect, leaveRoom,
     startRound, cast, endTurn, nextRound, rematch,

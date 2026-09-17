@@ -30,6 +30,11 @@ export const useGameStore = defineStore('game', () => {
   const winnerId = ref(null)
   const revealed = ref(false)
   const error = ref(null)
+  // 连接状态机（ws-client 的 _status）。此前这个项目**完全没有订阅 _close**，
+  // 掉线后界面停在最后一个画面、且重试耗尽后静默放弃 —— 玩家只会以为别人慢。
+  const connStatus = ref('idle')
+  const connAttempt = ref(0)
+  const connMaxRetry = ref(wsClient.maxRetry ?? 5)
   const amI = ref({ isHost: false, isModerator: false })
   // —— 揭底后的投票 ——
   // 服务端只把"我自己的名单"下发给我；appleCounts 在投票结束前是 null，
@@ -102,6 +107,8 @@ export const useGameStore = defineStore('game', () => {
 
   function disconnect() {
     wsClient.disconnect()
+    connStatus.value = 'idle'
+    connAttempt.value = 0
     inRoom.value = false
     roomId.value = null
     myPlayerId.value = null
@@ -203,9 +210,12 @@ export const useGameStore = defineStore('game', () => {
     voters.value = s.voters ?? 0
   }
 
+  let errorClearTimer = null
   function setError(msg) {
     error.value = msg
-    setTimeout(() => (error.value = null), 4000)
+    // 连续报错时先清掉旧定时器，否则前一个会把刚设的新错误提前清掉
+    if (errorClearTimer) clearTimeout(errorClearTimer)
+    errorClearTimer = setTimeout(() => { error.value = null; errorClearTimer = null }, 4000)
   }
 
   function bindServer(handlers = {}) {
@@ -217,8 +227,22 @@ export const useGameStore = defineStore('game', () => {
       wsClient.on(Msg.RCV_MODERATOR_QUESTION, (q) => handlers.onModeratorQuestion?.(q)),
       wsClient.on(Msg.RCV_GUESS_PROPOSED, (g) => handlers.onGuessProposed?.(g)),
       wsClient.on(Msg.RCV_ERROR, (e) => setError(e.message ?? '未知错误')),
+      wsClient.on('_status', (st) => {
+        connStatus.value = st.status
+        connAttempt.value = st.attempt ?? 0
+        connMaxRetry.value = st.maxRetry ?? connMaxRetry.value
+      }),
+      wsClient.on('_send_failed', () => {
+        // 操作没发出去就要说，否则玩家点了按钮什么都没发生，只会以为游戏卡了
+        setError('网络未连接，这一步没有发出去')
+      }),
     ]
     return () => offs.forEach((off) => off())
+  }
+
+  /** 重试耗尽后玩家点"重新连接" */
+  function retryConnection() {
+    return wsClient.retry()
   }
 
   function onConnected(handler) {
@@ -246,6 +270,10 @@ export const useGameStore = defineStore('game', () => {
     winnerId,
     revealed,
     error,
+    connStatus,
+    connAttempt,
+    connMaxRetry,
+    retryConnection,
     amI,
     // 投票（Phase 2 服务端下发，Phase 3 面板消费）——漏导出会表现为
     // "面板渲染到一半整个消失"，而构建和单元测试都不会报错

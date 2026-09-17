@@ -9,10 +9,11 @@ import GameHelp from '../components/GameHelp.vue'
 import Card from '../components/Card.vue'
 import PokerTable from '../components/PokerTable.vue'
 import ChipIcon from '../components/ChipIcon.vue'
+import { bestFive } from '../core/poker'
 import { avatarUrl } from '../game/avatars'
 import { avatarChoices } from '../game/avatars'
 import { buildInviteUrl, copyToClipboard } from '@lapismind/lobby-kit'
-import { AuthBadge, ProfileEditor } from '@lapismind/lobby-kit/vue'
+import { AuthBadge, ProfileEditor, ConnectionBanner } from '@lapismind/lobby-kit/vue'
 
 const route = useRoute()
 const game = useGameStore()
@@ -89,10 +90,11 @@ function updateStageScale() {
   const reservedH = window.innerWidth < 640 ? 330 : 250
   const availH = Math.max(window.innerHeight - reservedH, 200)
 
-  // 竖屏/窄屏换成更方的桌面，把高度用起来
+  // 竖屏/窄屏换竖版桌面。横版 3:2 在手机上由宽度卡死缩放，
+  // 高度只用掉一半（382×312 放在 514 里），竖版能把可用高度真正用起来。
   if (availW / availH < 1.15) {
-    stageW.value = 1100
-    stageH.value = 900
+    stageW.value = 950
+    stageH.value = 1150
   } else {
     stageW.value = 1350
     stageH.value = 900
@@ -115,6 +117,25 @@ const myBet = computed(() => me.value?.bet ?? 0)
 const myChips = computed(() => me.value?.chips ?? 0)
 // 闷牌轮（本局第一次下注）：闷牌者按下注额半价支付
 const isBlindRound = computed(() => game.roomState?.stage === 'blind')
+
+// 我当前的牌型。原本客户端完全没用上 core/poker.js ——
+// 新手打完五张都不知道自己是两对还是三条，只能自己心算。
+// 注意闷牌轮：没看的那张是占位符（rank 0、无花色），拿它去算会得到垃圾牌型，
+// 所以先按 concealed 过滤掉，并明确告诉玩家"看牌后才显示"。
+const myKnownCards = computed(() =>
+  (game.myHand ?? []).filter((c) => !c.concealed && c.rank > 0),
+)
+const myHandLabel = computed(() => {
+  if (game.myRole !== 'player') return ''
+  const cards = game.myHand ?? []
+  if (!cards.length) return ''
+  if (cards.some((c) => c.concealed)) return ''
+  if (myKnownCards.value.length < 2) return ''
+  return bestFive(myKnownCards.value)?.name ?? ''
+})
+const myHandPending = computed(() =>
+  game.myRole === 'player' && (game.myHand ?? []).some((c) => c.concealed),
+)
 const myBlind = computed(() => me.value?.blind === true)
 
 onMounted(() => {
@@ -232,13 +253,15 @@ function seatHand(playerId) {
         >
           {{ copied ? '✓ 已复制' : '🔗 邀请' }}
         </button>
-        <span class="whitespace-nowrap rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-700">
+        <!-- 手机上隐藏：模式在房间设置/规则里可见，这里省下的宽度让"第 N 局"留在第一行 -->
+        <span class="hidden whitespace-nowrap rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-700 sm:inline">
           {{ game.roomState?.config.mode === 'seven' ? '七张' : '五张' }}
         </span>
         <span class="font-num whitespace-nowrap rounded-full bg-brand-100 px-2.5 py-0.5 text-xs text-brand-700">
           第 {{ game.roomState?.round ?? 0 }} / {{ game.roomState?.config.rounds ?? 10 }} 局
         </span>
-        <span v-if="isBlindRound" class="whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+        <!-- 同上：闷牌状态在下注面板与席位的"闷"标记上都能看到 -->
+        <span v-if="isBlindRound" class="hidden whitespace-nowrap rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700 sm:inline">
           闷牌轮
         </span>
       </div>
@@ -266,7 +289,7 @@ function seatHand(playerId) {
           class="whitespace-nowrap rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 transition hover:bg-brand-50"
           @click="showConfig = true"
         >
-          房间设置
+          <span class="hidden sm:inline">房间设置</span><span class="sm:hidden">设置</span>
         </button>
         <button
           v-if="isHost && game.phase === 'waiting'"
@@ -274,7 +297,7 @@ function seatHand(playerId) {
           class="whitespace-nowrap rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-brand-500"
           @click="nextHand"
         >
-          开始游戏
+          <span class="hidden sm:inline">开始游戏</span><span class="sm:hidden">开始</span>
         </button>
         <button
           v-else-if="isHost && game.phase === 'settled' && !matchFinished"
@@ -442,9 +465,22 @@ function seatHand(playerId) {
           <p class="mt-1 text-xs text-muted">分享链接邀请好友加入</p>
         </div>
 
-        <!-- 玩家下注 -->
+        <!-- 玩家下注（含当前牌型提示） -->
+        <template v-else-if="game.myRole === 'player' && game.phase === 'playing'">
+          <div
+            v-if="myHandLabel || myHandPending"
+            class="mb-2 rounded-xl border border-brand-200 bg-white/95 px-3 py-2 text-center text-xs shadow-md"
+          >
+            <template v-if="myHandLabel">
+              <span class="text-[#8A8299]">当前牌型</span>
+              <span class="ml-1.5 font-bold text-brand-700">{{ myHandLabel }}</span>
+              <span v-if="myKnownCards.length < 5" class="ml-1 text-[#A29BB5]">
+                （已有 {{ myKnownCards.length }} 张）
+              </span>
+            </template>
+            <span v-else class="text-[#8A8299]">闷牌中 · 看牌后显示牌型</span>
+          </div>
         <BetPanel
-          v-else-if="game.myRole === 'player' && game.phase === 'playing'"
           :current-bet="game.roomState?.currentBet ?? 0"
           :my-bet="myBet"
           :my-chips="myChips"
@@ -455,6 +491,7 @@ function seatHand(playerId) {
           @bet="doBet"
           @look="game.look()"
         />
+        </template>
 
         <!-- 观众提示 -->
         <div v-else-if="game.myRole === 'spectator' && game.phase === 'playing'" class="rounded-2xl border border-brand-200 bg-white/95 p-4 text-center shadow-lg">
@@ -468,6 +505,14 @@ function seatHand(playerId) {
         </div>
       </div>
     </main>
+
+    <!-- 连接中断/已断开：掉线必须说出来，否则玩家会以为只是别人慢 -->
+    <ConnectionBanner
+      :status="game.connStatus"
+      :attempt="game.connAttempt"
+      :max-retry="game.connMaxRetry"
+      @retry="game.retryConnection()"
+    />
 
     <!-- 规则说明 -->
     <GameHelp

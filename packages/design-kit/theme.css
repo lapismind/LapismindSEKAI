@@ -66,4 +66,9 @@
   /* 中性（非品牌）按钮 */
   --color-neutral: var(--btn-neutral);
   --color-neutral-hover: var(--btn-neutral-hover);
+
+  /* 危险/错误：text-danger / bg-danger-soft / border-danger-line */
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-line: var(--danger-line);
 }

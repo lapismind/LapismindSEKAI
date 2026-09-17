@@ -20,6 +20,12 @@ export const useGameStore = defineStore('game', () => {
   const showdown = ref(null) // 最近一次摊牌
   const lastGameOver = ref(null)
   const error = ref(null)
+  // 连接状态（来自 ws-client 的 _status）。掉线必须能显示出来：
+  // 重试耗尽后服务端不再有任何动作，界面却还停在最后一个画面，
+  // 玩家会以为"别人慢"，实际这局对他已经废了。
+  const connStatus = ref('idle')
+  const connAttempt = ref(0)
+  const connMaxRetry = ref(wsClient.maxRetry ?? 5)
   // 下注提交锁：发出 bet 后立刻禁用操作，收到 bet_result / turn_to / error 后释放。
   // 加注和全下是不可逆的代价性动作，手快连点两次会重复提交同一笔下注。
   const betLocked = ref(false)
@@ -82,6 +88,8 @@ export const useGameStore = defineStore('game', () => {
     previousUnsubs = []
     disconnect()
     roomId.value = null
+    connStatus.value = 'idle'
+    connAttempt.value = 0
     phase.value = 'waiting'
     roomState.value = null
     myHand.value = []
@@ -117,6 +125,11 @@ export const useGameStore = defineStore('game', () => {
   function rematch() {
     clearMatchTransients()
     wsClient.send(Msg.SEND_REMATCH, {})
+  }
+
+  /** 重试耗尽后玩家点"重新连接" */
+  function retryConnection() {
+    return wsClient.retry()
   }
 
   function toSpectator() {
@@ -184,6 +197,18 @@ export const useGameStore = defineStore('game', () => {
           errorClearTimer = null
         }, 5000)
       }),
+      wsClient.on('_status', (s) => {
+        connStatus.value = s.status
+        connAttempt.value = s.attempt ?? 0
+        connMaxRetry.value = s.maxRetry ?? connMaxRetry.value
+      }),
+      wsClient.on('_send_failed', (d) => {
+        // 操作没发出去就要说，否则玩家点了按钮什么都没发生，只会以为游戏卡了
+        error.value = '网络未连接，这一步没有发出去'
+        if (errorClearTimer) clearTimeout(errorClearTimer)
+        errorClearTimer = setTimeout(() => { error.value = null; errorClearTimer = null }, 5000)
+        handlers.onSendFailed?.(d)
+      }),
       wsClient.on('_open', () => handlers.onOpen?.()),
     ]
     previousUnsubs = newUnsubs
@@ -206,6 +231,9 @@ export const useGameStore = defineStore('game', () => {
     lastGameOver,
     error,
     betLocked,
+    connStatus,
+    connAttempt,
+    connMaxRetry,
     myPlayerId,
     connect,
     disconnect,
@@ -215,6 +243,7 @@ export const useGameStore = defineStore('game', () => {
     look,
     startGame,
     rematch,
+    retryConnection,
     toSpectator,
     hydrate,
     clearShowdown,
