@@ -179,3 +179,17 @@
 - 改法：转文件 + 改 `model.model3.json` 里 `FileReferences.Texture` 的文件名（一处），运行时按 JSON 取图，浏览器解 WebP 无感。本地实测模型渲染正常。
 - 验收：转完立刻用 numpy 逐位比对原 PNG 与解码后的 WebP；上线后再用浏览器截图确认模型不是空白。
 
+## 2026-09-19（Projects 板块 /works/）
+
+### 29. 新造的类名撞上 `<style is:global>` 的同名类，scoped 隔离救不了
+- 现象：`/works/runestaff/` 的「项目简介」区块塌成 39px，竖版主视图脱离文档流、与后续区块重叠。
+- 根因：`IntroOverlay.astro` 的 `<style is:global>` 定义了全局 `.intro { position: fixed; inset: 0; ... }`。**该组件只在首页渲染，但 Astro 会把 is:global 样式打进全站共享 CSS，每个页面都生效**。页面里新写的 `.intro` 类名撞车：Astro 的 scoped 属性只让"我的选择器"更准，挡不住"全局同名选择器"也命中同一元素——两边规则合并生效，我没写 `position`，全局的 `position: fixed` 照单全收。
+- 修复：页面本地类改名 `.rs-intro`（已全量排查其他新类名，仅此一个撞名）。
+- 教训：**新建类名前先 grep 全局样式来源**：`src/styles/global.css`、`packages/design-kit/base.css`、所有 `<style is:global>` 块（`grep -rn "is:global" src/`）。本地类带页面/组件前缀（如 `rs-*`、`work-*`）最稳。
+
+### 30. 验证脚本纪律第 4 条：站点开了 `scroll-behavior: smooth`，Playwright 的 scrollTo 全是动画
+- 现象：验收脚本滚动触发 `.reveal`，底部区块始终 `opacity:0`；手动诊断（滚到底、停 1.5s）却能全过——两种滚法结果相反。
+- 根因：`global.css` 给 html 设了 `scroll-behavior: smooth`，`window.scrollTo(0, y)` 变成平滑动画：50ms 一次的连续调用**互相打断**，最后一次 `scrollTo(0,0)` 把还没滚到底的动画直接拽回顶部，底部区块从未进过视口，IntersectionObserver 自然没触发。
+- 修复：脚本一律 `window.scrollTo({ top: y, behavior: 'instant' })`；reveal 检查用 `wait_for_function` 轮询（`.is-visible` 有过渡动画，滚完立刻单次断言会误报）。顺带：图片懒加载会让 `scrollHeight` 增长，滚动步数要每步重读，且等全部图片 `complete` 后再滚一轮。
+- 教训：在"三条纪律"（轮询到条件成立 / data-testid 定位 / 不用 networkidle）之上加第 4 条：**滚动触发型页面的验证脚本必须 instant 滚动**。脚本给出假 FAIL 和假 PASS 一样致命——这次假 FAIL 连着三轮把布局 bug 的发现往后拖。
+

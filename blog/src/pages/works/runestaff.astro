@@ -1,0 +1,303 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import PreviewStaff from '../../assets/works/preview_staff.jpg';
+import ShotSword from '../../assets/works/sword.png';
+import ShotDefend from '../../assets/works/defend.png';
+import ShotAxe from '../../assets/works/axe.png';
+import { SITE_TITLE } from '../../consts';
+import { works } from '../../data/projects';
+
+const project = works.find((p) => p.slug === 'runestaff')!;
+const { name, subtitle, description, tech, links, version, status } = project;
+
+const shots = [
+	{ src: ShotSword, caption: '剑盾形态' },
+	{ src: ShotDefend, caption: '防御中 · 法阵浮现' },
+	{ src: ShotAxe, caption: '斧形态 · 法阵常显' },
+];
+
+const troubleshooting = [
+	['没有任何变化', '检查 REFramework 和 Alternate PAK Folder'],
+	['杖身是默认材质', '贴图没读到，反馈一下'],
+	['防御时法阵不出', '确认 <游戏目录>\\reframework\\autorun\\rune_guard_circle.lua 在。日志：<游戏目录>\\reframework\\data\\rune_guard_circle.log'],
+	['法阵闪烁', '装过 ArmorVariantManager 且配过这把武器的显隐。删掉 reframework\\data\\ArmorVariantManager\\it0900_0021.json'],
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+			.page-head {
+				margin-bottom: 2.2rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
+			}
+			.links {
+				display: flex;
+				gap: 0.8rem;
+				flex-wrap: wrap;
+				margin-bottom: 1.6rem;
+			}
+			h2 {
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
+			}
+			.shots {
+				display: grid;
+				grid-template-columns: repeat(3, 1fr);
+				gap: 1.2rem;
+				align-items: start;
+			}
+			.shots figure {
+				margin: 0;
+			}
+			.shots :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+			}
+			.shots figcaption {
+				margin-top: 0.7rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+				text-align: center;
+			}
+			@media (max-width: 720px) {
+				.shots {
+					grid-template-columns: 1fr;
+				}
+			}
+			.rs-intro {
+				display: flex;
+				gap: 2rem;
+				align-items: flex-start;
+				flex-wrap: wrap;
+			}
+			.rs-intro > p {
+				flex: 1 1 22em;
+				margin: 0;
+			}
+			.portrait {
+				margin: 0;
+				flex: 0 0 auto;
+				width: min(300px, 70vw);
+			}
+			.portrait :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+			}
+			.portrait figcaption {
+				margin-top: 0.7rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+				text-align: center;
+			}
+			.feature-list {
+				padding-left: 1.3em;
+			}
+			.feature-list li {
+				margin-bottom: 0.55em;
+			}
+			.feature-list li::marker {
+				color: var(--primary);
+			}
+			.steps {
+				padding-left: 1.6em;
+			}
+			.steps li {
+				margin-bottom: 0.55em;
+			}
+			.steps li::marker {
+				color: var(--primary);
+				font-weight: 700;
+			}
+			.troubleshoot {
+				width: 100%;
+				border-collapse: collapse;
+				font-size: 0.92rem;
+			}
+			.troubleshoot th,
+			.troubleshoot td {
+				text-align: left;
+				padding: 0.65em 0.9em;
+				border: 1px solid var(--line);
+				vertical-align: top;
+			}
+			.troubleshoot th {
+				background: var(--primary-ghost);
+				color: var(--ink);
+				white-space: nowrap;
+			}
+			.troubleshoot code {
+				font-family: var(--font-mono);
+				font-size: 0.86em;
+				word-break: break-all;
+			}
+			.note {
+				margin-top: 1rem;
+				padding: 0.9rem 1.2rem;
+				border-radius: var(--radius);
+				border: 1px dashed var(--line-strong);
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main" id="main-content" tabindex="-1">
+			<a class="back-link" href="/works/">← 返回 Projects</a>
+			<header class="page-head reveal">
+				<p class="eyebrow">project · {status}</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class={`status-badge status-${status}`}>{version}</span>
+			</header>
+
+			<div class="links reveal">
+				<a class="btn btn-primary" href={links.download} download>
+					下载 {version} <span aria-hidden="true">↓</span>
+				</a>
+				{links.github && (
+					<a class="btn btn-ghost" href={links.github} target="_blank" rel="noopener">
+						GitHub 仓库
+					</a>
+				)}
+			</div>
+
+			<section class="reveal">
+				<h2>实机预览</h2>
+				<div class="shots">
+					{
+						shots.map((s) => (
+							<figure>
+								<Image src={s.src} alt={`${name} ${s.caption}`} />
+								<figcaption>{s.caption}</figcaption>
+							</figure>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<div class="rs-intro">
+					<p>{description}</p>
+					<figure class="portrait">
+						<Image src={PreviewStaff} alt={`${name} 法杖与法阵主视图`} />
+						<figcaption>法杖与法阵 · 主视图</figcaption>
+					</figure>
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>前置与安装</h2>
+				<ul class="feature-list">
+					<li>REFramework——没有它 <code>pak_mods</code> 不加载，mod 无效</li>
+					<li>REFramework → Advanced Options → 打开 <strong>Alternate PAK Folder</strong></li>
+				</ul>
+				<ol class="steps">
+					<li>下载 zip</li>
+					<li>把 zip 拖进 Fluffy Mod Manager</li>
+					<li>启用</li>
+				</ol>
+				<div class="note">
+					不需要「防御时才显示」的话，删掉 <code>rune_guard_circle.lua</code>，法阵就常显。
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>排错</h2>
+				<table class="troubleshoot">
+					<thead>
+						<tr><th>症状</th><th>处理</th></tr>
+					</thead>
+					<tbody>
+						{
+							troubleshooting.map(([sym, fix]) => (
+								<tr>
+									<td>{sym}</td>
+									<td>{fix}</td>
+								</tr>
+							))
+						}
+					</tbody>
+				</table>
+			</section>
+
+			<section class="reveal">
+				<h2>附注</h2>
+				<p>
+					截图中的角色皮肤是 mod「理科魔女 / Witch Shinano」，作者 Fruit milk（
+					<a href="https://space.bilibili.com/2438342" target="_blank" rel="noopener">space.bilibili.com/2438342</a>
+					）。本 mod 不分发它，也不依赖它，法杖配饰的造型参考了那个角色的设计。
+				</p>
+			</section>
+
+			<section class="reveal">
+				<h2>许可</h2>
+				<p>
+					与 Capcom 无关联，《怪物猎人 荒野》及其资产版权归 Capcom。<code>RuneStaff.pak</code>
+					是游戏原有资源的修改产物，请在自己拥有该游戏的机器上使用。内置的
+					<code>rune_guard_circle.lua</code> 为本项目原创，MIT。
+				</p>
+			</section>
+
+			<section class="reveal">
+				<h2>技术构成</h2>
+				<div class="tech-list">
+					{tech.map((t) => <span class="tag">{t}</span>)}
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

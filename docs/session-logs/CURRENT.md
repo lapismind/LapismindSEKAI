@@ -5,101 +5,73 @@
 > 接手时先读本文件即可，不用猜哪个日期文件最新。流程见 `docs/agent/handoff.md`。
 > 两机代号：公司机 = **司机**，家里机 = **家机**。
 
-> 日期：2026-09-17
-> 性质：**进行中** —— 三个游戏的 AI 封面 + 作品集列表页改版
-> 两张封面已接入，出包未完成；**改动只在工作区，尚未部署**
+> 日期：2026-09-19
+> 性质：**没有进行中的任务**（Projects 板块 + 法杖盾斧 mod 已收口、已上线、用户已验证）
+> 上一轮 → [`2026-09-19-Projects板块-法杖盾斧-handoff.md`](./2026-09-19-Projects板块-法杖盾斧-handoff.md)
 
 ## 当前状态
 
-作品集列表页从"一行三个小卡片"改成"整行大图"，每张卡的详情页 hero 换成封面、实机图下移进「项目简介」。
+blog 新增 **Projects 板块**（`/works/`）并已部署：列表页 + 《怪物猎人 荒野》法杖盾斧 mod 详情页
+（`/works/runestaff/`）+ zip 直链下载，条目带 GitHub 地址。
+本轮部署同时把司机机 9-17 的「三游戏 AI 封面改版」带上线：海龟汤/梭哈新封面已生效，
+**出包魔法师列表位仍是占位字块**（它的封面还没做，属预期状态）。
 
-| 游戏 | 封面文件 | 状态 |
+| 站 | 状态 | 备注 |
 |---|---|---|
-| 真冬的海龟汤 | `blog/src/assets/covers/turtle-soup-cover.png` | ✅ 已接入（真冬深夜独坐守一碗汤） |
-| 梭哈 Showhand | `blog/src/assets/covers/showhand-cover.png` | ✅ 已接入（明亮漫画风：瑞希大笑 vs 初音扑克脸 + 三个 Q 版观战头像） |
-| 出包魔法师 | — | ⏸ **未接入**。候选图与提示词归档在 `.planning/2026-09-17-游戏封面/` |
+| blog.qmzhj.top | `b209a105` | 本轮：Projects 板块 + 封面改版上线 |
+| soup / showhand / abracadawhat | — | 本轮未动 |
 
-**旧图没有丢，都改名保留并回指给已上线文章用**（见下"关键决策"）：
+验收：门禁四绿（build / check 0 errors / lint / test）；Playwright 11 项断言 +
+1440/390/360/320 截图人工复核；生产 URL 内容断言与 zip 校验（字节数 + PK 魔数）PASS；
+**用户已在线上自行验证**。家机工作区随本轮收尾提交。
 
-- `covers/turtle-soup-title.png`（原 `turtle-soup-cover.png`，深海蓝标题卡）→ 文章 `turtle-soup-launch.md` 的 hero
-- `covers/showhand-table-shot.jpg`（原 `showhand-cover.jpg`，实机牌桌）→ 文章 `showhand-launch.md` 的 hero
+## 这件事的要点（接手前先看，细节在 handoff 与 lessons）
 
-本轮改动文件：`blog/src/pages/projects/index.astro`（版式 + 封面映射）、`projects/turtle-soup.astro` 与
-`projects/showhand.astro`（hero 换封面 + 实机图进正文）、两篇文章的 `heroImage`、三个封面资源。
+- **页面新造的类名先 grep 全局样式**：`<style is:global>`（如 IntroOverlay 的 `.intro`）全站生效，
+  Astro scoped 隔离挡不住同名类劫持（blog lessons 第 29 条，本轮布局塌过一次）。
+- **验证脚本纪律第 4 条：站点开了 `scroll-behavior: smooth`，Playwright 滚动必须 `behavior: 'instant'`**
+  否则 scrollTo 全是动画、到底之前就被拽回，`.reveal` 假不触发（blog lessons 第 30 条，本轮假 FAIL 三轮）。
+- blog 本地预览端口是 **3000**（astro 配置固定）；家机装依赖要 `npm install-scripts approve esbuild`
+  （allowScripts 已记入 package.json，新机器照做）。
+- Projects 板块加新项目：只改 `src/data/projects.ts` 的 `works` 数组 + 补素材，页面自动长出来。
 
-## 这轮的关键决策与坑（接手前先看）
+## 下一步最该做的两件
 
-- **列表页为什么改成大图**：用户原话——"本来就是没内容才做成小卡片的，能做内容当然内容优先"。
-  小卡片是"没内容"时的妥协，做得出封面就该给封面位置。桌面端容器 1100px，**媒体区实测 1098×618**，
-  手机 **348×196**；判断"这个细节看不看得清"必须按**这个尺寸**看，不要对着原图判断。
-  （我就是先按 350px 卡片算出"三个 Q 版头像只有 26px、表情全丢"，才否错了方向。）
-- **封面按各自原比例铺满整行，不设固定比例**。原因很具体：海龟汤那张标题卡是 2:1，硬套 16:9 会裁掉
-  两侧各 5.5%，正好切破它的装饰边框。代价是三张封面高度不统一——当前两张都是 16:9，看着仍然齐。
-- **改了游戏封面 ≠ 改文章的 hero**。两篇文章都已上线，它们的 hero 就是旧图；直接覆盖会让已发布内容
-  变样。所以旧图 `git mv` 改名保留、文章回指过去，**文章渲染结果一字未变**。
-- **立绘是演出服，客厅/工房里不能用**。用户提出后换成了常服。常服参考图有两个必须明写的坑：
-  ① 是**双臂平举的 T 字模型照**，不写"不要照抄这个姿势"模型会原样搬；
-  ② 是**无表情模型照**，不写"不要照抄这张脸"脸就全是空的。
-- **封面按题材走，不按站的主题色域**。design-kit README 自己就写了"游戏元素本身可以有对比强的深色，
-  受限的是 UI 组件"——封面是内容不是外壳。所以海龟汤是深夜冷调、梭哈是明亮暖调、出包是明亮高饱和，
-  三者并排靠**处理手法一致**（同一档动画赛璐璐）统一，不靠配色统一。
-- **出包那张被否的是观感，不是构图**。第二版"围坐"构图已经对了（近侧背影 + 斜俯视进画的桌面 +
-  对面三张正脸），用户判定"**AI 味过于浓、质量不高**"。归档 README 里写了 AI 味的成因猜测与下版方向。
-- **参考图的水印可以直裁**。`临时资源/常服l2d/` 那批水印画在人物**后面**，露出的部分全落在纯灰背景
-  （恒为 #222222）上；但抗锯齿外晕会留下残影，所以最后没有走"填背景色"，而是**按人物列范围直裁底部
-  69–75px**。人物底部那截腿对模型识别没有影响（用户确认）。
+1. **三张封面的统一视觉复查只做了列表页**（本轮家机看了 `/projects/` 1440 + 390/320，
+   三个**详情页**的大图版式还没按 820/390 复查——司机机 9-17 待办第 1 项的余量）。
+2. **出包封面下一版**：按 `.planning/2026-09-17-游戏封面/` 归档 README 的方向收敛光效/减元素/硬线稿；
+   随后给 `projects/abracadawhat.astro` 补 hero/实机图（遗留清单第 9 项）。
 
-## 下一步最该做的
+## 遗留清单（承接司机机 9-17 轮，均未做，按建议排序）
 
-1. **三张封面接入后的统一视觉复查**（用户已明确要求"视觉检查之后统一一起做"）：桌面 1440 / 平板 820 /
-   手机 390 三档，看列表页与三个详情页；重点看大图版式下封面有没有裁切、文字与封面的呼吸够不够。
-2. **部署博客**。本轮所有改动都还在工作区，`blog.qmzhj.top` 仍是旧版（旧版列表页是三列小卡片）。
-   命令见 `docs/agent/deploy.md`（blog 用 `npx wrangler deploy`）。
-3. **出包封面下一版**：先按归档 README 的建议收敛光效、减元素、硬线稿；若仍"AI 味"重，考虑换掉
-   "惊艳的召唤场面"这个方向本身——戏剧性越强，模型越会往高光效高渲染上跑。
-
-## 遗留清单（承接上轮，均未做，按建议排序）
-
-1. **abracadawhat 的 v2 上报在生产仍未被证实。** 已查清**不是 bug**：`factsVersion: 2` 于 2026-09-07 落地，
-   最后一场比赛是 2026-09-02，v2 这条路从未跑过。生产 `MATCH_REPORT_SECRET` 已配置，8 行全是 v1。
-   v2 载荷与持久化两端各有 17 / 7 项测试覆盖且全绿；**未验证的只有 HTTP 那一跳**。
-   → 下次有人打完一局后，查 `player_match_reports` 有没有行就能定案。
-2. **design-kit 的按钮档位要一个决定**：白字压在 `brand-600` 上是 4.16:1，AA 对正文要求 4.5:1——
-   **所有 `bg-brand-600 text-white` 都不达标**，而 README 把 600 写成"可读性下限"。改 700 是 5.49:1，
-   涉及三个游戏约 18 个按钮。
-3. **重连 / 加入失败 UI 只做了一半**：掉线有提示了，但 **worker 用 HTTP 409/410 拒绝加入**
-   （房间满 / 对局中 / 整场结束）时客户端仍然忽略，表现还是"点了没反应"。
-4. **全仓 `bg-white` → `bg-surface-solid` 清扫**（约 28 处）。浅色主题下零视觉影响，为深色主题铺路。
-5. **abracadawhat 扣牌区可读性**：8 个无标签 emoji 在约 20px 上辨认（`SpellCard.vue:57` 在 `size="sm"` 时刻意隐藏名字）。
+1. **abracadawhat 的 v2 上报在生产仍未被证实**（已查清不是 bug，v2 之路从未跑过）：
+   下次有人完整打一局后，查 `player_match_reports` 有没有行就能定案。
+2. **design-kit 的按钮档位要一个决定**：白字压 `brand-600` 是 4.16:1，AA 要 4.5:1——所有
+   `bg-brand-600 text-white` 不达标；改 700 是 5.49:1，涉及三个游戏约 18 个按钮。
+3. **重连 / 加入失败 UI 只做了一半**：掉线有提示了，但 worker 用 HTTP 409/410 拒绝加入时
+   客户端仍忽略，表现还是"点了没反应"。
+4. **全仓 `bg-white` → `bg-surface-solid` 清扫**（约 28 处，浅色下零视觉影响，为深色主题铺路）。
+5. **abracadawhat 扣牌区可读性**：8 个无标签 emoji 在约 20px 上辨认。
 6. **小型清理**：showhand `RoomView.vue` 的 `v-if="false"`、`GameHelp.vue` 未使用的 `open`、
-   结算弹窗两个同义「关闭」按钮。**`--tap-min` / `--dur-*` / `--ease-soft` 在 showhand 里仍零引用。**
+   结算弹窗两个同义「关闭」按钮；`--tap-min` / `--dur-*` / `--ease-soft` 在 showhand 零引用。
 7. **文档更正**：`docs/agent/deploy.md` 第四节写"三个游戏 `/api/identity` 返回 500"，
-   但**海龟汤没有这个路由**（生产 404）。
-8. **showhand 手机端还有约 140px 空白**（顶栏与牌桌之间）：竖版桌面已把桌面放大 48%，这段空隙还能再给桌面。
-9. **博客详情页缺实机截图**：出包魔法师的详情页 `abracadawhat.astro` **完全没有 hero，也没有任何实机图**
-   （`src/assets/` 下只有文章用的 `intro-magic.webp`）。接入封面时要一并补 hero，实机图需要另截图。
+   但海龟汤没有这个路由（生产 404）。
+8. **showhand 手机端约 140px 空白**（顶栏与牌桌之间）。
+9. **出包详情页缺实机截图**：`abracadawhat.astro` 无 hero 无实机图（接入封面时一并补）。
 
 更早的候选（仍未做）：跨游戏战绩与成就看板（**用户已明确反对**）、
 `playwright-two-player-table.py` 补成能跑完整局、`migrate-hex.mjs` 沉淀成正式工具、首页手机端减法。
 
 ## 环境与权限
 
-- 两台机器 wrangler 均已登录；本地只需 `npx wrangler login`，配置都在 Cloudflare 侧（见 `docs/agent/deploy.md`）。
-- **联机页面验证必须 `npx wrangler dev`**（`vite dev` / `vite preview` 都没有 `/ws`、`/api` 代理）。
-- 海龟汤本地端口用 8790；多开时注意 **workerd 子进程不随父进程退出**，会残留占端口
-  （`taskkill /F /T` 杀 node 包装进程杀不掉它，要按 PID 杀 workerd）。同一端口出现多个监听时，
-  请求会随机落到其一，表现为莫名超时。
-- **别用"按命令行匹配"的方式批量杀进程**：命令里出现的端口号会把你自己的 shell 也匹配进去。
-- **Playwright 读计算色不要假定是 `rgb()`**：Chromium 对 oklch 原样返回，`canvas.fillStyle` 不接受 oklch。
-- **验证脚本三条纪律**：不要固定 `sleep` 等广播（轮询到条件成立）；不要按显示名定位元素
-  （生产有 auth，游客身份会覆盖昵称，用 `data-testid`）；不要用 `networkidle` 判成败。
-- 生产 `/ws` 需要会话，裸 WS 探针连不上；要探就在页面上下文里 `new WebSocket(...)`。
-- 用 `urllib` / `curl` 手查线上资源**必须带浏览器 UA**（否则被 Cloudflare 403）。
-  本机 Git Bash 的 `curl` 另有 TLS 握手失败问题，直接用 Python urllib 更稳。
-- **Python 里写 Windows 路径要注意转义**：`"...\docs\agent..."` 里的 `\a` 是响铃符，
-  要么用正斜杠，要么用 raw string。
-- **Playwright 截长页面前要先滚一遍**：`.reveal` 元素在视口外是 `opacity:0`，直接 `full_page`
-  截图会拍到"空白页"，看起来像布局坏了。
+- 两台机器 wrangler 均已登录；blog 部署 `cd blog && npx wrangler deploy`（游戏侧见 deploy.md）。
+- **联机页面验证必须 `npx wrangler dev`**（`vite dev` / `vite preview` 没有 `/ws`、`/api` 代理）——游戏侧。
+- **Playwright 验证四条纪律**：轮询到条件成立（别 sleep）；`data-testid` 定位（别按显示名）；
+  不用 `networkidle` 判成败；**滚动触发型页面必须 instant 滚动**（见上）。
+- 用 `urllib` / `curl` 手查线上资源**必须带浏览器 UA**（否则 Cloudflare 403）；
+  Git Bash 的 curl 有 TLS 握手问题，直接用 Python urllib。
+- workerd 子进程不随父进程退出，残留按 PID 杀；别按命令行批量杀（会匹配到自己）。
+- 更多：根与 blog 各自的 `docs/lessons-learned.md`。
 
 ## 阻塞项
 

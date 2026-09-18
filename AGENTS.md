@@ -4,10 +4,11 @@
 
 ## 会话启动（必做）
 
-1. 读本文件。
-2. 读 `docs/agent/README.md` —— Agent 规范总入口，按它的索引去读需要的细则。
-3. **接手上一段工作时**，先读 `docs/session-logs/CURRENT.md`（跨设备/跨会话的唯一接力入口）。
-4. 进入某个项目前，读该项目的 `AGENTS.md`。
+1. **先拉远端：`.\scripts\sync.ps1 pull`。** 两台机器共用 main，仓库是唯一接力载具——不 pull 就开工，会拿着过期状态动手（见 `docs/agent/handoff.md` 两条纪律）。
+2. 读本文件。
+3. 读 `docs/agent/README.md` —— Agent 规范总入口，按它的索引去读需要的细则。
+4. **接手上一段工作时**，先读 `docs/session-logs/CURRENT.md`（跨设备/跨会话的唯一接力入口）。
+5. 进入某个项目前，读该项目的 `AGENTS.md`。
 
 ## 会话收尾（离开这台机器前）
 

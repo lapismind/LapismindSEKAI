@@ -1,0 +1,170 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+import { SITE_TITLE, GITHUB_URL } from '../../consts';
+import { works } from '../../data/projects';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`Projects - ${SITE_TITLE}`} description="Lapismind 的软件作品：工具、mod 与开源仓库" />
+		<style>
+			.page-head {
+				margin-bottom: 3rem;
+			}
+			.page-head p.lead {
+				color: var(--muted);
+				font-size: 1.08rem;
+				max-width: 42em;
+				margin: 0;
+			}
+			.work-list {
+				display: flex;
+				flex-direction: column;
+				gap: 1.6rem;
+			}
+			.work-item {
+				padding: 1.7rem 1.9rem;
+				border-radius: var(--radius-lg);
+				border: 1px solid var(--line);
+				background: var(--card-solid);
+				box-shadow: var(--shadow-sm);
+				transition: border-color var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft), transform var(--dur-base) var(--ease-soft);
+			}
+			.work-item:hover {
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-md);
+				transform: translateY(-2px);
+			}
+			.work-head {
+				display: flex;
+				align-items: baseline;
+				gap: 0.7rem;
+				flex-wrap: wrap;
+			}
+			.work-head h2 {
+				margin: 0;
+				font-size: 1.4rem;
+			}
+			.work-head h2 :global(a) {
+				color: inherit;
+				text-decoration: none;
+				transition: color 0.2s ease;
+			}
+			.work-head h2 :global(a:hover) {
+				color: var(--primary);
+			}
+			.work-subtitle {
+				margin: 0.45rem 0 0;
+				font-size: 0.88rem;
+				color: var(--primary);
+				font-family: var(--font-mono);
+			}
+			.work-desc {
+				margin: 0.8rem 0 0;
+				max-width: 68ch;
+				font-size: 0.95rem;
+				color: var(--ink-soft);
+				line-height: 1.8;
+			}
+			.work-foot {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.9rem 1.5rem;
+				flex-wrap: wrap;
+				margin-top: 1.1rem;
+			}
+			.tech {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.45rem;
+			}
+			.work-links {
+				display: flex;
+				align-items: center;
+				gap: 1rem;
+				font-size: 0.88rem;
+				color: var(--muted);
+			}
+			.work-links :global(a) {
+				color: var(--primary);
+				font-weight: 600;
+				text-decoration: none;
+			}
+			.work-links :global(a:hover) {
+				text-decoration: underline;
+			}
+			.work-go {
+				font-size: 0.9rem;
+				white-space: nowrap;
+				transition: transform var(--dur-fast) var(--ease-soft);
+			}
+			.work-item:hover .work-go {
+				transform: translateX(3px);
+			}
+			.more-note {
+				margin-top: 2.5rem;
+				padding: 1.1rem 1.4rem;
+				border-radius: var(--radius);
+				border: 1px dashed var(--line-strong);
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+			.more-note a {
+				font-weight: 600;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container page-main" id="main-content" tabindex="-1">
+			<header class="page-head reveal">
+				<p class="eyebrow">workbench · projects</p>
+				<h1>Projects</h1>
+				<p class="lead">
+					游戏之外的作品：工具、mod 与开源仓库。源码与发布都在 GitHub。
+				</p>
+			</header>
+			<div class="work-list">
+				{
+					works.map((p, i) => (
+						<article class="work-item reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`}>
+							<div class="work-head">
+								<h2><a href={`/works/${p.slug}/`}>{p.name}</a></h2>
+								<span class={`status-badge status-${p.status}`}>
+									{p.version ?? (p.status === 'online' ? 'online' : '开发中')}
+								</span>
+							</div>
+							<p class="work-subtitle">{p.subtitle}</p>
+							<p class="work-desc">{p.description}</p>
+							<div class="work-foot">
+								<div class="tech">
+									{p.tech.map((t) => <span class="tag">{t}</span>)}
+								</div>
+								<div class="work-links">
+									{p.links.github && (
+										<a href={p.links.github} target="_blank" rel="noopener">
+											GitHub
+										</a>
+									)}
+									{p.links.download && <a href={p.links.download}>下载</a>}
+									<a class="work-go" href={`/works/${p.slug}/`}>
+										查看详情 →
+									</a>
+								</div>
+							</div>
+						</article>
+					))
+				}
+			</div>
+			<p class="more-note reveal">
+				更多项目整理中——GitHub 上还有：<a href={GITHUB_URL} target="_blank" rel="noopener">@lapismind</a>
+			</p>
+		</main>
+		<Footer />
+	</body>
+</html>

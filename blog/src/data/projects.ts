@@ -8,7 +8,11 @@ export interface Project {
 	links: {
 		online?: string;
 		github?: string;
+		/** 可下载产物（站内路径，如 /downloads/xxx.zip） */
+		download?: string;
 	};
+	/** 发布版本号（Projects 板块用），显示优先于 status 徽章 */
+	version?: string;
 	featured?: boolean;
 }
 
@@ -54,6 +58,24 @@ export const games: Project[] = [
 			github: 'https://github.com/lapismind/showhand',
 		},
 		featured: true,
+	},
+];
+
+/** Projects 板块：游戏之外的软件作品（工具 / mod / 开源仓库） */
+export const works: Project[] = [
+	{
+		slug: 'runestaff',
+		name: '法杖盾斧',
+		subtitle: '《怪物猎人 荒野》充能斧外观替换：日式魔女法杖 + 时钟法阵',
+		description:
+			'把充能斧「白炽斧耶利米 / 炽光斧耶利米」替换成日式魔女法杖，配时钟法阵特效：剑盾形态防御时法阵浮现，平时隐藏，斧形态常显。内置原创 rune_guard_circle.lua 实现防御联动显隐。',
+		status: 'online',
+		version: 'v1.0',
+		tech: ['REFramework', 'Lua', 'Fluffy Mod Manager'],
+		links: {
+			download: '/downloads/RuneStaff-v1.0.zip',
+			github: 'https://github.com/lapismind/mhwilds-rune-staff-release',
+		},
 	},
 ];
 
