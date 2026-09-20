@@ -12,7 +12,7 @@
 
 ## 当前状态
 
-**本轮**：首页动了两块，均已上线、已做生产验证。
+**本轮（家机）**：首页动了两块，均已上线、已做生产验证。
 
 ### 1. 「精选游戏」→「SEKAI 精选」（跨栏目）
 
@@ -119,7 +119,7 @@
 - **blog 验证不必起 wrangler**：它是纯静态站，本轮改用 `python -m http.server` 指向 `blog/dist` +
   Playwright，比 `npm run dev` / `astro preview` 快得多，也绕开了下面那个 preview 残留的坑。
   联机游戏页面仍必须 `npx wrangler dev`（`vite dev` / `vite preview` 没有 `/ws`、`/api` 代理）。
-- blog 部署：`cd blog && npx wrangler deploy`（本机 wrangler 已登录，本轮实测通过）。
+- blog 部署：`cd blog && npx wrangler deploy`（**家机** wrangler 已登录，本轮实测通过）。
   `npm run build` 会触发 `postbuild` 预压 Live2D moc3；**绕过 build 直接 deploy 会部署上一次的 `dist/`**。
 - **`astro preview` 是常驻守护进程**：`TaskStop` 杀外壳后它仍活着并占着 3000，用 `npx astro preview stop` 停。
 - **Playwright 验证四条纪律**：轮询到条件成立（别 sleep）；`data-testid` 定位（别按显示名）；
