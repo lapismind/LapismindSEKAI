@@ -1,7 +1,9 @@
 ---
+import { Image } from 'astro:assets';
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
+import AbracadawhatCover from '../../assets/covers/abracadawhat-cover.png';
 import { SITE_TITLE } from '../../consts';
 import { games } from '../../data/projects';
 
@@ -95,6 +97,10 @@ const features = [
 				<p class="subtitle">{subtitle}</p>
 				<span class={`status-badge status-${status}`}>{status === 'online' ? 'online' : '开发中'}</span>
 			</header>
+
+			<div class="hero-img reveal">
+				<Image src={AbracadawhatCover} alt={`${name} 封面`} />
+			</div>
 
 			<div class="links reveal">
 				{
