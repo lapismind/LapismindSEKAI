@@ -4,6 +4,7 @@ import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import AbracadawhatCover from '../../assets/covers/abracadawhat-cover.png';
+import AbracaTable from '../../assets/abraca-table.png';
 import { SITE_TITLE } from '../../consts';
 import { games } from '../../data/projects';
 
@@ -53,6 +54,29 @@ const features = [
 				gap: 0.8rem;
 				flex-wrap: wrap;
 				margin-bottom: 1.6rem;
+			}
+			.hero-img {
+				width: 100%;
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-md);
+				margin-bottom: 2.2rem;
+			}
+			.shot {
+				margin: 1.9rem 0 0;
+			}
+			.shot :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+			}
+			.shot figcaption {
+				margin-top: 0.7rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+				text-align: center;
 			}
 			h2 {
 				margin-top: 2.2em;
@@ -120,6 +144,10 @@ const features = [
 			<section class="reveal">
 				<h2>项目简介</h2>
 				<p>{description}</p>
+				<figure class="shot">
+					<Image src={AbracaTable} alt={`${name} 对局实机截图`} />
+					<figcaption>实机画面：对局中的牌桌——你看得到别人的牌，看不到自己的</figcaption>
+				</figure>
 			</section>
 
 			<section class="reveal">
