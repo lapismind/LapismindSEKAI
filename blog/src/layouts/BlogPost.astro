@@ -6,6 +6,7 @@ import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
 import Header from '../components/Header.astro';
 import Comments from '../components/Comments.astro';
+import { SITE_TITLE } from '../consts';
 
 type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
@@ -23,7 +24,8 @@ const ogImageUrl = heroImage
 
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={title} description={description} imageUrl={ogImageUrl} />
+		{/* 标题接站点名后缀，与站内其他页面同形（`关于 - Lapismind SEKAI`） */}
+		<BaseHead title={`${title} - ${SITE_TITLE}`} description={description} imageUrl={ogImageUrl} />
 		<style>
 			.article-head {
 				text-align: center;
