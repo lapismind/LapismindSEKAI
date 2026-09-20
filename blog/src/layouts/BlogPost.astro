@@ -1,5 +1,5 @@
 ---
-import { Image } from 'astro:assets';
+import { Image, getImage } from 'astro:assets';
 import type { CollectionEntry } from 'astro:content';
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
@@ -14,11 +14,16 @@ type Props = CollectionEntry<'blog'>['data'] & {
 const { title, description, pubDate, updatedDate, heroImage, heroImageAlt = '', readingTime } = Astro.props;
 // 评论区路径键：去掉尾斜杠的规范化路径，如 /blog/my-post
 const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+// 分享卡：文章 hero 源图最大 1.5MB PNG，直接当 og:image 太重，先转成 1200 宽的小 jpg。
+// 没配 heroImage 的文章落到 BaseHead 的站点默认卡。
+const ogImageUrl = heroImage
+	? (await getImage({ src: heroImage, format: 'jpg', width: 1200, quality: 82 })).src
+	: undefined;
 ---
 
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={title} description={description} />
+		<BaseHead title={title} description={description} imageUrl={ogImageUrl} />
 		<style>
 			.article-head {
 				text-align: center;

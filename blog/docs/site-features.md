@@ -7,6 +7,15 @@
 - 域名：`blog.qmzhj.top`（Cloudflare Custom Domain）
 - 技术栈：Astro 7（静态输出）+ Tailwind CSS v4 + Cloudflare Workers（纯静态 assets 托管）
 - 定位：个人粉丝向二次元博客 —— "真冬主题的独立游戏作者小屋"（非官方，无直接商业用途）
+- **站名与文案的真源**：站名 `Lapismind SEKAI`、站内描述「可能是一位马批的 SEKAI，有一些作品在这里涌现了。」
+  都在 `src/consts.ts`（`SITE_TITLE` / `SITE_DESCRIPTION`）。改一处喂五处：页面 `<title>`、`og:title`、
+  `meta description` / `og:description`、RSS 频道标题、以及 OGP 分享卡。
+  注意**页头页脚显示的品牌名是写死的**（`Header.astro` 的 `.brand-name`、`Footer.astro` 版权行），不随常量变。
+- **OGP 分享卡**：`og:image` 的兜底是 `src/assets/site/og-card.jpg`（1200×630 jpeg），
+  由 `scripts/gen-og-card.py` 渲染——它读上面两个常量 + `packages/design-kit` 的令牌 + 站内 Atkinson，
+  所以**改站名/描述/品牌色后要重跑该脚本**。文章页的 `og:image` 走 `BlogPost.astro` 的 `getImage()`
+  （把 hero 转成 1200 宽 jpg，避免把 1.5MB 源图发给抓取器）；`BaseHead` 收的是 `imageUrl` 字符串而非
+  `ImageMetadata`，原因见该组件注释。
 - 版权声明：全站涉及的《世界计划 缤纷舞台！feat. 初音未来》角色、曲绘、歌曲版权归 SEGA / Colorful Palette 及相关创作者；素材最初整理自 pjsk.moe 粉丝资源站，已在页脚与播放器内注明。
 
 ## 1. 栏目与页面

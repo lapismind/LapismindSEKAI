@@ -2,13 +2,13 @@
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import { SITE_TITLE } from '../consts';
 ---
 
 <!doctype html>
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={'进入 SEKAI - ' + SITE_TITLE} description="登录或注册账号：GitHub 登录，或用户名密码注册；游客战绩可无缝保留。" />
+		{/* 标题不再接站点名后缀：站点名已经含 SEKAI，接上去会变成「进入 SEKAI - Lapismind SEKAI」 */}
+		<BaseHead title="进入 SEKAI" description="登录或注册账号：GitHub 登录，或用户名密码注册；游客战绩可无缝保留。" />
 		<style>
 			.page-head { margin-bottom: 2.2rem; }
 			.login-intro { margin-bottom: 1.6rem; padding: 1.2rem 1.4rem; }

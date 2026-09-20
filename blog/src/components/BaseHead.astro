@@ -2,8 +2,7 @@
 // Import the global.css file here so that it is included on
 // all pages through the use of the <BaseHead /> component.
 import '../styles/global.css';
-import type { ImageMetadata } from 'astro';
-import FallbackImage from '../assets/soup-lobby.png';
+import DefaultOgImage from '../assets/site/og-card.jpg';
 import { SITE_TITLE } from '../consts';
 import { Font } from 'astro:assets';
 import { ClientRouter } from 'astro:transitions';
@@ -12,12 +11,20 @@ import ConsoleEasterEgg from './ConsoleEasterEgg.astro';
 interface Props {
 	title: string;
 	description: string;
-	image?: ImageMetadata;
+	/**
+	 * 分享卡（og:image）的站内绝对路径。
+	 *
+	 * 收 URL 字符串而不是 ImageMetadata：直接用 `ImageMetadata.src` 会把**源文件**
+	 * 发出去，而文章 hero 最大有 1.5MB PNG——抓取器要的只是几百 KB 的一张图。所以
+	 * 文章页先用 `getImage()` 转成 1200 宽的小 jpg 再传进来；不传就用站点默认卡。
+	 */
+	imageUrl?: string;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 
-const { title, description, image = FallbackImage } = Astro.props;
+const { title, description, imageUrl } = Astro.props;
+const ogImage = new URL(imageUrl ?? DefaultOgImage.src, Astro.url);
 ---
 
 <!-- Global Metadata -->
@@ -215,7 +222,17 @@ const { title, description, image = FallbackImage } = Astro.props;
 <meta property="og:url" content={Astro.url} />
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-<meta property="og:image" content={new URL(image.src, Astro.url)} />
+<meta property="og:image" content={ogImage} />
+{
+	/* 默认卡是固定尺寸，声明出来让抓取器不必先下载；文章页的图尺寸随原图，不声明。 */
+	imageUrl ? null : (
+		<>
+			<meta property="og:image:width" content={String(DefaultOgImage.width)} />
+			<meta property="og:image:height" content={String(DefaultOgImage.height)} />
+		</>
+	)
+}
 
 <!-- Twitter -->
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content={ogImage} />
