@@ -13,6 +13,7 @@ export interface Project {
 	};
 	/** 发布版本号（Projects 板块用），显示优先于 status 徽章 */
 	version?: string;
+	/** 是否进首页「SEKAI 精选」——游戏与项目共用这一枚标记，全站保持少量几条 */
 	featured?: boolean;
 }
 
@@ -30,7 +31,6 @@ export const games: Project[] = [
 			online: 'https://soup.qmzhj.top',
 			github: 'https://github.com/lapismind/Mafuyu-Turtle-soup',
 		},
-		featured: true,
 	},
 	{
 		slug: 'abracadawhat',
@@ -57,7 +57,6 @@ export const games: Project[] = [
 			online: 'https://showhand.qmzhj.top',
 			github: 'https://github.com/lapismind/showhand',
 		},
-		featured: true,
 	},
 ];
 
@@ -76,6 +75,7 @@ export const works: Project[] = [
 			download: '/downloads/RuneStaff-v1.0.zip',
 			github: 'https://github.com/lapismind/mhwilds-rune-staff-release',
 		},
+		featured: true,
 	},
 ];
 

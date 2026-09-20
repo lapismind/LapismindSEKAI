@@ -9,20 +9,29 @@ import Live2dMascot from '../components/Live2dMascot.astro';
 import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import Mascot from '../assets/mascot.png';
 import HeroBg from '../assets/mafuyu-hero.webp';
-import SoupLobby from '../assets/soup-lobby.png';
-import { profileStatus } from '../data/profile';
-import { games } from '../data/projects';
+import AbracadawhatCover from '../assets/covers/abracadawhat-cover.png';
+import StaffCard from '../assets/works/staff-card.jpg';
+import songs from '../data/music-player.json';
+import { games, works } from '../data/projects';
 
 const allPosts = (await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 const posts = allPosts.slice(0, 3);
+/** 「SEKAI is running」面板的"最近更新"：取最新一篇，有内容产出本身就是站点在运转的证据。 */
+const latestPost = allPosts[0];
 
-const featured = games.filter((p) => p.featured);
 const onlineCount = games.filter((p) => p.status === 'online').length;
 
-const projectImages: Record<string, typeof SoupLobby> = {
-	'turtle-soup': SoupLobby,
+/** 首页「SEKAI 精选」：游戏与项目各取 featured 条目，详情页分属 /projects/ 与 /works/。 */
+const featured = [
+	...games.filter((p) => p.featured).map((p) => ({ ...p, href: `/projects/${p.slug}/` })),
+	...works.filter((p) => p.featured).map((p) => ({ ...p, href: `/works/${p.slug}/` })),
+];
+
+const projectImages: Record<string, typeof AbracadawhatCover> = {
+	abracadawhat: AbracadawhatCover,
+	runestaff: StaffCard,
 };
 
 ---
@@ -253,17 +262,13 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			.site-section {
 				margin-top: 3.25rem;
 			}
-			/* “现在在做” + 站点统计 */
+			/* 「SEKAI is running」运行面板 + 站点统计。
+			   卡片压在 Hero 底边上（margin-top 负值 + z-index），别动这两条。 */
 			.now-card {
 				margin-top: -4.5rem;
 				position: relative;
 				z-index: 2;
-				display: grid;
-				grid-template-columns: 1fr auto;
-				gap: 3rem;
-				align-items: center;
 				padding: 1.7rem 2rem;
-				position: relative;
 				overflow: hidden;
 			}
 			.now-card::after {
@@ -277,47 +282,103 @@ const projectImages: Record<string, typeof SoupLobby> = {
 					transparent 70%
 				);
 			}
-			.now-list {
-				position: relative;
-			}
-			.now-row {
-				display: grid;
-				grid-template-columns: 5.5em 1fr;
-				gap: 0.9rem;
-				align-items: baseline;
-				padding: 0.42em 0;
-				border-bottom: 1px dashed var(--line);
-			}
-			.now-row:last-child {
-				border-bottom: none;
-			}
-			.now-row .label {
-				font-family: var(--font-mono);
-				font-size: 0.78rem;
-				letter-spacing: 0.14em;
-				color: var(--primary);
-				white-space: nowrap;
-			}
-			.now-row .value {
-				font-size: 1.02rem;
-				color: var(--ink-soft);
-			}
-			.now-row .value strong {
-				color: var(--ink);
-			}
-			.now-stats {
+			.now-head {
 				position: relative;
 				display: flex;
-				flex-direction: column;
-				gap: 0.9rem;
-				padding-left: 2.5rem;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 0.5rem 1.5rem;
+				flex-wrap: wrap;
+			}
+			.now-updated {
+				margin: 0;
+				display: inline-flex;
+				align-items: baseline;
+				gap: 0.55em;
+				font-family: var(--font-mono);
+				font-size: 0.78rem;
+				letter-spacing: 0.1em;
+				color: var(--muted);
+			}
+			.now-updated :global(time) {
+				color: var(--ink-soft);
+			}
+			.now-main {
+				position: relative;
+				margin-top: 1rem;
+			}
+			.now-title {
+				margin: 0;
+				display: flex;
+				align-items: center;
+				gap: 0.62em;
+				font-size: 1.55rem;
+				font-weight: 700;
+				letter-spacing: -0.01em;
+				color: var(--ink);
+			}
+			.now-lead {
+				margin: 0.55rem 0 0;
+				max-width: 44em;
+				color: var(--ink-soft);
+				line-height: 1.85;
+			}
+			/* 运行指示灯。外圈呼吸式扩散表示"在跑"，减少动效时只留静态的实心点。 */
+			.now-dot {
+				position: relative;
+				flex: none;
+				width: 9px;
+				height: 9px;
+				border-radius: 50%;
+				background: oklch(0.72 0.16 150);
+				box-shadow: 0 0 0 3px oklch(0.72 0.16 150 / 0.18);
+			}
+			.now-dot::after {
+				content: '';
+				position: absolute;
+				inset: -4px;
+				border-radius: 50%;
+				border: 1px solid oklch(0.72 0.16 150 / 0.55);
+				animation: now-ping 2.6s var(--ease-soft) infinite;
+			}
+			@keyframes now-ping {
+				0% {
+					transform: scale(0.55);
+					opacity: 0.9;
+				}
+				70%,
+				100% {
+					transform: scale(2.2);
+					opacity: 0;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.now-dot::after {
+					animation: none;
+					opacity: 0;
+				}
+			}
+			/* 四格读数：数字在上、标签在下，格间用竖线分栏（首项不画）。 */
+			.now-stats {
+				position: relative;
+				margin-top: 1.5rem;
+				padding-top: 1.35rem;
+				border-top: 1px solid var(--line);
+				display: grid;
+				grid-template-columns: repeat(4, 1fr);
+				gap: 1rem;
+			}
+			.stat {
+				display: grid;
+				gap: 0.1rem;
+			}
+			.stat + .stat {
 				border-left: 1px solid var(--line);
-				text-align: right;
+				padding-left: 1.25rem;
 			}
 			.stat b {
-				display: block;
 				font-family: var(--font-mono);
-				font-size: 1.45rem;
+				font-size: 1.5rem;
 				font-weight: 700;
 				line-height: 1.1;
 				color: var(--ink);
@@ -327,6 +388,19 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				letter-spacing: 0.12em;
 				color: var(--muted);
 				font-family: var(--font-mono);
+			}
+			/* 板块标题右侧的链接组。global.css 的 .section-title .more-link 用
+			   margin-left:auto 把"单个"链接推到最右；两条并排时各自抢空白会互相
+			   推开，所以这里由容器接管 margin-left，再收回子项的。 */
+			.section-title .more-links {
+				margin-left: auto;
+				display: flex;
+				align-items: baseline;
+				gap: 1.1rem;
+				flex-wrap: wrap;
+			}
+			.section-title .more-links .more-link {
+				margin-left: 0;
 			}
 			.card-grid {
 				display: grid;
@@ -483,19 +557,22 @@ const projectImages: Record<string, typeof SoupLobby> = {
 				}
 				.now-card {
 					margin-top: -2rem;
-					grid-template-columns: 1fr;
-					gap: 1.4rem;
-					padding: 1.4rem 1.4rem;
+					padding: 1.4rem;
+				}
+				.now-title {
+					font-size: 1.3rem;
 				}
 				.now-stats {
-					flex-direction: row;
-					flex-wrap: wrap;
-					justify-content: space-between;
-					padding-left: 0;
-					padding-top: 1.2rem;
+					grid-template-columns: repeat(2, 1fr);
+					gap: 1.1rem 1.25rem;
+				}
+				.stat + .stat {
 					border-left: none;
-					border-top: 1px solid var(--line);
-					text-align: left;
+					padding-left: 0;
+				}
+				.stat:nth-child(even) {
+					border-left: 1px solid var(--line);
+					padding-left: 1.25rem;
 				}
 				.site-section {
 					margin-top: 2.4rem;
@@ -548,16 +625,19 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			</section>
 
 			<section class="now-card glass reveal">
-				<div class="now-list">
-					<p class="eyebrow">now · 现在在做</p>
-					{
-						profileStatus.map((s) => (
-							<div class="now-row">
-								<span class="label">{s.label}</span>
-								<p class="value">{s.text}</p>
-							</div>
-						))
-					}
+				<div class="now-head">
+					<p class="eyebrow">status · 运行状态</p>
+					<p class="now-updated">
+						<span>最近更新</span>
+						<FormattedDate date={latestPost.data.pubDate} />
+					</p>
+				</div>
+				<div class="now-main">
+					<p class="now-title">
+						<span class="now-dot" aria-hidden="true"></span>
+						SEKAI is running
+					</p>
+					<p class="now-lead">现在，我将演示 SEKAI 运行的框架。</p>
 				</div>
 				<div class="now-stats">
 					<div class="stat">
@@ -569,6 +649,10 @@ const projectImages: Record<string, typeof SoupLobby> = {
 						<span>已上线</span>
 					</div>
 					<div class="stat">
+						<b>{songs.length}</b>
+						<span>曲库</span>
+					</div>
+					<div class="stat">
 						<b>{allPosts.length}</b>
 						<span>文章</span>
 					</div>
@@ -578,18 +662,21 @@ const projectImages: Record<string, typeof SoupLobby> = {
 			<section class="site-section reveal" id="featured">
 				<div class="section-title">
 					<div>
-						<p class="eyebrow">featured games</p>
-						<h2>精选游戏</h2>
+						<p class="eyebrow">sekai picks</p>
+						<h2>SEKAI 精选</h2>
 					</div>
-					<a class="more-link" href="/projects/">全部游戏 →</a>
+					<div class="more-links">
+						<a class="more-link" href="/projects/">全部游戏 →</a>
+						<a class="more-link" href="/works/">全部 Projects →</a>
+					</div>
 				</div>
 				<div class="card-grid">
 					{
 						featured.map((p, i) => (
-							<a class="project-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/projects/${p.slug}/`}>
+							<a class="project-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={p.href}>
 								<div class="card-media">
 									{projectImages[p.slug] ? (
-										<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 截图`} />
+										<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 封面`} />
 									) : (
 										<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
 									)}
@@ -598,7 +685,7 @@ const projectImages: Record<string, typeof SoupLobby> = {
 									<div class="card-head">
 										<h3>{p.name}</h3>
 										<span class={`status-badge status-${p.status}`}>
-											{p.status === 'online' ? 'online' : '开发中'}
+											{p.version ?? (p.status === 'online' ? 'online' : '开发中')}
 										</span>
 									</div>
 									<p class="card-subtitle">{p.subtitle}</p>
