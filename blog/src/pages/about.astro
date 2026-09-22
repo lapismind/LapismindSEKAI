@@ -2,9 +2,39 @@
 import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
-import Mascot from '../assets/mascot.png';
+import Mascot from '../assets/mascot.webp';
+import OshiDay from '../assets/oshi/oshi-day.webp';
+import OshiNight from '../assets/oshi/oshi-night.webp';
+import { Image } from 'astro:assets';
 import { SITE_TITLE } from '../consts';
-import { oshiCard, profileIdentity, profileStatus, profileTech } from '../data/profile';
+import { oshiCard, oshiInner, profileIdentity, profileStatus, profileTech } from '../data/profile';
+
+/* 水线的正弦路径：n 个周期铺满 viewBox（宽 1000、高 40、中心 y=20），a 是振幅。
+   生成而不是手写，是为了改周期数 / 振幅时不用重数控制点。
+   元素用 preserveAspectRatio="none" 横向拉伸，所以这里只关心相对形状。
+
+   **三条而不是一条。** 一条线读起来像"在水面上画了条线"；水面本来就是多条波纹互相干涉，
+   几条周期 / 振幅 / 相位各不相同的正弦叠在一起，交叉点还会慢慢移动 —— 那才像水面。 */
+const wavePath = (n: number, a: number) => {
+	const w = 1000,
+		c = 20,
+		seg = w / n;
+	let d = `M0,${c}`;
+	for (let i = 0; i < n; i++) {
+		const x = i * seg;
+		d += ` C${x + seg * 0.25},${c - a} ${x + seg * 0.75},${c + a} ${x + seg},${c}`;
+	}
+	return d;
+};
+/* 周期数不同 → 交叉点会沿横向来回跑；振幅不同 → 交叉的疏密也不同。
+   svg 宽度 = 无缝漂移所需的最小值（≥ 100%×n/(n−1)），多出来的部分保证位移后两端不留空。 */
+const waves = [
+	{ cls: 'w1', d: wavePath(5, 16) },
+	{ cls: 'w2', d: wavePath(4, 13) },
+	{ cls: 'w3', d: wavePath(7, 10) },
+	{ cls: 'w4', d: wavePath(6, 12) },
+	{ cls: 'w5', d: wavePath(9, 9) },
+];
 ---
 
 <!doctype html>
@@ -213,152 +243,788 @@ import { oshiCard, profileIdentity, profileStatus, profileTech } from '../data/p
 				gap: 0.7em;
 			}
 
-			/* 单推角色卡 */
+			/* ---------- 单推角色卡：一只水族箱 ----------
+			   作画是最高优先级 —— 整张卡就是一张图，版式从图里量出来，不是拿版式去约束图。
+			   量测脚本 blog/scripts/measure-oshi-art.py + probe-oshi-boxes.py，图为 1024²，相对坐标：
+			     · 水面：落差最大 y=25.7%，高光带 30.7% —— 水域特效全挂在 25.7% 以下
+			     · 唯一安静区＝水面之上：y 6%–24%、x 4%–62%。相对亮度 0.11(昼)/0.016(夜)、
+			       标准差 0.03、细节密度近乎为零 —— 白字对比度 7.3:1 / 15.8:1
+			     · 她的发缘在空气带里最靠左只到 68.8%，所以文字右界钉在 62%
+			     · 水里唯一能压字的地方：x 11.5%、y 40.8% 的散光水面
+			       （昼是亮水→深字 7.4:1，夜是暗水→白字 9.9:1）
+			   亮色＝白天（她抬头，脸贴着水线）；暗色＝夜里（她低头，连人带发沉下去）。
+			   切主题不是换配色，是换一个时辰。 */
 			.oshi-card {
+				/* 容器查询：整套字号按卡宽走（cqw），卡窄了字跟着缩，不会撑破 */
+				container-type: inline-size;
 				position: relative;
+				aspect-ratio: 1 / 1;
+				z-index: 0;
 				overflow: hidden;
-				padding: 1.6rem 1.8rem;
 				border-radius: var(--radius-lg);
 				border: 1px solid var(--line);
 				box-shadow: var(--shadow-sm);
-				background: linear-gradient(
-					160deg,
-					oklch(0.93 0.03 var(--hue-accent) / 0.9),
-					oklch(0.87 0.045 calc(var(--hue-accent) - 12) / 0.9)
-				);
+				/* 图解码前露出的底色，取图的平均水色，不要闪白 */
+				background: oklch(0.62 0.06 226);
 			}
-			:root[data-theme='dark'] .oshi-card {
-				background: linear-gradient(
-					160deg,
-					oklch(0.24 0.04 var(--hue-accent) / 0.95),
-					oklch(0.19 0.035 calc(var(--hue-accent) - 8) / 0.95)
-				);
-			}
-			.oshi-moon {
-				position: absolute;
-				top: -70px;
-				right: -60px;
-				width: 220px;
-				height: 220px;
-				border-radius: 50%;
-				background: radial-gradient(
-					circle at 40% 40%,
-					oklch(0.97 0.01 var(--hue-accent) / 0.9),
-					oklch(0.88 0.03 calc(var(--hue-accent) - 10) / 0.35) 60%,
-					transparent 70%
-				);
-				pointer-events: none;
-			}
-			:root[data-theme='dark'] .oshi-moon {
-				background: radial-gradient(
-					circle at 40% 40%,
-					oklch(0.85 0.03 var(--hue-accent) / 0.95),
-					oklch(0.6 0.05 var(--hue-accent) / 0.3) 60%,
-					transparent 70%
-				);
-			}
-			.oshi-snow {
+			/* 作画层。两张图叠在同一位置，按主题显一张：没显的那张带 loading="lazy"，
+			   而浏览器对 display:none 的懒图不下请求 —— 所以一次只下一张。 */
+			.oshi-photo {
 				position: absolute;
 				inset: 0;
-				pointer-events: none;
-				overflow: hidden;
 			}
-			.oshi-snow i {
+			.oshi-photo img {
 				position: absolute;
-				top: -12px;
-				width: 6px;
-				height: 6px;
-				border-radius: 50%;
-				background: oklch(0.99 0 0 / 0.75);
-				animation: snow-fall linear infinite;
+				inset: 0;
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
 			}
-			:root[data-theme='dark'] .oshi-snow i {
-				background: oklch(0.95 0.01 235 / 0.6);
+			.oshi-shot-night {
+				display: none;
 			}
-			.oshi-snow i:nth-child(1) { left: 12%; animation-duration: 9s; animation-delay: -2s; }
-			.oshi-snow i:nth-child(2) { left: 30%; width: 4px; height: 4px; animation-duration: 13s; animation-delay: -6s; }
-			.oshi-snow i:nth-child(3) { left: 55%; width: 5px; height: 5px; animation-duration: 11s; animation-delay: -4s; }
-			.oshi-snow i:nth-child(4) { left: 74%; width: 7px; height: 7px; animation-duration: 15s; animation-delay: -8s; }
-			.oshi-snow i:nth-child(5) { left: 90%; width: 4px; height: 4px; animation-duration: 10s; animation-delay: -3s; }
-			.oshi-snow i:nth-child(6) { left: 44%; width: 3px; height: 3px; animation-duration: 12s; animation-delay: -7s; }
-			@keyframes snow-fall {
-				to {
-					transform: translateY(420px) translateX(24px);
-					opacity: 0.25;
-				}
+			:root[data-theme='dark'] .oshi-shot-day {
+				display: none;
+			}
+			:root[data-theme='dark'] .oshi-shot-night {
+				display: block;
+			}
+			/* 水面之上：身份三行。两版图的这一带都是暗的，所以永远白字，不跟主题换。
+			   宽度钉在 57%（右界 61.8%）—— 再往右就是她从水里伸出来的头发。 */
+			.oshi-air {
+				position: absolute;
+				left: 4.8%;
+				top: 5.2%;
+				width: 57%;
+				color: oklch(0.98 0.006 250);
+			}
+			.oshi-unit {
+				display: block;
+				font-family: var(--font-body);
+				font-size: clamp(0.66rem, 1.42cqw, 0.78rem);
+				letter-spacing: 0.1em;
+				color: oklch(0.98 0.006 250 / 0.76);
+				text-shadow: 0 1px 3px oklch(0.16 0.04 250 / 0.6);
 			}
 			.oshi-head {
-				position: relative;
 				display: flex;
 				align-items: baseline;
-				gap: 0.8rem;
+				gap: 0.7rem;
 				flex-wrap: wrap;
-				margin-bottom: 0.7rem;
+				margin: clamp(0.1rem, 0.44cqw, 0.26rem) 0 0;
 			}
 			.oshi-head h3 {
 				margin: 0;
-				font-size: 1.4rem;
-			}
-			.oshi-head .jp {
-				font-family: var(--font-mono);
-				font-size: 0.8rem;
-				color: var(--ink-soft);
-			}
-			.oshi-unit {
-				position: relative;
-				display: inline-block;
-				font-family: var(--font-mono);
-				font-size: 0.82rem;
+				font-size: clamp(1.35rem, 3.7cqw, 2rem);
 				letter-spacing: 0.06em;
-				padding: 0.25em 0.9em;
-				border-radius: 999px;
-				background: oklch(0.99 0 0 / 0.55);
-				border: 1px solid oklch(0.6 0.1 var(--hue-accent) / 0.25);
-				color: var(--ink-soft);
-				margin-bottom: 1rem;
+				text-shadow: 0 1px 5px oklch(0.16 0.04 250 / 0.55);
+			}
+			/* 卡里四处文字一律走 --font-body，不用 --font-mono —— 那条栈里没有任何 CJK
+			   字形，中文和假名会掉进系统宋体（实测：新宋体），跟楷体值凑成两套字体；
+			   单位行的日文假名在新宋体下尤其难看。站内规矩本来也是"中文走 --font-body，
+			   mono 只给要竖向对齐的数字"，这里没有要对齐的数字。 */
+			.oshi-head .jp {
+				font-family: var(--font-body);
+				font-size: clamp(0.6rem, 1.32cqw, 0.74rem);
+				letter-spacing: 0.04em;
+				color: oklch(0.98 0.006 250 / 0.6);
+			}
+			/* 水面之下：一条细线 + 八项资料 + 那句签名。宽屏压在水里，窄屏整块落到图下。 */
+			.oshi-body {
+				position: absolute;
+				inset: 0;
+			}
+			.oshi-rule {
+				position: absolute;
+				left: 4.8%;
+				top: 15.6%;
+				width: 48%;
+				height: 1px;
+				background: linear-gradient(90deg, oklch(1 0 0 / 0.34), oklch(1 0 0 / 0.04));
 			}
 			.oshi-facts {
-				position: relative;
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-				gap: 0.7rem 1.4rem;
-				max-width: 34em;
+				position: absolute;
+				left: 4.8%;
+				top: 17%;
+				width: 57%;
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.3em 1.3em;
+				font-size: clamp(0.68rem, 1.5cqw, 0.82rem);
 			}
+			.oshi-fact {
+				display: flex;
+				align-items: baseline;
+				gap: 0.42em;
+			}
+			/* 两行都要显式归零：<p> 带全局下边距（实测 .k 10.5px / .v 12.5px），
+			   不归零每项就高 33.5px，八项直接撑到水线以下 */
 			.oshi-fact .k {
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
-				letter-spacing: 0.16em;
-				text-transform: uppercase;
-				color: var(--muted);
-				margin-bottom: 0.1rem;
+				margin: 0;
+				font-family: var(--font-body);
+				font-size: 0.84em;
+				letter-spacing: 0.08em;
+				color: oklch(0.98 0.006 250 / 0.58);
 			}
 			.oshi-fact .v {
-				font-size: 0.98rem;
+				margin: 0;
 				font-weight: 600;
-				color: var(--ink);
+				color: oklch(0.99 0.004 250 / 0.95);
 			}
-			.oshi-theme {
-				position: relative;
-				margin: 1.2rem 0 0;
-				font-size: 0.98rem;
-				color: var(--ink-soft);
+			/* 水面之下只在夜里显形 —— 白天你看见的是她（水区就是纯图），
+			   夜里才看见她自己。这是 A+D 方案里"这句话没那么廉价"的机制，现在两条都归它管。
+			   opacity 归零挂在 .has-js 下：没有 JS 时 data-theme 永远不会被设上，
+			   否则这份资料会对所有亮色访客永久消失（站内入场动效用的是同一条规矩）。
+			   所以下面那套"昼间深青字"不是死代码 —— 它是无 JS 时唯一会走到的分支：
+			   那时显的是白天那张图，字压在亮水上，必须是深色。 */
+			.has-js .oshi-inner,
+			.has-js .oshi-tagline-slot {
+				opacity: 0;
+				transition: opacity var(--dur-slow) var(--ease-soft);
+			}
+			:root[data-theme='dark'] .oshi-inner,
+			:root[data-theme='dark'] .oshi-tagline-slot {
+				opacity: 1;
+			}
+			/* 水面之下：她自己写的三条。和上面八项是同一个标签、同一个排法 ——
+			   读的人自己会把"水族箱"和"一缸水草和沙子"对起来，不需要画箭头。
+			   位置量出来的：x 5%–54% / y 35.5%–50.5% 是水区唯一没有细节的一块空地
+			   （昼深字 7.96:1，夜白字 9.73:1）。 */
+			.oshi-inner {
+				position: absolute;
+				left: 6%;
+				top: 36.4%;
+				width: 46%;
+			}
+			.oshi-inner-title {
+				margin: 0 0 0.3em;
+				font-family: var(--font-body);
+				font-size: clamp(0.6rem, 1.22cqw, 0.7rem);
+				letter-spacing: 0.16em;
+				color: oklch(0.22 0.05 226 / 0.72);
+			}
+			:root[data-theme='dark'] .oshi-inner-title {
+				color: oklch(0.92 0.02 240 / 0.74);
+			}
+			.oshi-inner-rows {
+				display: grid;
+				gap: 0.16em;
+				font-size: clamp(0.68rem, 1.5cqw, 0.82rem);
+			}
+			.oshi-inner .oshi-fact .k {
+				color: oklch(0.24 0.05 226 / 0.72);
+			}
+			.oshi-inner .oshi-fact .v {
+				color: oklch(0.16 0.05 226 / 0.97);
+			}
+			:root[data-theme='dark'] .oshi-inner .oshi-fact .k {
+				color: oklch(0.9 0.02 240 / 0.72);
+			}
+			:root[data-theme='dark'] .oshi-inner .oshi-fact .v {
+				color: oklch(0.98 0.012 240 / 0.97);
+			}
+			/* 签名句槽：钉在水里第二块没有细节的地方（量出来的 x 10%–42% / y 52%–56.5%）。
+			   它不跟空气带左对齐 —— 左对齐的位置图里有水草。 */
+			.oshi-tagline-slot {
+				position: absolute;
+				left: 11.5%;
+				top: 52.4%;
+				margin: 0;
 			}
 			.oshi-tagline {
-				position: relative;
-				margin-top: 0.5rem;
-				font-size: 1.05rem;
+				font-size: clamp(0.85rem, 1.95cqw, 1.08rem);
 				font-weight: 700;
-				color: var(--primary);
+				letter-spacing: 0.08em;
+				/* 白天的水是亮的 → 深字（实测 7.4:1） */
+				color: oklch(0.19 0.05 226 / 0.95);
 			}
-			.oshi-note {
-				position: relative;
-				margin-top: 0.7rem;
-				font-size: 0.78rem;
-				color: var(--muted);
-				line-height: 1.7;
+			/* 夜里的水是暗的 → 白字（实测 9.9:1） */
+			:root[data-theme='dark'] .oshi-tagline {
+				color: oklch(0.97 0.012 240 / 0.94);
+				text-shadow: 0 1px 7px oklch(0.12 0.04 250 / 0.75);
 			}
-			.oshi-note a {
-				font-weight: 600;
+
+			/* ---------- 字悬在水里 ----------
+			   水面之下那两块字要像悬在水里：缓慢的椭圆漂移（不是机械地上下），
+			   三行各自再错开一点点，看起来是被水分开托着的，不是一块板在平移。
+			   幅度都压在 4px 以内 —— 再大就从"悬着"变成"晃"，读起来累。
+			   空气带那三行**故意不动**：那是水面之上，而且名字是这张卡最该读清的东西。 */
+			.oshi-inner {
+				animation: oshi-suspend 13s ease-in-out infinite;
+			}
+			.oshi-tagline-slot {
+				animation: oshi-suspend 17s ease-in-out infinite;
+				animation-delay: -5s;
+			}
+			@keyframes oshi-suspend {
+				0%,
+				100% {
+					transform: translate3d(0, 0, 0);
+				}
+				25% {
+					transform: translate3d(2px, -3px, 0);
+				}
+				50% {
+					transform: translate3d(0, -5px, 0);
+				}
+				75% {
+					transform: translate3d(-2px, -3px, 0);
+				}
+			}
+			/* 三行各自的微漂移：周期互质，所以永远不会同时到顶（同时到顶就像整块在跳） */
+			.oshi-inner .oshi-fact {
+				animation: oshi-suspend-row 9s ease-in-out infinite;
+			}
+			.oshi-inner .oshi-fact:nth-child(2) {
+				animation-duration: 11.5s;
+				animation-delay: -3s;
+			}
+			.oshi-inner .oshi-fact:nth-child(3) {
+				animation-duration: 13.7s;
+				animation-delay: -7.5s;
+			}
+			@keyframes oshi-suspend-row {
+				0%,
+				100% {
+					transform: translate3d(0, 0, 0);
+				}
+				50% {
+					transform: translate3d(2px, -2.5px, 0);
+				}
+			}
+			/* 窄屏那两块在图下面，不在水里 —— 别漂，漂了像排版出错 */
+			@media (max-width: 680px) {
+				.oshi-inner,
+				.oshi-inner .oshi-fact,
+				.oshi-tagline-slot {
+					animation: none;
+				}
+			}
+
+			/* ---------- 水里的时间 ----------
+			   卡里不再自己画水、画浪、画造景 —— 图里全都有。这一层只负责"水在动"：
+			   水面那道呼吸高光，几道缓慢漂移的散光，几颗上浮的气泡。
+			   纪律：亮色下波光是水面的光（可以明显），暗色压到很淡 —— 图里那道斜光柱才是暗色的主角。
+			   所有动画只动 transform / opacity，reduced-motion 下全停。 */
+			.oshi-water {
+				position: absolute;
+				left: 0;
+				right: 0;
+				top: 25.7%;
+				bottom: 0;
+				overflow: hidden;
+				pointer-events: none;
+			}
+			/* 滚动引起的水体横移只动这一层。--slosh 是卡上那个小脚本按阻尼弹簧算出来的
+			   有符号位移（-1..1），--slosh-abs 是它的绝对值（CSS 没有 abs()）。 */
+			.oshi-water-inner {
+				position: absolute;
+				inset: 0;
+				transform: translate3d(calc(var(--slosh, 0) * -12px), 0, 0);
+			}
+			/* 水线：**五条**错开的正弦，不是一条。
+			   一条线读起来像"在水面上画了条线"；水面本来就是多条波纹互相干涉，几条周期 /
+			   振幅 / 相位各不相同的正弦叠在一起、交叉点还在慢慢移动，那才像水面。
+			   五条的中心都压在图上那条水位线附近（实测空气→水的过渡在卡高 30.3%），
+			   从 28.6% 一路铺到 36.4%，正好覆盖图里那条亮水带。
+
+			   **参数化而不是一条一套。** 每条只在 `.wN` 上给几个自定义属性
+			   （--svgw 宽度 / --slide 一个周期的位移 / --slide-dur 漂移时长 / --lo,--hi 呼吸区间），
+			   共用同一套关键帧。五条要是每条都抄一套 @keyframes，加到第七条就没法维护了。
+
+			   **不能用 screen 混合**：图里水面本身就是亮的，screen 在亮底上加白等于没画，
+			   波纹只在暗处看得见（第一版就栽在这，波形几乎不可见）。普通 alpha 两头都成立。 */
+			.oshi-wave {
+				position: absolute;
+				left: 0;
+				right: 0;
+				/* 正弦在 viewBox 里居中（y=20/40），所以 top = 目标水位 − height/2。
+				   ⚠ 这里的百分比基准是**水域层**（.oshi-water-inner，从卡高 25.76% 起、占 74.11%），
+				   不是卡片 —— 换算：目标占卡高 X% → top = (X − 25.76)/74.11 − 2.8。
+				   本轮就栽在这：把 30.2% 的水域层坐标当成 30.2% 的卡片坐标，
+				   结果五条线实际停在卡高 47–49%（水中央），离水位线差了 18%。 */
+				height: 5.6%;
+				transform-origin: 50% 50%;
+			}
+			/* svg 比容器宽，是为了横向漂移能**无缝循环**：一个周期 = svg 自身宽度的 100%/n，
+			   位移正好一个周期就接回原样；svg 宽出容器的那部分（必须 ≥ 一个周期，
+			   即宽度 ≥ 100%×n/(n−1)）保证位移后两端不留空。 */
+			.oshi-wave svg {
+				display: block;
+				width: var(--svgw, 130%);
+				height: 100%;
+				animation: oshi-slide var(--slide-dur, 30s) linear infinite;
+				animation-direction: var(--slide-dir, normal);
+			}
+			.oshi-wave path {
+				fill: none;
+				stroke: oklch(1 0 0 / 0.8);
+				vector-effect: non-scaling-stroke;
+			}
+			/* 每条：top（位置）、--svgw / --slide / --slide-dur / --slide-dir（漂移）、
+			   --lo / --hi（呼吸区间）、stroke-width、以及 --slosh 的响应系数。
+			   滚动时五条被推开的距离都不同（-16 / -10 / -23 / -13 / -19px）——
+			   是"散开"，不是"整块平移"。 */
+			.w1 {
+				--breathe-dur: 7.5s;
+				top: 3.2%;
+				--svgw: 130%;
+				--slide: -20%;
+				--slide-dur: 33s;
+				--lo: 0.34;
+				--hi: 0.58;
+				transform: translate3d(calc(var(--slosh, 0) * -16px), calc(var(--slosh, 0) * -3px), 0)
+					scaleY(calc(1 + var(--slosh-abs, 0) * 1.4));
+			}
+			.w1 path {
+				stroke-width: 2;
+			}
+			.w2 {
+				--breathe-dur: 11s;
+				top: 5.8%;
+				--svgw: 140%;
+				--slide: -25%;
+				--slide-dur: 66s;
+				--slide-dir: reverse;
+				--lo: 0.17;
+				--hi: 0.32;
+				transform: translate3d(calc(var(--slosh, 0) * -10px), calc(var(--slosh, 0) * 2px), 0)
+					scaleY(calc(1 + var(--slosh-abs, 0) * 1));
+			}
+			.w2 path {
+				stroke-width: 1.5;
+			}
+			.w3 {
+				--breathe-dur: 14.5s;
+				top: 1.05%;
+				--svgw: 120%;
+				--slide: -14.2857%;
+				--slide-dur: 18s;
+				--lo: 0.13;
+				--hi: 0.26;
+				transform: translate3d(calc(var(--slosh, 0) * -23px), calc(var(--slosh, 0) * -1px), 0)
+					scaleY(calc(1 + var(--slosh-abs, 0) * 1.8));
+			}
+			.w3 path {
+				stroke-width: 1.3;
+			}
+			/* w4 / w5 是往下补的两条（用户："往下再画两条，效果更清晰"）——
+			   铺到卡高 34.2% / 36.4%，把图里那条亮水带的下半段也带上。 */
+			.w4 {
+				--breathe-dur: 9.5s;
+				top: 8.6%;
+				--svgw: 125%;
+				--slide: -16.6667%;
+				--slide-dur: 38s;
+				--slide-dir: reverse;
+				--lo: 0.15;
+				--hi: 0.3;
+				transform: translate3d(calc(var(--slosh, 0) * -13px), calc(var(--slosh, 0) * 2px), 0)
+					scaleY(calc(1 + var(--slosh-abs, 0) * 1.2));
+			}
+			.w4 path {
+				stroke-width: 1.4;
+			}
+			.w5 {
+				--breathe-dur: 17s;
+				top: 11.6%;
+				--svgw: 118%;
+				--slide: -11.1111%;
+				--slide-dur: 22s;
+				--lo: 0.12;
+				--hi: 0.24;
+				transform: translate3d(calc(var(--slosh, 0) * -19px), calc(var(--slosh, 0) * -2px), 0)
+					scaleY(calc(1 + var(--slosh-abs, 0) * 1.6));
+			}
+			.w5 path {
+				stroke-width: 1.2;
+			}
+			/* 五条共用一套关键帧，靠 --lo / --hi 各自取不同的明暗区间。
+			   **名字必须带 wave 前缀**：水域那道水面高光也叫 oshi-breathe，同一份样式表里
+			   后定义的关键帧会赢，重名会把它整道呼吸顶掉（本轮踩过）。
+			   呼吸周期互质（7.5 / 11 / 14.5 / 9.5 / 17s），所以永远不会同时亮暗
+			   —— 同时就成了一整块在闪。 */
+			.oshi-wave {
+				animation: oshi-wave-breathe var(--breathe-dur, 12s) ease-in-out infinite;
+			}
+			@keyframes oshi-wave-breathe {
+				0%,
+				100% {
+					opacity: var(--lo, 0.2);
+				}
+				50% {
+					opacity: var(--hi, 0.4);
+				}
+			}
+			/* 位移量 = 一个周期 = svg 自身宽度的 100%/n，各条不同 → 用 --slide 传进来。
+			   （百分比基准是元素自身宽度，所以 n=5 → -20%、n=4 → -25%、n=9 → -11.1111%） */
+			@keyframes oshi-slide {
+				from {
+					transform: translate3d(0, 0, 0);
+				}
+				to {
+					transform: translate3d(var(--slide, -20%), 0, 0);
+				}
+			}
+
+			}
+			/* 水面：图里画好了水线，这里只让它呼吸 —— 一道很淡的高光贴在图的亮带上。
+			   自绘浪会跟图里的浪打两次架，所以只留这一道。 */
+			.oshi-waterline {
+				position: absolute;
+				left: -8%;
+				right: -8%;
+				top: -1.2%;
+				height: 7%;
+				opacity: 0.5;
+				background: radial-gradient(50% 100% at 50% 50%, oklch(1 0 0 / 0.34), transparent 74%);
+				filter: blur(7px);
+				animation: oshi-breathe 11s ease-in-out infinite;
+			}
+			@keyframes oshi-breathe {
+				0%,
+				100% {
+					opacity: 0.4;
+					transform: translate3d(0, 0, 0) scaleX(1);
+				}
+				50% {
+					opacity: 0.72;
+					transform: translate3d(0, -1px, 0) scaleX(1.025);
+				}
+			}
+			:root[data-theme='dark'] .oshi-waterline {
+				opacity: 0.3;
+				animation-name: oshi-breathe-dim;
+			}
+			/* 打光：一道很宽、很糊的斜光柱，五十多秒扫一个来回 —— 读起来是"水面在动，
+			   所以光也在动"，而不是"有人在摇手电"。用 screen 混合，光才是加亮的，
+			   用普通 alpha 只会把它变成一块灰。
+			   幅度故意小（±3.5%）：光柱扫太快就成了舞台追光，和这只安静的缸不搭。 */
+			.oshi-ray {
+				position: absolute;
+				left: -45%;
+				right: -45%;
+				top: -12%;
+				height: 124%;
+				background: linear-gradient(
+					104deg,
+					transparent 36%,
+					oklch(0.86 0.06 218 / 0.45) 46%,
+					oklch(0.94 0.04 208 / 0.6) 52%,
+					transparent 64%
+				);
+				filter: blur(28px);
+				mix-blend-mode: screen;
+				opacity: 0.15;
+				animation: oshi-ray-sweep 57s ease-in-out infinite;
+			}
+			@keyframes oshi-ray-sweep {
+				0%,
+				100% {
+					transform: translate3d(-3.5%, 0, 0) rotate(0.4deg);
+				}
+				50% {
+					transform: translate3d(3.5%, 0, 0) rotate(-0.4deg);
+				}
+			}
+			:root[data-theme='dark'] .oshi-ray {
+				opacity: 0.18;
+			}
+			@keyframes oshi-breathe-dim {
+				0%,
+				100% {
+					opacity: 0.22;
+					transform: translate3d(0, 0, 0) scaleX(1);
+				}
+				50% {
+					opacity: 0.4;
+					transform: translate3d(0, -1px, 0) scaleX(1.025);
+				}
+			}
+			/* 波光：三层错拍 —— 两层不等距条带（角度拉开 60°，干涉才出光网）加一层散斑。
+			   第一版用两条只差 26° 的等距条带，结果读起来像百叶窗（条纹），不是水光；
+			   不等距 + 大角度差 + 更大模糊才散得开。 */
+			.caustic {
+				position: absolute;
+				left: -26%;
+				right: -26%;
+				background-repeat: repeat;
+				filter: blur(15px);
+				will-change: transform;
+			}
+			.caustic-a {
+				top: -4%;
+				height: 100%;
+				background-image: repeating-linear-gradient(
+					96deg,
+					oklch(1 0 0 / 0.5) 0 26px,
+					transparent 26px 74px,
+					oklch(1 0 0 / 0.22) 74px 96px,
+					transparent 96px 176px,
+					oklch(1 0 0 / 0.34) 176px 214px,
+					transparent 214px 300px
+				);
+				/* 图里已经烤好了光斑，这里只补"在动" —— 所以比自绘水那版淡得多（原来 0.42）。
+				   但 0.17/0.08 实测运动能量只有 0.5–0.9% 的像素，等于白做，提到现在这一档。 */
+				opacity: 0.19;
+				animation: oshi-drift-a 46s linear infinite;
+			}
+			.caustic-b {
+				top: 0;
+				height: 108%;
+				background-image: repeating-linear-gradient(
+					36deg,
+					oklch(1 0 0 / 0.4) 0 34px,
+					transparent 34px 118px,
+					oklch(1 0 0 / 0.2) 118px 152px,
+					transparent 152px 262px
+				);
+				opacity: 0.14;
+				animation: oshi-drift-b 71s linear infinite;
+			}
+			/* 散斑：几个错开的柔光块，专门用来打散条纹的规律性 */
+			.caustic-c {
+				top: 0;
+				height: 100%;
+				background-image:
+					radial-gradient(38% 26% at 22% 18%, oklch(1 0 0 / 0.4), transparent 70%),
+					radial-gradient(30% 20% at 71% 41%, oklch(1 0 0 / 0.32), transparent 72%),
+					radial-gradient(44% 24% at 38% 74%, oklch(1 0 0 / 0.26), transparent 74%);
+				filter: blur(24px);
+				opacity: 0.21;
+				animation: oshi-drift-c 88s ease-in-out infinite;
+			}
+			@keyframes oshi-drift-a {
+				from {
+					transform: translate3d(-3.5%, -4%, 0);
+				}
+				to {
+					transform: translate3d(3.5%, 5%, 0);
+				}
+			}
+			@keyframes oshi-drift-b {
+				from {
+					transform: translate3d(4.5%, 3%, 0);
+				}
+				to {
+					transform: translate3d(-4.5%, -3%, 0);
+				}
+			}
+			@keyframes oshi-drift-c {
+				0%,
+				100% {
+					transform: translate3d(-2%, 1%, 0) scale(1.02);
+				}
+				50% {
+					transform: translate3d(3%, -2%, 0) scale(1.08);
+				}
+			}
+			:root[data-theme='dark'] .caustic-a {
+				opacity: 0.11;
+			}
+			:root[data-theme='dark'] .caustic-b {
+				opacity: 0.08;
+			}
+			:root[data-theme='dark'] .caustic-c {
+				opacity: 0.10;
+			}
+			/* 气泡：错开起点与速度。上浮距离用 cqw —— 卡窄了距离跟着缩，
+			   不会在半空中就飞出水面。 */
+			.bubble {
+				position: absolute;
+				bottom: -3%;
+				border-radius: 50%;
+				background: oklch(1 0 0 / 0.55);
+				box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.7);
+				opacity: 0;
+				animation: oshi-float 17s linear infinite;
+			}
+			.bubble.b1 {
+				left: 5%;
+				width: 4px;
+				height: 4px;
+				animation-duration: 15s;
+				animation-delay: -2s;
+			}
+			.bubble.b2 {
+				left: 14%;
+				width: 6px;
+				height: 6px;
+				animation-duration: 21s;
+				animation-delay: -9s;
+			}
+			.bubble.b3 {
+				left: 26%;
+				width: 5px;
+				height: 5px;
+				animation-duration: 18s;
+				animation-delay: -14s;
+			}
+			.bubble.b4 {
+				left: 38%;
+				width: 3px;
+				height: 3px;
+				animation-duration: 13s;
+				animation-delay: -5s;
+			}
+			.bubble.b5 {
+				left: 47%;
+				width: 5px;
+				height: 5px;
+				animation-duration: 24s;
+				animation-delay: -17s;
+			}
+			/* 点击水面冒的气泡。**必须 :global()** —— Astro 会给模板里的元素加 data-astro-cid-*，
+			   而气泡是 JS 动态 createElement 出来的、拿不到那个属性，不加 :global() 的话
+			   整条规则都不匹配（实测 position 还是 static、height 0，气泡根本不成形）。
+			   跟上面那五颗环境气泡分开一套 class：
+			   环境气泡是"这缸水里本来就有泡"，点击气泡是"你碰了一下水" —— 两者样式相近但
+			   生命周期完全不同（前者无限循环，后者一次性、还要回收），混在一起迟早出岔子。
+			   每个气泡的位置 / 大小 / 上浮距离 / 时长都由内联的自定义属性给：
+			   CSS 只管怎么动，JS 只管生在哪、多大、飘多远。 */
+			:global(.oshi-pop) {
+				position: absolute;
+				border-radius: 50%;
+				background: oklch(1 0 0 / 0.62);
+				box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.78);
+				will-change: transform, opacity;
+				animation: oshi-pop-up var(--pop-dur, 1.8s) var(--pop-delay, 0s)
+					cubic-bezier(0.35, 0, 0.5, 1) forwards;
+			}
+			:root[data-theme='dark'] :global(.oshi-pop) {
+				background: oklch(0.95 0.02 220 / 0.5);
+				box-shadow: inset 0 0 0 1px oklch(0.95 0.02 220 / 0.62);
+			}
+			/* 末段淡出必须走完，否则气泡会被 .oshi-water 的 overflow 在水线处硬切一刀 */
+			@keyframes oshi-pop-up {
+				0% {
+					transform: translate3d(0, 0, 0) scale(0.3);
+					opacity: 0;
+				}
+				12% {
+					opacity: 0.95;
+				}
+				55% {
+					opacity: 0.85;
+				}
+				100% {
+					transform: translate3d(var(--pop-dx, 0px), var(--pop-rise, -200px), 0) scale(1.3);
+					opacity: 0;
+				}
+			}
+
+			/* 亮色下气泡是"水里的白点"，暗色下压淡一点免得像雪 */
+			:root[data-theme='dark'] .bubble {
+				background: oklch(0.95 0.02 220 / 0.4);
+				box-shadow: inset 0 0 0 1px oklch(0.95 0.02 220 / 0.5);
+			}
+			@keyframes oshi-float {
+				0% {
+					transform: translate3d(0, 0, 0) scale(0.7);
+					opacity: 0;
+				}
+				12% {
+					opacity: 0.7;
+				}
+				85% {
+					opacity: 0.45;
+				}
+				100% {
+					transform: translate3d(0, -62cqw, 0) scale(1.15);
+					opacity: 0;
+				}
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.caustic,
+				.oshi-waterline,
+				.oshi-wave,
+				.oshi-wave svg,
+				.oshi-ray,
+				.bubble,
+				.oshi-inner,
+				.oshi-inner .oshi-fact,
+				.oshi-tagline-slot {
+					animation: none;
+				}
+			}
+
+			/* 窄屏（≤680px）：空气带只有卡宽的 20%，八项塞不进去 —— 整块落到图下面。
+			   图仍是方形，上面只留身份三行，这三行在任何宽度都装得进空气带。 */
+			@media (max-width: 680px) {
+				.oshi-card {
+					aspect-ratio: auto;
+					background: var(--card-bg);
+				}
+				.oshi-photo {
+					position: relative;
+					inset: auto;
+					aspect-ratio: 1 / 1;
+				}
+				.oshi-air {
+					width: 64%;
+				}
+				.oshi-body {
+					position: static;
+					display: grid;
+					gap: 0.9rem;
+					padding: 1.15rem 1.25rem 1.35rem;
+				}
+				.oshi-rule {
+					display: none;
+				}
+				.oshi-facts,
+				.oshi-inner,
+				.oshi-tagline-slot {
+					position: static;
+					width: auto;
+				}
+				.oshi-facts {
+					display: grid;
+					grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+					gap: 0.55rem 1rem;
+					font-size: 0.86rem;
+				}
+				/* 图下面不再是水，是卡面 → 字回到站点墨色 */
+				.oshi-fact .k {
+					font-size: 0.72rem;
+					letter-spacing: 0.14em;
+					color: var(--muted);
+				}
+				.oshi-fact .v {
+					color: var(--ink);
+				}
+				/* 她自己写的那三条在宽屏是"水里专用的深青字"，落到卡面上必须跟着
+				   回到站点墨色（不然浅色下深青压白卡只有 1.x:1，等于看不见）。
+				   顺带加一条左竖线把它和上面的官方八项分开 —— 窄屏没有水线可依靠了。 */
+				.oshi-inner {
+					padding-left: 0.85rem;
+					border-left: 2px solid var(--line);
+				}
+				.oshi-inner-title,
+				:root[data-theme='dark'] .oshi-inner-title {
+					font-size: 0.72rem;
+					color: var(--muted);
+				}
+				.oshi-inner-rows {
+					font-size: 0.86rem;
+					gap: 0.35rem;
+				}
+				.oshi-inner .oshi-fact .k,
+				:root[data-theme='dark'] .oshi-inner .oshi-fact .k {
+					color: var(--muted);
+				}
+				.oshi-inner .oshi-fact .v,
+				:root[data-theme='dark'] .oshi-inner .oshi-fact .v {
+					color: var(--ink);
+				}
+				.oshi-tagline {
+					font-size: 1rem;
+					color: var(--primary);
+					text-shadow: none;
+				}
+				:root[data-theme='dark'] .oshi-tagline {
+					color: var(--primary);
+				}
 			}
 
 			@media (max-width: 640px) {
@@ -430,34 +1096,125 @@ import { oshiCard, profileIdentity, profileStatus, profileTech } from '../data/p
 
 			<section class="section-block reveal">
 				<p class="eyebrow">oshi · 单推</p>
+				{/* 单推角色卡：整张卡就是一张图，文字压在图量出来的安静区里。
+				   亮色＝白天（她抬头），暗色＝夜里（她低头）—— 切主题是换一个时辰。
+				   版式里的每个百分比都来自 blog/scripts/measure-oshi-art.py，图一换必须重跑。 */}
 				<div class="oshi-card">
-					<div class="oshi-moon" aria-hidden="true"></div>
-					<div class="oshi-snow" aria-hidden="true">
-						<i></i><i></i><i></i><i></i><i></i><i></i>
+					<div class="oshi-photo">
+						<Image
+							class="oshi-shot-day"
+							src={OshiDay}
+							alt="朝比奈真冬蜷坐在水族箱底的白天，水面之上是缸内的空气层"
+							widths={[380, 560, 760, 1024]}
+							sizes="(max-width: 800px) 100vw, 760px"
+							loading="lazy"
+							decoding="async"
+						/>
+						<Image
+							class="oshi-shot-night"
+							src={OshiNight}
+							alt="夜里的同一只水族箱：她沉在水面之下，头埋进膝盖，长发向上飘散"
+							widths={[380, 560, 760, 1024]}
+							sizes="(max-width: 800px) 100vw, 760px"
+							loading="lazy"
+							decoding="async"
+						/>
+
+						{/* 水里的动静，全在水线以下：水面呼吸高光 + 一道缓慢横扫的光柱
+						    + 三道错拍散光 + 五颗上浮气泡 + 三条互相交织、能跟着滚动晃的水线。
+						    水、浪、造景都不在这里 —— 图里都有，这里只补"在动"。
+						    内层 .oshi-water-inner 单独一层：滚动引起的水体横移只动它，
+						    外层 .oshi-water 的裁剪不能跟着走（否则波光会溢出到水面之上）。 */}
+						<div class="oshi-water" aria-hidden="true">
+							<div class="oshi-water-inner">
+								<span class="oshi-waterline"></span>
+								{waves.map((w) => (
+									<span class={`oshi-wave ${w.cls}`}>
+										<svg viewBox="0 0 1000 40" preserveAspectRatio="none">
+											<path d={w.d} />
+										</svg>
+									</span>
+								))}
+								<span class="oshi-ray"></span>
+								<span class="caustic caustic-a"></span>
+								<span class="caustic caustic-b"></span>
+								<span class="caustic caustic-c"></span>
+								<span class="bubble b1"></span>
+								<span class="bubble b2"></span>
+								<span class="bubble b3"></span>
+								<span class="bubble b4"></span>
+								<span class="bubble b5"></span>
+							</div>
+						</div>
+
+						{/* 水面之上：身份三行。右界 61.8% —— 再往右就是她的头发 */}
+						<div class="oshi-air">
+							<span class="oshi-unit">{oshiCard.unit} · {oshiCard.role}</span>
+							<div class="oshi-head">
+								<h3>{oshiCard.name}</h3>
+								<span class="jp">{oshiCard.nameEn}</span>
+							</div>
+						</div>
 					</div>
-					<div class="oshi-head">
-						<h3>{oshiCard.name}</h3>
-						<span class="jp">{oshiCard.nameEn}</span>
+
+					{/* 水面之下：一条细线 + 八项资料 + 那句签名。宽屏压在水里，窄屏整块落到图下 */}
+					<div class="oshi-body">
+						<span class="oshi-rule" aria-hidden="true"></span>
+						<div class="oshi-facts">
+							<div class="oshi-fact">
+								<p class="k">生日</p>
+								<p class="v">{oshiCard.birthday + ' · ' + oshiCard.zodiac}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">年龄</p>
+								<p class="v">{oshiCard.age + ' 岁'}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">身高</p>
+								<p class="v">{oshiCard.height}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">CV</p>
+								<p class="v">{oshiCard.cv}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">趣味</p>
+								<p class="v">{oshiCard.likes}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">擅长</p>
+								<p class="v">{oshiCard.skill}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">喜欢</p>
+								<p class="v">{oshiCard.food}</p>
+							</div>
+							<div class="oshi-fact">
+								<p class="k">不擅长</p>
+								<p class="v">{oshiCard.weak}</p>
+							</div>
+						</div>
+						{/* 水面之下：她自己写的三条 —— 和上面八项同一个标签，但值是她自己给的。
+						    位置是量出来的：x 6%–52% / y 37%–49.6% 是水区唯一一块没有细节的空地
+						    （昼深字 7.98:1，夜白字 9.94:1）。 */}
+						<div class="oshi-inner">
+							<p class="oshi-inner-title">{oshiInner.title}</p>
+							<div class="oshi-inner-rows">
+								{
+									oshiInner.items.map((it) => (
+										<div class="oshi-fact">
+											<p class="k">{it.k}</p>
+											<p class="v">{it.v}</p>
+										</div>
+									))
+								}
+							</div>
+						</div>
+						<p class="oshi-tagline-slot">
+							<span class="oshi-tagline" aria-hidden="true">{oshiCard.tagline}</span>
+							<span class="sr-only">{oshiCard.tagline}</span>
+						</p>
 					</div>
-					<span class="oshi-unit">{oshiCard.unit} · {oshiCard.role}</span>
-					<div class="oshi-facts">
-						<div class="oshi-fact"><p class="k">生日</p><p class="v">{oshiCard.birthday} · {oshiCard.zodiac}</p></div>
-						<div class="oshi-fact"><p class="k">年龄</p><p class="v">{oshiCard.age} 岁</p></div>
-						<div class="oshi-fact"><p class="k">身高</p><p class="v">{oshiCard.height}</p></div>
-						<div class="oshi-fact"><p class="k">CV</p><p class="v">{oshiCard.cv}</p></div>
-						<div class="oshi-fact"><p class="k">趣味</p><p class="v">{oshiCard.likes}</p></div>
-						<div class="oshi-fact"><p class="k">擅长</p><p class="v">{oshiCard.skill}</p></div>
-						<div class="oshi-fact"><p class="k">喜欢的食物</p><p class="v">{oshiCard.food}</p></div>
-						<div class="oshi-fact"><p class="k">不擅长</p><p class="v">{oshiCard.weak}</p></div>
-					</div>
-					<p class="oshi-theme">{oshiCard.themeLine}</p>
-					<p class="oshi-tagline">{oshiCard.tagline}</p>
-					<p class="oshi-note">
-						《世界计划 缤纷舞台！feat. 初音未来》及其角色、商标归 SEGA / Colorful Palette 所有；
-						本站为非官方粉丝向个人站，角色资料整理自
-						<a href={oshiCard.officialUrl} target="_blank" rel="noopener">官方角色页</a>
-						与<a href={oshiCard.wikiUrl} target="_blank" rel="noopener">萌娘百科</a>。
-					</p>
 				</div>
 			</section>
 
@@ -476,3 +1233,154 @@ import { oshiCard, profileIdentity, profileStatus, profileTech } from '../data/p
 		<Footer />
 	</body>
 </html>
+
+<script>
+	/* 卡在视口里移动 → 水面波动。
+	   两个关键决定：
+
+	   ① 驱动量是**卡片自己的视口位置变化**，不是 window.scrollY。
+	      对缸里的水来说，"谁让它动的"没有区别 —— 滚轮、拖滚动条、键盘翻页、锚点跳转、
+	      惯性滚动、将来某个容器内部滚动，对卡片都只是同一件事：它在用户眼里移动了。
+	      只认它自己的位置，就不必去枚举有多少种滚动来源（枚举必然漏）。
+	      用 getBoundingClientRect().top 逐帧取差，一次读取，什么来源都覆盖。
+
+	   ② 位移**不是**直接映射成波形（那读起来像滑块，一停就僵在最大位），而是把移动
+	      当成给水面的一个冲量，之后让一个阻尼弹簧自己荡回去 —— 水被打一下会自己晃、
+	      自己停，这才是"水"。所以移动只负责 v += Δ，位移 x 由每帧的
+	      v += -k·x; v *= damping; x += v 解出来。
+
+	   两条纪律：
+	   · 卡不在视口里就不跑（否则整页滚动都在给一张看不见的卡算弹簧，白烧电）；
+	   · reduced-motion 下整段不跑 —— 此时 --slosh 未定义，CSS 里 var(--slosh, 0) 兜到 0，
+	     波形回到静止态，不留残影。 */
+	/* 遍历所有卡片而不是只取第一张：一页完全可能有多张（预览页就是亮暗各一张），
+	   写成 querySelector 的话第二张永远不会有水面波动。每张卡各自一套弹簧状态。
+	   不写 TS 泛型：本段会被自包含预览页原样内联，泛型到浏览器就是语法错误、整段不跑。 */
+	if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+	  for (const card of document.querySelectorAll('.oshi-card')) {
+		// instanceof 把 Element 收窄成 HTMLElement：TS 认，JS 也合法。
+		// 写成 `card as HTMLElement` 的话，预览页内联这段同样是语法错误。
+		if (!(card instanceof HTMLElement)) continue;
+			const K = 0.01; // 弹簧刚度 → 周期约 1.05s（水的节奏；0.022 时像果冻）
+			const DAMPING = 0.978; // 每帧衰减 → 约 3s 荡平
+			/* 增益是实测调出来的：0.0035 时一次普通滚动就把 --slosh 顶在 ±1 饱和，
+			   看起来像卡住而不是水在晃；现在这一档快滚峰值约 0.6–0.8，还看得见回弹。 */
+			const GAIN = 0.0002; // 每帧位移 → 冲量
+			const IMPULSE_MAX = 0.1; // 单帧冲量上限（此时已经顶到最大波幅），防"甩一下飞出去"
+			let x = 0;
+			let v = 0;
+			let raf = 0;
+			let prevTop = 0;
+			let last = 0;
+			let lastWritten = NaN;
+
+			/* tick 不接参数：requestAnimationFrame 会把时间戳传进来，但那需要写 `(now: number)`，
+			   而本段会被自包含预览页原样内联 —— TS 标注到浏览器就是语法错误。用 performance.now()
+			   取值，既没有参数也没有标注，两边都合法。 */
+			const tick = () => {
+				const now = performance.now();
+				// 按真实帧间隔积分（以 60fps 的 16.667ms 为 1 个单位）。
+				// 不这么做的话弹簧是按帧衰减的：120Hz 屏上同一段动画会快一倍 —— 效果随显示器变。
+				// 冲量那边不必换算：一次滚动 D 像素的总冲量恒为 D×GAIN，与帧率无关。
+				const dt = last ? Math.min(50, now - last) / 16.667 : 1;
+				last = now;
+				const top = card.getBoundingClientRect().top;
+				const d = top - prevTop;
+				prevTop = top;
+				if (d) v += Math.max(-IMPULSE_MAX, Math.min(IMPULSE_MAX, d * GAIN));
+				v += -K * x * dt;
+				v *= Math.pow(DAMPING, dt);
+				x += v * dt;
+				if (Math.abs(x) < 0.002 && Math.abs(v) < 0.002) {
+					x = 0;
+					v = 0;
+				}
+				const s = Math.max(-1, Math.min(1, x));
+				// 每帧都写 style 会白白触发样式计算；值没变就不写
+				if (s !== lastWritten) {
+					lastWritten = s;
+					card.style.setProperty('--slosh', s.toFixed(4));
+					card.style.setProperty('--slosh-abs', Math.abs(s).toFixed(4));
+				}
+				raf = requestAnimationFrame(tick);
+			};
+
+			const io = new IntersectionObserver(
+				(entries) => {
+					if (entries[0].isIntersecting) {
+						if (!raf) {
+							prevTop = card.getBoundingClientRect().top;
+							last = 0;
+							raf = requestAnimationFrame(tick);
+						}
+					} else if (raf) {
+						cancelAnimationFrame(raf);
+						raf = 0;
+						x = 0;
+						v = 0;
+						lastWritten = 0;
+						card.style.setProperty('--slosh', '0');
+						card.style.setProperty('--slosh-abs', '0');
+					}
+				},
+				{ rootMargin: '160px' },
+			);
+			io.observe(card);
+	  }
+	}
+
+	/* 点击水面 → 从点的地方冒一串气泡，升到接近水面时淡掉。
+	   三条纪律：
+	   · **只认水面之下的点击**。水面之上是身份与八项资料，在那里点一下不该冒泡。
+	     绑 click 而不是 pointerdown —— 拖动选字 / 滚动起步都不会误触。
+	   · 气泡在**接近水面时淡完**，不靠 .oshi-water 的 overflow 去切：硬切会看到半颗泡消失。
+	     所以上浮距离取 0.9×（点击处到水面的距离），永远停在水面之下一点。
+	   · 连点有上限（BURST_MAX 组同时在飞），否则一直点会堆出几百个节点。 */
+	if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		const BURST_MAX = 6;
+		let flying = 0;
+		for (const card of document.querySelectorAll('.oshi-card')) {
+			if (!(card instanceof HTMLElement)) continue;
+			const water = card.querySelector('.oshi-water-inner');
+			if (!(water instanceof HTMLElement)) continue;
+			card.addEventListener('click', (e) => {
+				if (!(e instanceof MouseEvent)) return;
+				if (flying >= BURST_MAX) return;
+				const wr = water.getBoundingClientRect();
+				const x = e.clientX - wr.left;
+				const y = e.clientY - wr.top;
+				// y < 0 就是水面之上：那里是身份与资料，点一下不该冒泡
+				if (y < 0 || y > wr.height || x < 0 || x > wr.width) return;
+				flying++;
+				// 用一次性标记回收，而不是把节点收进数组：数组会被 TS 推成 any[]（这段还要能
+				// 原样内联进预览页，不能写类型标注），而标记法顺带保证多组气泡同时飞时不会互相删错
+				const tag = 'burst-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+				const n = 7 + Math.floor(Math.random() * 5);
+				let maxWait = 0;
+				for (let i = 0; i < n; i++) {
+					const b = document.createElement('span');
+					b.className = 'oshi-pop';
+					b.dataset.burst = tag;
+					const size = 3 + Math.random() * 6;
+					const dur = 1.5 + Math.random() * 1.6;
+					const delay = Math.random() * 0.3;
+					const rise = Math.min(y, Math.max(12, y * 0.9));
+					maxWait = Math.max(maxWait, dur + delay);
+					b.style.left = x + 'px';
+					b.style.top = y + 'px';
+					b.style.width = size + 'px';
+					b.style.height = size + 'px';
+					b.style.setProperty('--pop-dx', (Math.random() * 2 - 1) * 26 + 'px');
+					b.style.setProperty('--pop-rise', -rise + 'px');
+					b.style.setProperty('--pop-dur', dur + 's');
+					b.style.setProperty('--pop-delay', delay + 's');
+					water.appendChild(b);
+				}
+				window.setTimeout(() => {
+					for (const b of water.querySelectorAll('[data-burst="' + tag + '"]')) b.remove();
+					flying--;
+				}, (maxWait + 0.4) * 1000);
+			});
+		}
+	}
+</script>

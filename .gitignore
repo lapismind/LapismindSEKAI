@@ -17,3 +17,7 @@ planning-new-game/
 
 # 浏览器验证脚本的输出（截图等）：只提交脚本，不提交产物
 docs/agent/scripts/out/
+
+# Python 缓存（分析脚本用 ImageGen 的 venv 跑，会生成）
+__pycache__/
+*.pyc
