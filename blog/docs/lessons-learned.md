@@ -491,3 +491,56 @@
 - 修法：**别写 `r"\1"`，用 `lambda m: m.group(1)`** —— 没有转义就没有歧义。
 - 一般化：**多层引号/转义嵌套时，优先用函数式替换、参数化拼接**，
   而不是往字符串里塞反斜杠序列。这一轮我已经在 bash 引号上栽过三次了。
+
+### 59. 跨设备接力时，先确认临时预览目录是否存在
+
+- 本轮按 `CURRENT.md` 去找 `docs/agent/scripts/out/oshi-card/` 截图，`rg` 因目录不存在退出 1；
+  随后把并不存在的 `docs/agent/scripts/.gitignore` 也传给 `rg`，再次退出 1。
+- `docs/agent/scripts/out/` 在仓库根 `.gitignore` 中，预览截图不会随 Git 跨设备同步。
+  接手时先检查路径是否存在；没有就看已提交的原图与页面源码，需要截图时再按脚本生成。
+- 搜索多个候选路径前，先确认每个路径存在，避免把路径缺失误读成搜索内容不存在。
+
+### 60. 本机没有全局图片编码命令时，先查项目现成依赖
+
+- 为接入单推卡新图检查 `magick`、`cwebp`、`ffmpeg`，这些命令均不在当前 PATH，批量 `Get-Command` 返回 1。
+- `blog/node_modules/sharp` 已安装，可直接用于 PNG → WebP 编码；生成前先查本项目依赖，避免假定全局图像工具可用。
+
+### 61. 旧截图脚本没有 `--help`，且依赖未同步的临时预览页
+
+- 对 `playwright-oshi-preview-check.py` 试运行 `--help` 时，脚本忽略该参数并访问 `docs/agent/scripts/out/oshi-preview/index.html`，因文件不存在报 `ERR_FILE_NOT_FOUND`；已终止该进程。
+- 旧脚本是给上轮临时自包含预览页用的。本轮应针对构建产物启动本地服务，另写短脚本截取当前 `/about/` 卡片，避免依赖不会跨设备同步的 `out/` 文件。
+
+### 62. 页面有持续请求时，截图脚本不应把 `networkidle` 当作就绪条件
+
+- 新截图脚本首张卡片已截到，第二次 `page.goto(..., wait_until="networkidle")` 等待 30 秒后超时。
+- 改为等待页面 `domcontentloaded`，随后滚动到卡片并显式等待当前主题图片 `complete && naturalWidth > 0`，再截卡片。
+
+### 63. PowerShell 下不要把 `*.css` 直接传给 `rg` 当路径
+
+- `rg -l "oshi-waterline" blog/dist/_astro/*.css` 在本机返回路径语法错误；改用 `rg -l -g '*.css' "oshi-waterline" blog/dist/_astro`。
+- 顺着编译产物定位到一处多余的 `}`：它使 `.oshi-waterline` 基础样式整条被丢弃，元素尺寸为 0。已删去多余括号，并在角色名字上显式继承白色以避免全局 `h3` 色覆盖。
+
+### 64. 本地截图循环尽量复用一个页面
+
+- `with_server.py` 连续启动短命静态服务后留有 `http.server` 子进程，再次占用相同端口时浏览器收到 `ERR_EMPTY_RESPONSE`；确认命令行后停止了本轮残留进程。
+- 单页静态站里第二次 `goto` 还遇到 30 秒超时。截图脚本改为仅导航一次，后续切换 `data-theme` 和视口宽度，在同一页抓取六种组合；换未占用端口后六张图均生成成功。
+
+### 65. 查设计令牌前先核对包目录结构
+
+- 为研究单推卡字体时把不存在的 `packages/design-kit/src` 传给 `rg`，命令返回 1。
+- 本仓库的令牌直接在 `packages/design-kit/tokens.css`，字体文件在 `packages/design-kit/fonts/`；下次先用 `rg --files packages/design-kit` 核对路径。
+
+### 66. 在子目录执行素材复制前先统一路径基准
+
+- 本轮在 `blog/` 作为工作目录运行素材复制，却把源和目标都写成仓库根目录相对路径，导致复制失败，后续 Sharp 也找不到输入文件。
+- 素材路径应统一使用解析后的绝对路径，或在同一工作目录下使用正确的相对路径；复制成功后再编码，避免级联报错。
+
+### 67. 在重复结构的页面里补元素时用唯一上下文定位
+
+- 本轮用通用的 `</div></section>` 补 `<noscript>`，补丁命中了页面靠前的玩家资料卡，而非目标单推卡。
+- 修改多段相同结构的 Astro 页面时，补丁上下文应包含目标区块独有的类名或下一节标题；写完立即核对目标元素的实际行号和邻接结构。
+
+### 68. 从长页抽出懒加载卡片做样例时要主动加载图
+
+- 本轮样例页通过 iframe 隐藏 `/about/` 的其他区块，让卡片从页面下方跳到首屏；第一次截图卡片只有底色，因为白天图仍在等待懒加载。
+- 样例 iframe 加载后把两张卡片图片设为 `loading="eager"`，视觉复核时也应等待当前主题图片 `complete && naturalWidth > 0`，不能只等卡片 DOM 出现。

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>朝比奈真冬 · 水族箱卡片排版样例</title>
+		<style>
+			:root { font-family: system-ui, sans-serif; color: #26364d; background: #edf1f8; }
+			* { box-sizing: border-box; }
+			body { margin: 0; }
+			.demo { max-width: 1020px; margin: auto; padding: 28px 16px 42px; }
+			h1 { margin: 0 0 6px; font-size: clamp(1.2rem, 3vw, 1.65rem); font-weight: 600; }
+			.intro { margin: 0 0 22px; color: #68778e; line-height: 1.55; }
+			.controls { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+			.group { display: inline-flex; padding: 4px; gap: 3px; border: 1px solid #c8d3e6; border-radius: 999px; background: #fff; }
+			button { border: 0; border-radius: 999px; padding: 8px 16px; color: #52657f; background: transparent; cursor: pointer; font: inherit; font-size: 0.88rem; }
+			button[aria-pressed="true"] { color: #fff; background: #455d87; box-shadow: 0 1px 6px #172b4b33; }
+			.stage { display: flex; justify-content: center; align-items: flex-start; min-height: 380px; padding: 18px; border-radius: 22px; background: #dce7f6; transition: background 400ms ease; overflow-x: auto; }
+			.stage[data-theme="dark"] { background: #0c1832; }
+			iframe { display: block; width: 820px; height: 820px; flex: none; border: 0; border-radius: 18px; background: transparent; }
+			.note { margin: 14px 2px 0; font-size: 0.85rem; color: #6c7b92; }
+			@media (prefers-reduced-motion: reduce) { .stage { transition: none; } }
+		</style>
+	</head>
+	<body>
+		<main class="demo">
+			<h1>朝比奈真冬 · 水族箱卡片</h1>
+			<p class="intro">这是当前 /about/ 页面卡片的本地排版样例。切换昼夜看左侧短句的变化；点击水面可看气泡。</p>
+			<div class="controls">
+				<div class="group" aria-label="时辰">
+					<button type="button" data-theme="light" aria-pressed="true">白天</button>
+					<button type="button" data-theme="dark" aria-pressed="false">夜晚</button>
+				</div>
+				<div class="group" aria-label="卡片宽度">
+					<button type="button" data-width="820" aria-pressed="true">桌面</button>
+					<button type="button" data-width="390" aria-pressed="false">手机</button>
+					<button type="button" data-width="320" aria-pressed="false">窄屏</button>
+				</div>
+			</div>
+			<div class="stage" data-theme="light"><iframe title="当前卡片样例" loading="eager"></iframe></div>
+			<p class="note">演示页只收起了站点其他区块；卡片图片、网页文案和动效来自当前本地构建。</p>
+		</main>
+		<script>
+			const frame = document.querySelector('iframe');
+			const stage = document.querySelector('.stage');
+			let theme = 'light';
+			let width = 820;
+			localStorage.setItem('theme', theme);
+			frame.addEventListener('load', () => {
+				const doc = frame.contentDocument;
+				const style = doc.createElement('style');
+				style.textContent = `
+					body > :not(main) { display: none !important; }
+					main > *:not(:has(.oshi-card)) { display: none !important; }
+					main { padding-top: 16px !important; padding-bottom: 16px !important; }
+					section:has(.oshi-card) { margin: 0 !important; padding: 0 !important; opacity: 1 !important; transform: none !important; }
+					section:has(.oshi-card) > .eyebrow { display: none !important; }
+					#l2d-widget, .snow-canvas { display: none !important; }
+				`;
+				doc.head.appendChild(style);
+				doc.documentElement.dataset.theme = theme;
+				for (const image of doc.querySelectorAll('.oshi-photo img')) image.loading = 'eager';
+				requestAnimationFrame(() => doc.querySelector('.oshi-card')?.scrollIntoView({ block: 'center' }));
+			});
+			frame.src = '/about/';
+			for (const button of document.querySelectorAll('button[data-theme]')) {
+				button.addEventListener('click', () => {
+					theme = button.dataset.theme;
+					stage.dataset.theme = theme;
+					localStorage.setItem('theme', theme);
+					frame.contentDocument.documentElement.dataset.theme = theme;
+					for (const peer of document.querySelectorAll('button[data-theme]')) peer.setAttribute('aria-pressed', String(peer === button));
+				});
+			}
+			for (const button of document.querySelectorAll('button[data-width]')) {
+				button.addEventListener('click', () => {
+					width = Number(button.dataset.width);
+					frame.style.width = `${width}px`;
+					frame.style.height = `${width === 820 ? 820 : width + 20}px`;
+					for (const peer of document.querySelectorAll('button[data-width]')) peer.setAttribute('aria-pressed', String(peer === button));
+				});
+			}
+		</script>
+	</body>
+</html>

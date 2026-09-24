@@ -3,8 +3,8 @@ import BaseHead from '../components/BaseHead.astro';
 import Footer from '../components/Footer.astro';
 import Header from '../components/Header.astro';
 import Mascot from '../assets/mascot.webp';
-import OshiDay from '../assets/oshi/oshi-day.webp';
-import OshiNight from '../assets/oshi/oshi-night.webp';
+import OshiDay from '../assets/oshi/oshi-day-lettered.webp';
+import OshiNight from '../assets/oshi/oshi-night-lettered.webp';
 import { Image } from 'astro:assets';
 import { SITE_TITLE } from '../consts';
 import { oshiCard, oshiInner, profileIdentity, profileStatus, profileTech } from '../data/profile';
@@ -244,16 +244,8 @@ const waves = [
 			}
 
 			/* ---------- 单推角色卡：一只水族箱 ----------
-			   作画是最高优先级 —— 整张卡就是一张图，版式从图里量出来，不是拿版式去约束图。
-			   量测脚本 blog/scripts/measure-oshi-art.py + probe-oshi-boxes.py，图为 1024²，相对坐标：
-			     · 水面：落差最大 y=25.7%，高光带 30.7% —— 水域特效全挂在 25.7% 以下
-			     · 唯一安静区＝水面之上：y 6%–24%、x 4%–62%。相对亮度 0.11(昼)/0.016(夜)、
-			       标准差 0.03、细节密度近乎为零 —— 白字对比度 7.3:1 / 15.8:1
-			     · 她的发缘在空气带里最靠左只到 68.8%，所以文字右界钉在 62%
-			     · 水里唯一能压字的地方：x 11.5%、y 40.8% 的散光水面
-			       （昼是亮水→深字 7.4:1，夜是暗水→白字 9.9:1）
-			   亮色＝白天（她抬头，脸贴着水线）；暗色＝夜里（她低头，连人带发沉下去）。
-			   切主题不是换配色，是换一个时辰。 */
+			   两张图都是 1:1；姓名和罗马音已写进图的空气层，网页只排可切换的短句。
+			   亮色＝白天抬头；暗色＝夜里低头。切主题就是换一个时辰。 */
 			.oshi-card {
 				/* 容器查询：整套字号按卡宽走（cqw），卡窄了字跟着缩，不会撑破 */
 				container-type: inline-size;
@@ -289,127 +281,78 @@ const waves = [
 			:root[data-theme='dark'] .oshi-shot-night {
 				display: block;
 			}
-			/* 水面之上：身份三行。两版图的这一带都是暗的，所以永远白字，不跟主题换。
-			   宽度钉在 57%（右界 61.8%）—— 再往右就是她从水里伸出来的头发。 */
-			.oshi-air {
-				position: absolute;
-				left: 4.8%;
-				top: 5.2%;
-				width: 57%;
-				color: oklch(0.98 0.006 250);
-			}
-			.oshi-unit {
-				display: block;
-				font-family: var(--font-body);
-				font-size: clamp(0.66rem, 1.42cqw, 0.78rem);
-				letter-spacing: 0.1em;
-				color: oklch(0.98 0.006 250 / 0.76);
-				text-shadow: 0 1px 3px oklch(0.16 0.04 250 / 0.6);
-			}
-			.oshi-head {
-				display: flex;
-				align-items: baseline;
-				gap: 0.7rem;
-				flex-wrap: wrap;
-				margin: clamp(0.1rem, 0.44cqw, 0.26rem) 0 0;
-			}
-			.oshi-head h3 {
-				margin: 0;
-				font-size: clamp(1.35rem, 3.7cqw, 2rem);
-				letter-spacing: 0.06em;
-				text-shadow: 0 1px 5px oklch(0.16 0.04 250 / 0.55);
-			}
-			/* 卡里四处文字一律走 --font-body，不用 --font-mono —— 那条栈里没有任何 CJK
-			   字形，中文和假名会掉进系统宋体（实测：新宋体），跟楷体值凑成两套字体；
-			   单位行的日文假名在新宋体下尤其难看。站内规矩本来也是"中文走 --font-body，
-			   mono 只给要竖向对齐的数字"，这里没有要对齐的数字。 */
-			.oshi-head .jp {
-				font-family: var(--font-body);
-				font-size: clamp(0.6rem, 1.32cqw, 0.74rem);
-				letter-spacing: 0.04em;
-				color: oklch(0.98 0.006 250 / 0.6);
-			}
-			/* 水面之下：一条细线 + 八项资料 + 那句签名。宽屏压在水里，窄屏整块落到图下。 */
+			/* 文案层跟随方形画幅，窄屏也不加图下资料区。 */
 			.oshi-body {
 				position: absolute;
 				inset: 0;
 			}
-			.oshi-rule {
+			/* 姓名占满了空气层。两组答案在左侧空水区同位切换，
+			   白天看公开资料，夜里同一位置才读到另一层意思。 */
+			.oshi-facts,
+			.oshi-inner {
 				position: absolute;
-				left: 4.8%;
-				top: 15.6%;
-				width: 48%;
-				height: 1px;
-				background: linear-gradient(90deg, oklch(1 0 0 / 0.34), oklch(1 0 0 / 0.04));
+				left: 10%;
+				top: 42%;
+				width: 44%;
+				pointer-events: none;
 			}
 			.oshi-facts {
-				position: absolute;
-				left: 4.8%;
-				top: 17%;
-				width: 57%;
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.3em 1.3em;
-				font-size: clamp(0.68rem, 1.5cqw, 0.82rem);
+				display: grid;
+				gap: 0.9em;
+				font-size: clamp(0.72rem, 2.2cqw, 1rem);
+				opacity: 1;
+				visibility: visible;
+				transition: opacity 450ms var(--ease-soft) 180ms, visibility 0s linear 0s;
+			}
+			:root[data-theme='dark'] .oshi-facts {
+				opacity: 0;
+				visibility: hidden;
+				transition: opacity 450ms var(--ease-soft), visibility 0s linear 450ms;
 			}
 			.oshi-fact {
-				display: flex;
-				align-items: baseline;
-				gap: 0.42em;
+				display: grid;
+				gap: 0.2em;
+				line-height: 1.3;
 			}
-			/* 两行都要显式归零：<p> 带全局下边距（实测 .k 10.5px / .v 12.5px），
-			   不归零每项就高 33.5px，八项直接撑到水线以下 */
+			/* 两行都显式归零，避免全局段落边距撑开行距。 */
 			.oshi-fact .k {
 				margin: 0;
 				font-family: var(--font-body);
-				font-size: 0.84em;
-				letter-spacing: 0.08em;
-				color: oklch(0.98 0.006 250 / 0.58);
+				font-size: 0.72em;
+				letter-spacing: 0.13em;
+				color: oklch(0.98 0.006 250 / 0.74);
 			}
 			.oshi-fact .v {
 				margin: 0;
-				font-weight: 600;
+				font-size: 1.08em;
+				font-weight: 500;
+				letter-spacing: 0.02em;
 				color: oklch(0.99 0.004 250 / 0.95);
+				text-shadow: 0 1px 5px oklch(0.18 0.04 240 / 0.38);
 			}
-			/* 水面之下只在夜里显形 —— 白天你看见的是她（水区就是纯图），
-			   夜里才看见她自己。这是 A+D 方案里"这句话没那么廉价"的机制，现在两条都归它管。
-			   opacity 归零挂在 .has-js 下：没有 JS 时 data-theme 永远不会被设上，
-			   否则这份资料会对所有亮色访客永久消失（站内入场动效用的是同一条规矩）。
-			   所以下面那套"昼间深青字"不是死代码 —— 它是无 JS 时唯一会走到的分支：
-			   那时显的是白天那张图，字压在亮水上，必须是深色。 */
-			.has-js .oshi-inner,
-			.has-js .oshi-tagline-slot {
+			/* 有 JS 才在夜里显现；无 JS 时在画框外给出文字回退。 */
+			.has-js .oshi-inner {
 				opacity: 0;
-				transition: opacity var(--dur-slow) var(--ease-soft);
+				visibility: hidden;
+				transition: opacity 450ms var(--ease-soft), visibility 0s linear 450ms;
 			}
-			:root[data-theme='dark'] .oshi-inner,
-			:root[data-theme='dark'] .oshi-tagline-slot {
+			:root[data-theme='dark'] .oshi-inner {
 				opacity: 1;
+				visibility: visible;
+				transition: opacity 450ms var(--ease-soft) 180ms, visibility 0s linear 0s;
 			}
-			/* 水面之下：她自己写的三条。和上面八项是同一个标签、同一个排法 ——
-			   读的人自己会把"水族箱"和"一缸水草和沙子"对起来，不需要画箭头。
-			   位置量出来的：x 5%–54% / y 35.5%–50.5% 是水区唯一没有细节的一块空地
-			   （昼深字 7.96:1，夜白字 9.73:1）。 */
-			.oshi-inner {
-				position: absolute;
-				left: 6%;
-				top: 36.4%;
-				width: 46%;
+			:root:not(.has-js) .oshi-inner {
+				display: none;
 			}
-			.oshi-inner-title {
-				margin: 0 0 0.3em;
-				font-family: var(--font-body);
-				font-size: clamp(0.6rem, 1.22cqw, 0.7rem);
-				letter-spacing: 0.16em;
-				color: oklch(0.22 0.05 226 / 0.72);
-			}
-			:root[data-theme='dark'] .oshi-inner-title {
-				color: oklch(0.92 0.02 240 / 0.74);
+			.oshi-nojs {
+				margin: 0.65rem 0 0;
+				font-size: 0.875rem;
+				color: var(--text-muted);
 			}
 			.oshi-inner-rows {
 				display: grid;
-				gap: 0.16em;
-				font-size: clamp(0.68rem, 1.5cqw, 0.82rem);
+				gap: 0.9em;
+				font-size: clamp(0.72rem, 2.2cqw, 1rem);
 			}
 			.oshi-inner .oshi-fact .k {
 				color: oklch(0.24 0.05 226 / 0.72);
@@ -423,38 +366,12 @@ const waves = [
 			:root[data-theme='dark'] .oshi-inner .oshi-fact .v {
 				color: oklch(0.98 0.012 240 / 0.97);
 			}
-			/* 签名句槽：钉在水里第二块没有细节的地方（量出来的 x 10%–42% / y 52%–56.5%）。
-			   它不跟空气带左对齐 —— 左对齐的位置图里有水草。 */
-			.oshi-tagline-slot {
-				position: absolute;
-				left: 11.5%;
-				top: 52.4%;
-				margin: 0;
-			}
-			.oshi-tagline {
-				font-size: clamp(0.85rem, 1.95cqw, 1.08rem);
-				font-weight: 700;
-				letter-spacing: 0.08em;
-				/* 白天的水是亮的 → 深字（实测 7.4:1） */
-				color: oklch(0.19 0.05 226 / 0.95);
-			}
-			/* 夜里的水是暗的 → 白字（实测 9.9:1） */
-			:root[data-theme='dark'] .oshi-tagline {
-				color: oklch(0.97 0.012 240 / 0.94);
-				text-shadow: 0 1px 7px oklch(0.12 0.04 250 / 0.75);
-			}
-
 			/* ---------- 字悬在水里 ----------
-			   水面之下那两块字要像悬在水里：缓慢的椭圆漂移（不是机械地上下），
-			   三行各自再错开一点点，看起来是被水分开托着的，不是一块板在平移。
+			   夜间两句缓慢漂移，彼此错开一点点。
 			   幅度都压在 4px 以内 —— 再大就从"悬着"变成"晃"，读起来累。
-			   空气带那三行**故意不动**：那是水面之上，而且名字是这张卡最该读清的东西。 */
+			   空气带的文字不动，始终保持可读。 */
 			.oshi-inner {
 				animation: oshi-suspend 13s ease-in-out infinite;
-			}
-			.oshi-tagline-slot {
-				animation: oshi-suspend 17s ease-in-out infinite;
-				animation-delay: -5s;
 			}
 			@keyframes oshi-suspend {
 				0%,
@@ -471,17 +388,13 @@ const waves = [
 					transform: translate3d(-2px, -3px, 0);
 				}
 			}
-			/* 三行各自的微漂移：周期互质，所以永远不会同时到顶（同时到顶就像整块在跳） */
+			/* 两句各自微漂移，周期错开。 */
 			.oshi-inner .oshi-fact {
 				animation: oshi-suspend-row 9s ease-in-out infinite;
 			}
 			.oshi-inner .oshi-fact:nth-child(2) {
 				animation-duration: 11.5s;
 				animation-delay: -3s;
-			}
-			.oshi-inner .oshi-fact:nth-child(3) {
-				animation-duration: 13.7s;
-				animation-delay: -7.5s;
 			}
 			@keyframes oshi-suspend-row {
 				0%,
@@ -492,15 +405,6 @@ const waves = [
 					transform: translate3d(2px, -2.5px, 0);
 				}
 			}
-			/* 窄屏那两块在图下面，不在水里 —— 别漂，漂了像排版出错 */
-			@media (max-width: 680px) {
-				.oshi-inner,
-				.oshi-inner .oshi-fact,
-				.oshi-tagline-slot {
-					animation: none;
-				}
-			}
-
 			/* ---------- 水里的时间 ----------
 			   卡里不再自己画水、画浪、画造景 —— 图里全都有。这一层只负责"水在动"：
 			   水面那道呼吸高光，几道缓慢漂移的散光，几颗上浮的气泡。
@@ -665,8 +569,6 @@ const waves = [
 				to {
 					transform: translate3d(var(--slide, -20%), 0, 0);
 				}
-			}
-
 			}
 			/* 水面：图里画好了水线，这里只让它呼吸 —— 一道很淡的高光贴在图的亮带上。
 			   自绘浪会跟图里的浪打两次架，所以只留这一道。 */
@@ -935,95 +837,26 @@ const waves = [
 				}
 			}
 			@media (prefers-reduced-motion: reduce) {
+				.oshi-facts,
+				.oshi-inner {
+					transition: none;
+				}
 				.caustic,
 				.oshi-waterline,
 				.oshi-wave,
 				.oshi-wave svg,
-				.oshi-ray,
-				.bubble,
-				.oshi-inner,
-				.oshi-inner .oshi-fact,
-				.oshi-tagline-slot {
+					.oshi-ray,
+					.bubble,
+					.oshi-inner,
+					.oshi-inner .oshi-fact {
 					animation: none;
 				}
 			}
-
-			/* 窄屏（≤680px）：空气带只有卡宽的 20%，八项塞不进去 —— 整块落到图下面。
-			   图仍是方形，上面只留身份三行，这三行在任何宽度都装得进空气带。 */
 			@media (max-width: 680px) {
-				.oshi-card {
-					aspect-ratio: auto;
-					background: var(--card-bg);
-				}
-				.oshi-photo {
-					position: relative;
-					inset: auto;
-					aspect-ratio: 1 / 1;
-				}
-				.oshi-air {
-					width: 64%;
-				}
-				.oshi-body {
-					position: static;
-					display: grid;
-					gap: 0.9rem;
-					padding: 1.15rem 1.25rem 1.35rem;
-				}
-				.oshi-rule {
-					display: none;
-				}
 				.oshi-facts,
-				.oshi-inner,
-				.oshi-tagline-slot {
-					position: static;
-					width: auto;
-				}
-				.oshi-facts {
-					display: grid;
-					grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
-					gap: 0.55rem 1rem;
-					font-size: 0.86rem;
-				}
-				/* 图下面不再是水，是卡面 → 字回到站点墨色 */
-				.oshi-fact .k {
-					font-size: 0.72rem;
-					letter-spacing: 0.14em;
-					color: var(--muted);
-				}
-				.oshi-fact .v {
-					color: var(--ink);
-				}
-				/* 她自己写的那三条在宽屏是"水里专用的深青字"，落到卡面上必须跟着
-				   回到站点墨色（不然浅色下深青压白卡只有 1.x:1，等于看不见）。
-				   顺带加一条左竖线把它和上面的官方八项分开 —— 窄屏没有水线可依靠了。 */
 				.oshi-inner {
-					padding-left: 0.85rem;
-					border-left: 2px solid var(--line);
-				}
-				.oshi-inner-title,
-				:root[data-theme='dark'] .oshi-inner-title {
-					font-size: 0.72rem;
-					color: var(--muted);
-				}
-				.oshi-inner-rows {
-					font-size: 0.86rem;
-					gap: 0.35rem;
-				}
-				.oshi-inner .oshi-fact .k,
-				:root[data-theme='dark'] .oshi-inner .oshi-fact .k {
-					color: var(--muted);
-				}
-				.oshi-inner .oshi-fact .v,
-				:root[data-theme='dark'] .oshi-inner .oshi-fact .v {
-					color: var(--ink);
-				}
-				.oshi-tagline {
-					font-size: 1rem;
-					color: var(--primary);
-					text-shadow: none;
-				}
-				:root[data-theme='dark'] .oshi-tagline {
-					color: var(--primary);
+					left: 9%;
+					width: 48%;
 				}
 			}
 
@@ -1096,15 +929,15 @@ const waves = [
 
 			<section class="section-block reveal">
 				<p class="eyebrow">oshi · 单推</p>
-				{/* 单推角色卡：整张卡就是一张图，文字压在图量出来的安静区里。
-				   亮色＝白天（她抬头），暗色＝夜里（她低头）—— 切主题是换一个时辰。
-				   版式里的每个百分比都来自 blog/scripts/measure-oshi-art.py，图一换必须重跑。 */}
+				{/* 方形视觉卡：姓名和罗马音已写进昼夜图；短句留给网页排版。
+				   亮色＝白天（她抬头），暗色＝夜里（她低头）—— 切主题是换一个时辰。 */}
 				<div class="oshi-card">
+					<h3 class="sr-only">{oshiCard.unit} · {oshiCard.name} · {oshiCard.nameEn}</h3>
 					<div class="oshi-photo">
 						<Image
 							class="oshi-shot-day"
 							src={OshiDay}
-							alt="朝比奈真冬蜷坐在水族箱底的白天，水面之上是缸内的空气层"
+							alt="朝比奈真冬坐在无鱼的水族箱中，靠着右侧玻璃望向水面上方"
 							widths={[380, 560, 760, 1024]}
 							sizes="(max-width: 800px) 100vw, 760px"
 							loading="lazy"
@@ -1113,7 +946,7 @@ const waves = [
 						<Image
 							class="oshi-shot-night"
 							src={OshiNight}
-							alt="夜里的同一只水族箱：她沉在水面之下，头埋进膝盖，长发向上飘散"
+							alt="夜色里，朝比奈真冬在同一只无鱼的水族箱中抱膝低头"
 							widths={[380, 560, 760, 1024]}
 							sizes="(max-width: 800px) 100vw, 760px"
 							loading="lazy"
@@ -1147,58 +980,22 @@ const waves = [
 							</div>
 						</div>
 
-						{/* 水面之上：身份三行。右界 61.8% —— 再往右就是她的头发 */}
-						<div class="oshi-air">
-							<span class="oshi-unit">{oshiCard.unit} · {oshiCard.role}</span>
-							<div class="oshi-head">
-								<h3>{oshiCard.name}</h3>
-								<span class="jp">{oshiCard.nameEn}</span>
-							</div>
-						</div>
 					</div>
 
-					{/* 水面之下：一条细线 + 八项资料 + 那句签名。宽屏压在水里，窄屏整块落到图下 */}
+					{/* 同一块空水区：白天是公开答案，夜里浮出另一层意思。 */}
 					<div class="oshi-body">
-						<span class="oshi-rule" aria-hidden="true"></span>
 						<div class="oshi-facts">
-							<div class="oshi-fact">
-								<p class="k">生日</p>
-								<p class="v">{oshiCard.birthday + ' · ' + oshiCard.zodiac}</p>
-							</div>
-							<div class="oshi-fact">
-								<p class="k">年龄</p>
-								<p class="v">{oshiCard.age + ' 岁'}</p>
-							</div>
-							<div class="oshi-fact">
-								<p class="k">身高</p>
-								<p class="v">{oshiCard.height}</p>
-							</div>
-							<div class="oshi-fact">
-								<p class="k">CV</p>
-								<p class="v">{oshiCard.cv}</p>
-							</div>
 							<div class="oshi-fact">
 								<p class="k">趣味</p>
 								<p class="v">{oshiCard.likes}</p>
 							</div>
 							<div class="oshi-fact">
-								<p class="k">擅长</p>
-								<p class="v">{oshiCard.skill}</p>
-							</div>
-							<div class="oshi-fact">
 								<p class="k">喜欢</p>
 								<p class="v">{oshiCard.food}</p>
 							</div>
-							<div class="oshi-fact">
-								<p class="k">不擅长</p>
-								<p class="v">{oshiCard.weak}</p>
-							</div>
 						</div>
-						{/* 水面之下：她自己写的三条 —— 和上面八项同一个标签，但值是她自己给的。
-						    位置是量出来的：x 6%–52% / y 37%–49.6% 是水区唯一一块没有细节的空地
-						    （昼深字 7.98:1，夜白字 9.94:1）。 */}
+						{/* 水面之下：两句私下答案，不加说明文字。 */}
 						<div class="oshi-inner">
-							<p class="oshi-inner-title">{oshiInner.title}</p>
 							<div class="oshi-inner-rows">
 								{
 									oshiInner.items.map((it) => (
@@ -1210,12 +1007,11 @@ const waves = [
 								}
 							</div>
 						</div>
-						<p class="oshi-tagline-slot">
-							<span class="oshi-tagline" aria-hidden="true">{oshiCard.tagline}</span>
-							<span class="sr-only">{oshiCard.tagline}</span>
-						</p>
 					</div>
 				</div>
+				<noscript>
+					<p class="oshi-nojs">{oshiInner.items.map((item) => `${item.k}：${item.v}`).join('　·　')}</p>
+				</noscript>
 			</section>
 
 			<section class="section-block reveal">
@@ -1331,7 +1127,7 @@ const waves = [
 
 	/* 点击水面 → 从点的地方冒一串气泡，升到接近水面时淡掉。
 	   三条纪律：
-	   · **只认水面之下的点击**。水面之上是身份与八项资料，在那里点一下不该冒泡。
+	   · **只认水面之下的点击**。水面上方是画进图里的姓名，在那里点一下不该冒泡。
 	     绑 click 而不是 pointerdown —— 拖动选字 / 滚动起步都不会误触。
 	   · 气泡在**接近水面时淡完**，不靠 .oshi-water 的 overflow 去切：硬切会看到半颗泡消失。
 	     所以上浮距离取 0.9×（点击处到水面的距离），永远停在水面之下一点。
@@ -1349,7 +1145,7 @@ const waves = [
 				const wr = water.getBoundingClientRect();
 				const x = e.clientX - wr.left;
 				const y = e.clientY - wr.top;
-				// y < 0 就是水面之上：那里是身份与资料，点一下不该冒泡
+				// y < 0 就是水面之上：那里是画里的姓名，点一下不该冒泡
 				if (y < 0 || y > wr.height || x < 0 || x > wr.width) return;
 				flying++;
 				// 用一次性标记回收，而不是把节点收进数组：数组会被 TS 推成 any[]（这段还要能
