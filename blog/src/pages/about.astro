@@ -965,6 +965,10 @@ const waves = [
 </html>
 
 <script>
+	let cleanupOshiCards = () => {};
+	function initOshiCards() {
+		cleanupOshiCards();
+		const cleanups = [() => {}];
 	/* 卡在视口里移动 → 水面波动。
 	   两个关键决定：
 
@@ -1056,6 +1060,10 @@ const waves = [
 				{ rootMargin: '160px' },
 			);
 			io.observe(card);
+			cleanups.push(() => {
+				io.disconnect();
+				if (raf) cancelAnimationFrame(raf);
+			});
 	  }
 	}
 
@@ -1073,7 +1081,7 @@ const waves = [
 			if (!(card instanceof HTMLElement)) continue;
 			const water = card.querySelector('.oshi-water-inner');
 			if (!(water instanceof HTMLElement)) continue;
-			card.addEventListener('click', (e) => {
+			card.onclick = (e) => {
 				if (!(e instanceof MouseEvent)) return;
 				if (flying >= BURST_MAX) return;
 				const wr = water.getBoundingClientRect();
@@ -1110,7 +1118,16 @@ const waves = [
 					for (const b of water.querySelectorAll('[data-burst="' + tag + '"]')) b.remove();
 					flying--;
 				}, (maxWait + 0.4) * 1000);
-			});
+			};
+			cleanups.push(() => { card.onclick = null; });
 		}
 	}
+		cleanupOshiCards = () => {
+			for (const cleanup of cleanups) cleanup();
+			cleanupOshiCards = () => {};
+		};
+	}
+	document.addEventListener('astro:before-swap', () => cleanupOshiCards());
+	document.addEventListener('astro:page-load', initOshiCards);
+	initOshiCards();
 </script>

@@ -549,3 +549,10 @@
 
 - 更新 `docs/session-logs/CURRENT.md` 时，补丁里对同一路径同时写了 `Delete File` 和 `Add File`，工具直接拒绝整份补丁，其他文件也没有修改。
 - 改用 `Update File` 替换正文；对于同一路径只保留一种操作。补丁失败后先确认没有部分写入，再重新提交修正后的补丁。
+
+### 70. ClientRouter 换页会替换节点，旧初始化不能当成新页初始化
+
+- 生产复现：从 `/about/` 切到 `/blog/` 后，`localStorage.theme` 仍为 `dark`，但新 `html` 没有 `data-theme` / `has-js`；页脚新节点显示 `--`；返回 `/about/` 后点击水族箱没有气泡。浏览器没有脚本异常。
+- 根因分三处：主题首帧脚本只设置旧根节点；页脚内联计时器闭包持有旧 `#site-runtime`；单推卡打包脚本首次执行时只给旧卡片绑定了监听。Astro ClientRouter 的打包脚本不会每次切页重跑。
+- 修法：主题在 `astro:after-swap` 恢复，避免新页闪亮色；页脚与卡片在 `astro:page-load` 重新初始化，计时器和卡片观察器/点击处理在重新绑定或切页前清理。
+- 调试时不能在 `domcontentloaded` 后立刻点主题按钮：`astro:page-load` 可能还没完成，首次探针因点击过早得到假阴性。浏览器复现脚本应等对应页面加载事件再操作。

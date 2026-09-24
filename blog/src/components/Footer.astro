@@ -87,25 +87,29 @@ const today = new Date();
 
 {isHome && <IntroOverlay />}
 
-<script is:inline>
-	(function () {
-		// 站点起点：第一篇博客（海龟汤上线记录）发布日 2026-08-14
-		var startAt = new Date('2026-08-14T00:00:00+08:00').getTime();
-		var el = document.getElementById('site-runtime');
+<script>
+	// 站点起点：第一篇博客（海龟汤上线记录）发布日 2026-08-14
+	const startAt = new Date('2026-08-14T00:00:00+08:00').getTime();
+	let runtimeTimer = 0;
+	function initRuntime() {
+		if (runtimeTimer) window.clearInterval(runtimeTimer);
+		const el = document.getElementById('site-runtime');
 		if (!el) return;
-		function render() {
-			var s = Math.max(0, Math.floor((Date.now() - startAt) / 1000));
-			var d = Math.floor(s / 86400);
-			var h = Math.floor((s % 86400) / 3600);
-			var m = Math.floor((s % 3600) / 60);
-			var sec = s % 60;
+		const render = () => {
+			const s = Math.max(0, Math.floor((Date.now() - startAt) / 1000));
+			const d = Math.floor(s / 86400);
+			const h = Math.floor((s % 86400) / 3600);
+			const m = Math.floor((s % 3600) / 60);
+			const sec = s % 60;
 			el.innerHTML =
 				'本站已运行 <strong>' + d + '</strong> 天 <strong>' + h + '</strong> 小时 <strong>' +
 				m + '</strong> 分 <strong>' + sec + '</strong> 秒';
-		}
+		};
 		render();
-		setInterval(render, 1000);
-	})();
+		runtimeTimer = window.setInterval(render, 1000);
+	}
+	document.addEventListener('astro:page-load', initRuntime);
+	initRuntime();
 </script>
 
 <canvas class="snow-canvas" aria-hidden="true"></canvas>

@@ -50,17 +50,25 @@ const ogImage = new URL(imageUrl ?? DefaultOgImage.src, Astro.url);
      has-js 同时打上：入场动效的 opacity:0 只在有 JS 时才生效，
      脚本没跑起来时内容直接是最终态（见 design-kit base.css 的动效基元） -->
 <script is:inline>
-	document.documentElement.classList.add('has-js');
 	(() => {
-		try {
-			const stored = localStorage.getItem('theme');
-			const dark = stored
-				? stored === 'dark'
-				: window.matchMedia('(prefers-color-scheme: dark)').matches;
-			document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-		} catch {
-			document.documentElement.dataset.theme = 'light';
+		const applyDocumentState = () => {
+			document.documentElement.classList.add('has-js');
+			try {
+				const stored = localStorage.getItem('theme');
+				const dark = stored
+					? stored === 'dark'
+					: window.matchMedia('(prefers-color-scheme: dark)').matches;
+				document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+			} catch {
+				document.documentElement.dataset.theme = 'light';
+			}
+		};
+		// ClientRouter 会替换 html；新根节点必须在绘制前恢复主题和 JS 标记。
+		if (!window.__lapismindApplyDocumentState) {
+			window.__lapismindApplyDocumentState = applyDocumentState;
+			document.addEventListener('astro:after-swap', applyDocumentState);
 		}
+		applyDocumentState();
 	})();
 </script>
 
