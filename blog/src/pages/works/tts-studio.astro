@@ -1,0 +1,160 @@
+---
+import { Image } from 'astro:assets';
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+import Header from '../../components/Header.astro';
+// 与博客文章《给洛茜的 mod 配上语音》复用同一组截图
+import ShotSingle from '../../assets/posts/tts-studio-gui.png';
+import ShotGlossary from '../../assets/posts/tts-studio-glossary.png';
+import { SITE_TITLE } from '../../consts';
+import { works } from '../../data/projects';
+
+const project = works.find((p) => p.slug === 'tts-studio')!;
+const { name, subtitle, description, tech, version, status } = project;
+
+const shots = [
+	{ src: ShotSingle, caption: '单句合成 · 左选干员、中填台词、右看立绘' },
+	{ src: ShotGlossary, caption: '词典与口癖 · 术语分组开关 + 自定义词条' },
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={`${name} - ${SITE_TITLE}`} description={subtitle} />
+		<style>
+			.back-link {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				margin-bottom: 2.2rem;
+				font-family: var(--font-mono);
+				font-size: 0.88rem;
+				text-decoration: none;
+				color: var(--muted);
+				transition: color 0.2s ease, gap 0.25s ease;
+			}
+			.back-link:hover {
+				color: var(--primary);
+				gap: 0.7em;
+			}
+			.page-head {
+				margin-bottom: 2.2rem;
+			}
+			.page-head .subtitle {
+				color: var(--muted);
+				font-size: 1.15rem;
+				margin: 0.2em 0 1em;
+			}
+			h2 {
+				margin-top: 2.2em;
+				padding-bottom: 0.45em;
+				border-bottom: 1px solid var(--line);
+				display: flex;
+				align-items: center;
+				gap: 0.6em;
+				font-size: 1.4rem;
+			}
+			h2::before {
+				content: '';
+				width: 0.8em;
+				height: 0.8em;
+				border-radius: 3px;
+				background: var(--gradient);
+				flex-shrink: 0;
+			}
+			.shots {
+				display: grid;
+				grid-template-columns: 1fr;
+				gap: 1.4rem;
+			}
+			.shots figure {
+				margin: 0;
+			}
+			.shots :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				box-shadow: var(--shadow-sm);
+			}
+			.shots figcaption {
+				margin-top: 0.7rem;
+				font-size: 0.85rem;
+				color: var(--muted);
+				text-align: center;
+			}
+			.feature-list {
+				padding-left: 1.3em;
+			}
+			.feature-list li {
+				margin-bottom: 0.55em;
+			}
+			.feature-list li::marker {
+				color: var(--primary);
+			}
+			.note {
+				margin-top: 1rem;
+				padding: 0.9rem 1.2rem;
+				border-radius: var(--radius);
+				border: 1px dashed var(--line-strong);
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+			.tech-list {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
+		</style>
+	</head>
+	<body>
+		<Header />
+		<main class="container-narrow page-main" id="main-content" tabindex="-1">
+			<a class="back-link" href="/works/">← 返回 Projects</a>
+			<header class="page-head reveal">
+				<p class="eyebrow">workbench · {version}</p>
+				<h1>{name}</h1>
+				<p class="subtitle">{subtitle}</p>
+				<span class={`status-badge status-${status}`}>{version}</span>
+			</header>
+
+			<section class="reveal">
+				<h2>界面预览</h2>
+				<div class="shots">
+					{
+						shots.map((s) => (
+							<figure>
+								<Image src={s.src} alt={`${name} ${s.caption}`} />
+								<figcaption>{s.caption}</figcaption>
+							</figure>
+						))
+					}
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>项目简介</h2>
+				<p>{description}</p>
+				<ul class="feature-list">
+					<li>干员原版语音当参考，克隆声线后合成任意中文 / 日语台词</li>
+					<li>一个界面切换干员，支持单句合成与批量合成（逐行兜错）</li>
+					<li>本地中→日翻译：官方台词直查 + 术语词典 + 误译纠正 + 按角色的口癖优化</li>
+					<li>口癖规则按干员区分（自称、敬体、称呼取自各自官方台词实测，套错会把语气改反）</li>
+				</ul>
+				<div class="note">
+					原版语音与立绘版权归鹰角网络所有，模型权重与语音素材不随作品分发，仅作个人研究。
+				</div>
+			</section>
+
+			<section class="reveal">
+				<h2>技术构成</h2>
+				<div class="tech-list">
+					{tech.map((t) => <span class="tag">{t}</span>)}
+				</div>
+			</section>
+		</main>
+		<Footer />
+	</body>
+</html>

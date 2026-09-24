@@ -63,6 +63,17 @@ export const games: Project[] = [
 /** Projects 板块：游戏之外的软件作品（工具 / mod / 开源仓库） */
 export const works: Project[] = [
 	{
+		slug: 'tts-studio',
+		name: '干员语音合成工作台',
+		subtitle: '基于 Qwen3-TTS 声线克隆的干员配音工作台',
+		description:
+			'用干员原版语音当参考，克隆声线合成任意中文 / 日语台词。一个界面里切换干员，支持单句与批量合成，内置本地中→日翻译、术语词典和按角色区分的口癖优化（自称、敬体、称呼各按官方台词实测）。',
+		status: 'online',
+		version: 'local workflow',
+		tech: ['Python', 'PySide6', 'QFluentWidgets', 'Qwen3-TTS', 'NLLB-200', 'PyTorch'],
+		links: {},
+	},
+	{
 		slug: 'runestaff',
 		name: '法杖盾斧',
 		subtitle: '《怪物猎人 荒野》充能斧外观替换：日式魔女法杖 + 时钟法阵',
