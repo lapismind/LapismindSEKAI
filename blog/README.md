@@ -10,7 +10,7 @@
 | `/projects/` | 游戏作品集（数据在 `src/data/projects.ts`） |
 | `/works/` | Projects 板块：游戏之外的作品（工具 / mod / 开源仓库），数据在 `src/data/projects.ts` 的 `works` |
 | `/blog/` | 文章列表 + 文章页（目录 / 阅读进度 / 评论区） |
-| `/about/` | 关于我 + 技术栈 + 单推角色卡 |
+| `/about/` | 兴趣简介 + 单推角色卡 + 游戏、工具与 Mod |
 | `/profile/` | 个人资料：身份 / 头像 / 成就展馆（登录后） |
 | `/login/` | 进入 SEKAI：GitHub 登录 / 用户名密码注册登录（依赖 auth 服务） |
 | `/404` | 404 页 |

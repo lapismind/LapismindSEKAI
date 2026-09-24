@@ -544,3 +544,8 @@
 
 - 本轮样例页通过 iframe 隐藏 `/about/` 的其他区块，让卡片从页面下方跳到首屏；第一次截图卡片只有底色，因为白天图仍在等待懒加载。
 - 样例 iframe 加载后把两张卡片图片设为 `loading="eager"`，视觉复核时也应等待当前主题图片 `complete && naturalWidth > 0`，不能只等卡片 DOM 出现。
+
+### 69. 同一份 `apply_patch` 不能同时删除并新建同一路径
+
+- 更新 `docs/session-logs/CURRENT.md` 时，补丁里对同一路径同时写了 `Delete File` 和 `Add File`，工具直接拒绝整份补丁，其他文件也没有修改。
+- 改用 `Update File` 替换正文；对于同一路径只保留一种操作。补丁失败后先确认没有部分写入，再重新提交修正后的补丁。

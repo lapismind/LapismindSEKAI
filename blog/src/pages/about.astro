@@ -7,7 +7,7 @@ import OshiDay from '../assets/oshi/oshi-day-lettered.webp';
 import OshiNight from '../assets/oshi/oshi-night-lettered.webp';
 import { Image } from 'astro:assets';
 import { SITE_TITLE } from '../consts';
-import { oshiCard, oshiInner, profileIdentity, profileStatus, profileTech } from '../data/profile';
+import { oshiCard, oshiInner, profileIdentity } from '../data/profile';
 
 /* 水线的正弦路径：n 个周期铺满 viewBox（宽 1000、高 40、中心 y=20），a 是振幅。
    生成而不是手写，是为了改周期数 / 振幅时不用重数控制点。
@@ -140,78 +140,28 @@ const waves = [
 			.section-block {
 				margin-top: 2rem;
 			}
-			.tech-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-				gap: 0.9rem;
-			}
-			.tech-item {
-				padding: 1rem 1.15rem;
-				transition: transform var(--dur-fast) var(--ease-soft),
-					border-color var(--dur-fast) var(--ease-soft),
-					box-shadow var(--dur-fast) var(--ease-soft);
-			}
-			.tech-item:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
-			}
-			.tech-item b {
-				display: block;
-				font-size: 0.98rem;
-				color: var(--ink);
-				margin-bottom: 0.2rem;
-			}
-			.tech-item span {
-				font-size: 0.84rem;
-				color: var(--muted);
-			}
-
-			.status-list {
-				display: flex;
-				flex-direction: column;
-			}
-			.status-row {
-				display: grid;
-				grid-template-columns: 6em 1fr;
-				gap: 1rem;
-				padding: 0.75em 0;
-				border-bottom: 1px dashed var(--line);
-			}
-			.status-row:last-child {
-				border-bottom: none;
-			}
-			.status-row .label {
-				font-family: var(--font-mono);
-				font-size: 0.78rem;
-				letter-spacing: 0.14em;
-				color: var(--primary);
-			}
-			.status-row .text {
-				margin: 0;
-				color: var(--ink-soft);
-				font-size: 0.95rem;
-			}
-
-			.worlds {
+			.made-grid {
 				display: grid;
 				grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 				gap: 1rem;
 			}
-			.world-card {
+			.made-card {
 				display: block;
 				text-decoration: none;
 				padding: 1.3rem 1.4rem;
+				min-height: 10rem;
+			}
+			a.made-card {
 				transition: transform var(--dur-base) var(--ease-soft),
 					border-color var(--dur-base) var(--ease-soft),
 					box-shadow var(--dur-base) var(--ease-soft);
 			}
-			.world-card:hover {
+			a.made-card:hover {
 				transform: translateY(calc(-1 * var(--lift-hover)));
 				border-color: var(--primary-soft);
 				box-shadow: var(--shadow-md);
 			}
-			.world-card .w-eyebrow {
+			.made-card .made-type {
 				font-family: var(--font-mono);
 				font-size: 0.72rem;
 				letter-spacing: 0.2em;
@@ -219,17 +169,17 @@ const waves = [
 				color: var(--primary);
 				margin: 0 0 0.5rem;
 			}
-			.world-card h3 {
+			.made-card h3 {
 				margin: 0 0 0.4rem;
 				font-size: 1.15rem;
 			}
-			.world-card p {
+			.made-card p {
 				margin: 0;
 				font-size: 0.88rem;
 				color: var(--muted);
 				line-height: 1.7;
 			}
-			.world-card .go {
+			.made-card .go {
 				margin-top: 0.8rem;
 				display: inline-flex;
 				align-items: center;
@@ -239,7 +189,7 @@ const waves = [
 				color: var(--primary);
 				transition: gap 0.25s ease;
 			}
-			.world-card:hover .go {
+			a.made-card:hover .go {
 				gap: 0.7em;
 			}
 
@@ -869,10 +819,6 @@ const waves = [
 				.identity .name-line {
 					justify-content: center;
 				}
-				.status-row {
-					grid-template-columns: 1fr;
-					gap: 0.25rem;
-				}
 			}
 		</style>
 	</head>
@@ -896,34 +842,6 @@ const waves = [
 					</div>
 					<p class="role">{profileIdentity.role}</p>
 					<p class="bio">{profileIdentity.bio}</p>
-				</div>
-			</section>
-
-			<section class="section-block reveal">
-				<p class="eyebrow">now · 现在在做</p>
-				<div class="status-list glass" style="padding: 0.6rem 1.4rem;">
-					{
-						profileStatus.map((s) => (
-							<div class="status-row">
-								<span class="label">{s.label}</span>
-								<p class="text">{s.text}</p>
-							</div>
-						))
-					}
-				</div>
-			</section>
-
-			<section class="section-block reveal">
-				<p class="eyebrow">tech · 技术栈</p>
-				<div class="tech-grid">
-					{
-						profileTech.map((t) => (
-							<div class="tech-item glass">
-								<b>{t.name}</b>
-								<span>{t.note}</span>
-							</div>
-						))
-					}
 				</div>
 			</section>
 
@@ -1015,13 +933,29 @@ const waves = [
 			</section>
 
 			<section class="section-block reveal">
-				<p class="eyebrow">worlds · 这个站的世界</p>
-				<div class="worlds">
-					<a class="world-card glass" href="/projects/">
-						<p class="w-eyebrow">game world</p>
-						<h3>游戏作品</h3>
-						<p>我作为独立开发者做的个人游戏——海龟汤、卡牌对战，以及未来更多。</p>
-						<span class="go">进入 <span aria-hidden="true">→</span></span>
+				<p class="eyebrow">made · 做过的东西</p>
+				<div class="made-grid">
+					<a class="made-card glass" href="/projects/">
+						<p class="made-type">games</p>
+						<h3>联机游戏</h3>
+						<p>真冬的海龟汤、出包魔法师、梭哈 Showhand。都可以在线玩。</p>
+						<span class="go">去游戏页 <span aria-hidden="true">→</span></span>
+					</a>
+					<article class="made-card glass">
+						<p class="made-type">voice</p>
+						<h3>语音</h3>
+						<p>语音 TTS 合成台（widget），目前支持澄闪和洛茜。</p>
+					</article>
+					<article class="made-card glass">
+						<p class="made-type">image</p>
+						<h3>生图</h3>
+						<p>在本地跑生图流程的 Agent。</p>
+					</article>
+					<a class="made-card glass" href="/works/">
+						<p class="made-type">mod</p>
+						<h3>Mod</h3>
+						<p>《怪物猎人 荒野》的法杖盾斧外观。</p>
+						<span class="go">去作品页 <span aria-hidden="true">→</span></span>
 					</a>
 				</div>
 			</section>
