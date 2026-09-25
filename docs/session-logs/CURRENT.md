@@ -1,10 +1,23 @@
-# 当前状态：tts-studio 博客文章与 /works/ 作品页已上线
+# 当前状态：法杖盾斧 v1.1 已出货，无进行中的工作
 
 > 日期：2026-09-25
-> 本轮交接：[`2026-09-25-tts-studio-博客与作品页-handoff.md`](./2026-09-25-tts-studio-博客与作品页-handoff.md)
+> 本轮交接：[`2026-09-25-法杖盾斧-v1.1-出货-handoff.md`](./2026-09-25-法杖盾斧-v1.1-出货-handoff.md)
 
-新增博客文章 `blog/src/content/blog/tts-studio.md`（干员语音合成工作台完整 devlog，含自绘封面与两张界面截图），并在 `/works/` 挂「干员语音合成工作台」（只做图片 + 文案，不放源码 / 模型入口）。Cloudflare Version ID 为 `ea651c83-b72b-4c8d-9a53-242182889d1e`，生产三页（`/blog/tts-studio/`、`/works/`、`/works/tts-studio/`）浏览器核对通过。
+法杖盾斧（《怪物猎人 荒野》充能斧外观替换）已从 v1.0 推到 **v1.1 出货并收口**：mod 侧冻结（开发仓已合并回 `main`）、发布仓发了 `v1.1`、网站作品页改成最简形态并挂上开发记录文章《首谈法杖盾斧的开发历程》。
 
-`/works/` 列表头已软化为「之后或许会发布到 GitHub」；作品徽章文案为 `local workflow`。tts-studio 项目本身仍非 git 仓库，本次未整理发布。
+线上 Cloudflare Version ID `f9d51125-ae9d-4e48-9efc-206ea31201f9`，`/works/runestaff/`、`/blog/rune-staff/`、首页精选卡均已在生产核对通过。
 
-下次可做：若要给 tts-studio 建仓库并发布，先加 `.gitignore`（排除模型权重 / `_out/` / `.venv/`）与 README 的「外部模型与接口」一节，再把仓库链接补进作品页。
+同一轮还入库了 `blog-editor/`（本地文章编辑器），并新增 `blog/docs/writing-style.md`——**以后起草或修改文章前先读它**（行文特征 / 结构模板 / 禁用清单，含「AI 初稿 → 用户终稿」的对照证据）。
+
+**当前没有进行中的任务。**
+
+## 下次可做
+
+1. **法阵的透明与流动感**——v1.1 之后用户明确想试的方向，成不成取决于游戏着色器认不认（当前法阵偏「实体」）。
+2. 若有人反馈装上后**杖身是默认材质** → 单 pak 的贴图没读到，按 mod 仓 `HANDOFF.md` §19.5 改回两个 patch pak 重发。
+3. 注意 `blog-editor` 的发布按钮会**整站 `build` + `deploy`**，用它会顺带带上其它未发布的改动。
+
+## 接手须知
+
+- 本机（家机）已给 LapismindSEKAI 配了 repo-local `http.proxy = http://127.0.0.1:7892`；**代理必须开着**，`github.com` 直连实测超时。
+- mod 开发仓在 `C:\Tool\Blender\projects\rune-staff`，自带 git、**无远端**（纯本地）。
