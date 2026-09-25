@@ -1,0 +1,129 @@
+@import 'tailwindcss';
+@import '@lapismind/design-kit/tokens.css';
+@import '@lapismind/design-kit/theme.css';
+@import '@lapismind/design-kit/base.css';
+@import './prose.css';
+
+/* 只留应用外壳，设计令牌一律不在这里重写（见 design-kit README 第 4 条） */
+html,
+body,
+#app {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+	overflow: hidden;
+	overscroll-behavior: none;
+}
+
+.app-grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	height: 100%;
+	min-height: 0;
+}
+
+@media (max-width: 900px) {
+	.app-grid {
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+	}
+}
+
+.pane {
+	min-height: 0;
+	overflow: auto;
+}
+
+/* 预览区：白卡浮在浅底上，靠描边和阴影做层次 */
+.preview-sheet {
+	background: var(--card-solid);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-sm);
+	padding: 2.4rem 2.6rem;
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.4em;
+	padding: 0.42rem 0.95rem;
+	border-radius: 999px;
+	border: 1px solid var(--line);
+	background: var(--card-solid);
+	color: var(--ink);
+	font-family: var(--font-body);
+	font-size: 0.86rem;
+	line-height: 1.5;
+	cursor: pointer;
+	transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn:hover:not(:disabled) {
+	border-color: var(--primary);
+	color: var(--primary);
+}
+
+.btn:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.btn-primary {
+	background: var(--primary);
+	border-color: var(--primary);
+	color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+	background: var(--primary-bright);
+	border-color: var(--primary-bright);
+	color: #fff;
+}
+
+.field-input {
+	width: 100%;
+	padding: 0.5rem 0.7rem;
+	border: 1px solid var(--line);
+	border-radius: var(--radius-sm);
+	background: var(--field-bg, var(--card-solid));
+	color: var(--ink);
+	font-family: var(--font-body);
+	font-size: 0.92rem;
+}
+
+.field-input:focus {
+	outline: 2px solid var(--primary-soft);
+	outline-offset: 1px;
+	border-color: var(--primary);
+}
+
+.field-label {
+	font-family: var(--font-mono);
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* CodeMirror 撑满左栏 */
+.cm-host {
+	min-height: 0;
+}
+
+.cm-host .cm-editor {
+	height: 100%;
+	font-family: var(--font-mono);
+	font-size: 0.92rem;
+}
+
+.cm-host .cm-editor.cm-focused {
+	outline: none;
+}
+
+.cm-host .cm-scroller {
+	font-family: var(--font-mono);
+	line-height: 1.75;
+}

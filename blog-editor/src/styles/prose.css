@@ -1,0 +1,192 @@
+/* ============================================================
+   正文预览排版
+
+   这份是 blog/src/styles/global.css 里 `.prose` 段的镜像（那边是文章页
+   真正用的样式，唯一的真源）。改博客正文观感时，两处要一起改——这里只
+   负责让编辑器右侧"看起来和文章页一样"。
+
+   与博客的差异只有两处：
+   1. Shiki 的 class 是 `pre.shiki`（博客走 Astro 所以是 `pre.astro-code`）
+   2. 去掉了 `scroll-margin-top`（编辑器里没有吸顶导航）
+   ============================================================ */
+
+.prose {
+	font-size: 1.03rem;
+	line-height: 1.9;
+	color: var(--ink-soft);
+	font-family: var(--font-body);
+}
+
+.prose > :first-child {
+	margin-top: 0;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+	color: var(--ink);
+	line-height: 1.4;
+}
+
+.prose h1 {
+	font-size: 1.7rem;
+	margin: 2.2em 0 0.8em;
+}
+
+.prose p {
+	margin-bottom: 1.6em;
+}
+
+.prose h2 {
+	font-size: 1.4rem;
+	margin-top: 2.4em;
+	padding-bottom: 0.45em;
+	border-bottom: 1px solid var(--line);
+	display: flex;
+	align-items: center;
+	gap: 0.6em;
+}
+
+.prose h2::before {
+	content: '';
+	width: 0.8em;
+	height: 0.8em;
+	border-radius: 3px;
+	background: var(--gradient);
+	flex-shrink: 0;
+}
+
+.prose h3 {
+	font-size: 1.18rem;
+	margin-top: 2em;
+	padding-left: 0.75em;
+	border-left: 4px solid var(--primary);
+	border-radius: 2px;
+}
+
+.prose a {
+	color: var(--primary);
+	text-decoration: underline;
+	text-decoration-color: var(--line-strong);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.25em;
+	transition: text-decoration-color 0.2s ease, color 0.2s ease;
+}
+
+.prose a:hover {
+	text-decoration-color: var(--primary);
+}
+
+.prose ul,
+.prose ol {
+	margin: 0 0 1.6em;
+	padding-left: 1.3em;
+}
+
+.prose li {
+	margin-bottom: 0.45em;
+}
+
+.prose li::marker {
+	color: var(--primary);
+}
+
+.prose blockquote {
+	margin: 0 0 1.8em;
+	padding: 1em 1.4em;
+	border-left: 4px solid var(--primary);
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+	background: var(--primary-ghost);
+	color: var(--ink-soft);
+	font-size: 1.05em;
+}
+
+.prose blockquote p:last-child {
+	margin-bottom: 0;
+}
+
+.prose code {
+	font-family: var(--font-mono);
+	font-size: 0.88em;
+	padding: 0.15em 0.45em;
+	border-radius: 6px;
+	background: var(--primary-ghost);
+	color: var(--primary);
+	border: 1px solid var(--line);
+}
+
+.prose pre {
+	font-family: var(--font-mono);
+	font-size: 0.86rem;
+	line-height: 1.7;
+	margin: 0 0 1.8em;
+	padding: 1.4em 1.6em;
+	border-radius: var(--radius);
+	background: var(--card-solid);
+	border: 1px solid var(--line);
+	box-shadow: var(--shadow-sm);
+	overflow-x: auto;
+}
+
+.prose pre code {
+	padding: 0;
+	background: none;
+	border: none;
+	color: var(--ink);
+	font-size: inherit;
+}
+
+/* Shiki 双主题：颜色走 CSS 变量，跟随亮暗切换，背景用卡片色 */
+.prose pre.shiki,
+.prose pre.shiki span {
+	color: var(--shiki-light, var(--ink)) !important;
+	background-color: transparent !important;
+	font-style: var(--shiki-light-font-style, inherit) !important;
+	font-weight: var(--shiki-light-font-weight, inherit) !important;
+	text-decoration: var(--shiki-light-text-decoration, none) !important;
+}
+
+[data-theme='dark'] .prose pre.shiki,
+[data-theme='dark'] .prose pre.shiki span {
+	color: var(--shiki-dark, var(--ink)) !important;
+	font-style: var(--shiki-dark-font-style, inherit) !important;
+	font-weight: var(--shiki-dark-font-weight, inherit) !important;
+	text-decoration: var(--shiki-dark-text-decoration, none) !important;
+}
+
+.prose pre.shiki {
+	background-color: var(--card-solid) !important;
+}
+
+.prose table {
+	width: 100%;
+	margin: 0 0 1.8em;
+	border-collapse: collapse;
+	font-size: 0.95em;
+}
+
+.prose th,
+.prose td {
+	padding: 0.6em 0.9em;
+	border: 1px solid var(--line);
+	text-align: left;
+}
+
+.prose th {
+	background: var(--primary-ghost);
+	color: var(--ink);
+}
+
+.prose img {
+	max-width: 100%;
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-sm);
+}
+
+.prose hr {
+	border: none;
+	height: 1px;
+	margin: 2.4em 0;
+	background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}

@@ -21,6 +21,7 @@
 | [slay-the-spire](./slay-the-spire) | ⏸️ 搁置 | 杀戮尖塔复刻，纯单机。核心战斗循环可玩，内容量追不上原版 |
 | [card-game](./card-game) | 📦 已归档 | 最早的技术验证项目，验证了 DO/WebSocket 可行，为海龟汤铺路 |
 | [blog](./blog) | ✅ 已上线 | Astro 博客，开发记录都在这 |
+| [blog-editor](./blog-editor) | 🔧 本地工具 | 博客文章编辑器：左编辑右预览，一键保存并发布 |
 | [packages](./packages) | ✅ 活跃 | 跨游戏共享代码 |
 
 ## 技术栈

@@ -1,0 +1,11 @@
+# 依赖
+node_modules/
+
+# 字体资产（5MB+，不提交）
+# 唯一真源在 packages/design-kit/fonts/，dev/build 前由 predev 同步进来
+public/fonts/
+
+# 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
