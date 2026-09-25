@@ -4,8 +4,9 @@
 
 1. 站点全貌先读 README.md 与 docs/site-features.md（栏目 / 设计系统 / 素材规范 / 部署）。
 2. 动代码前翻阅 docs/lessons-learned.md（踩坑记录）与 docs/review-2026-08-29.md（已知问题与修复优先级）。
-3. 遇到任何错误，立即追加到 docs/lessons-learned.md，禁止静默忽略。
-4. 长任务用 planning-with-files 落地；迭代用 ralph-loop 自检。
+3. **起草或修改文章前读 docs/writing-style.md**（行文特征 / 结构模板 / 禁用清单）。AI 初稿必须按它自检，不要按"通顺"的标准交付。
+4. 遇到任何错误，立即追加到 docs/lessons-learned.md，禁止静默忽略。
+5. 长任务用 planning-with-files 落地；迭代用 ralph-loop 自检。
 
 ## 项目地图
 
