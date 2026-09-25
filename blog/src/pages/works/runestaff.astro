@@ -3,10 +3,9 @@ import { Image } from 'astro:assets';
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
-import PreviewStaff from '../../assets/works/preview_staff.jpg';
-import ShotSword from '../../assets/works/sword.png';
-import ShotDefend from '../../assets/works/defend.png';
-import ShotAxe from '../../assets/works/axe.png';
+import ShotPreview from '../../assets/works/preview_staff.jpg';
+import ShotStaff from '../../assets/works/game-staff.jpg';
+import ShotAxe from '../../assets/works/game-axe.jpg';
 import { SITE_TITLE } from '../../consts';
 import { works } from '../../data/projects';
 
@@ -14,17 +13,13 @@ const project = works.find((p) => p.slug === 'runestaff')!;
 const { name, subtitle, description, tech, links, version, status } = project;
 
 const shots = [
-	{ src: ShotSword, caption: '剑盾形态' },
-	{ src: ShotDefend, caption: '防御中 · 法阵浮现' },
-	{ src: ShotAxe, caption: '斧形态 · 法阵常显' },
+	{ src: ShotPreview, caption: '模型预览' },
+	{ src: ShotStaff, caption: '实机 · 持杖' },
+	{ src: ShotAxe, caption: '实机 · 斧形态' },
 ];
 
-const troubleshooting = [
-	['没有任何变化', '检查 REFramework 和 Alternate PAK Folder'],
-	['杖身是默认材质', '贴图没读到，反馈一下'],
-	['防御时法阵不出', '确认 <游戏目录>\\reframework\\autorun\\rune_guard_circle.lua 在。日志：<游戏目录>\\reframework\\data\\rune_guard_circle.log'],
-	['法阵闪烁', '装过 ArmorVariantManager 且配过这把武器的显隐。删掉 reframework\\data\\ArmorVariantManager\\it0900_0021.json'],
-];
+// 详情都在开发记录里，这一页只留最简单的东西
+const devlog = { href: '/blog/rune-staff/', title: '首谈法杖盾斧的开发历程' };
 ---
 
 <!doctype html>
@@ -48,44 +43,38 @@ const troubleshooting = [
 				gap: 0.7em;
 			}
 			.page-head {
-				margin-bottom: 2.2rem;
+				margin-bottom: 1.8rem;
 			}
 			.page-head .subtitle {
 				color: var(--muted);
-				font-size: 1.15rem;
-				margin: 0.2em 0 1em;
+				font-size: 1.1rem;
+				margin: 0.2em 0 0.9em;
 			}
 			.links {
 				display: flex;
 				gap: 0.8rem;
 				flex-wrap: wrap;
-				margin-bottom: 1.6rem;
-			}
-			h2 {
-				margin-top: 2.2em;
-				padding-bottom: 0.45em;
-				border-bottom: 1px solid var(--line);
-				display: flex;
-				align-items: center;
-				gap: 0.6em;
-				font-size: 1.4rem;
-			}
-			h2::before {
-				content: '';
-				width: 0.8em;
-				height: 0.8em;
-				border-radius: 3px;
-				background: var(--gradient);
-				flex-shrink: 0;
+				margin-bottom: 2.4rem;
 			}
 			.shots {
-				display: grid;
-				grid-template-columns: repeat(3, 1fr);
+				display: flex;
 				gap: 1.2rem;
-				align-items: start;
+				align-items: stretch;
+			}
+			.shots .lead {
+				flex: 0 0 36%;
+			}
+			.shots .rest {
+				flex: 1 1 auto;
+				display: flex;
+				flex-direction: column;
+				justify-content: space-between;
+				gap: 1.2rem;
 			}
 			.shots figure {
 				margin: 0;
+				display: flex;
+				flex-direction: column;
 			}
 			.shots :global(img) {
 				width: 100%;
@@ -96,98 +85,73 @@ const troubleshooting = [
 				box-shadow: var(--shadow-sm);
 			}
 			.shots figcaption {
-				margin-top: 0.7rem;
-				font-size: 0.85rem;
+				margin-top: 0.6rem;
+				font-size: 0.82rem;
 				color: var(--muted);
 				text-align: center;
 			}
 			@media (max-width: 720px) {
 				.shots {
-					grid-template-columns: 1fr;
+					flex-direction: column;
+				}
+				.shots .lead,
+				.shots .rest {
+					flex: 0 0 auto;
+				}
+				.shots .rest {
+					gap: 1.2rem;
 				}
 			}
-			.rs-intro {
-				display: flex;
-				gap: 2rem;
-				align-items: flex-start;
-				flex-wrap: wrap;
+			.summary {
+				margin-top: 2.4rem;
+				max-width: 62ch;
 			}
-			.rs-intro > p {
-				flex: 1 1 22em;
-				margin: 0;
-			}
-			.portrait {
-				margin: 0;
-				flex: 0 0 auto;
-				width: min(300px, 70vw);
-			}
-			.portrait :global(img) {
-				width: 100%;
-				height: auto;
-				display: block;
-				border-radius: var(--radius);
-				border: 1px solid var(--line);
-				box-shadow: var(--shadow-sm);
-			}
-			.portrait figcaption {
-				margin-top: 0.7rem;
-				font-size: 0.85rem;
-				color: var(--muted);
-				text-align: center;
-			}
-			.feature-list {
-				padding-left: 1.3em;
-			}
-			.feature-list li {
-				margin-bottom: 0.55em;
-			}
-			.feature-list li::marker {
-				color: var(--primary);
-			}
-			.steps {
-				padding-left: 1.6em;
-			}
-			.steps li {
-				margin-bottom: 0.55em;
-			}
-			.steps li::marker {
-				color: var(--primary);
-				font-weight: 700;
-			}
-			.troubleshoot {
-				width: 100%;
-				border-collapse: collapse;
-				font-size: 0.92rem;
-			}
-			.troubleshoot th,
-			.troubleshoot td {
-				text-align: left;
-				padding: 0.65em 0.9em;
-				border: 1px solid var(--line);
-				vertical-align: top;
-			}
-			.troubleshoot th {
-				background: var(--primary-ghost);
-				color: var(--ink);
-				white-space: nowrap;
-			}
-			.troubleshoot code {
-				font-family: var(--font-mono);
-				font-size: 0.86em;
-				word-break: break-all;
-			}
-			.note {
-				margin-top: 1rem;
-				padding: 0.9rem 1.2rem;
-				border-radius: var(--radius);
-				border: 1px dashed var(--line-strong);
-				color: var(--muted);
-				font-size: 0.9rem;
+			.summary p {
+				margin: 0 0 1.1rem;
+				line-height: 1.85;
 			}
 			.tech-list {
 				display: flex;
 				flex-wrap: wrap;
 				gap: 0.5rem;
+				margin-bottom: 2rem;
+			}
+			.devlog {
+				display: flex;
+				align-items: baseline;
+				gap: 0.9rem;
+				flex-wrap: wrap;
+				padding: 1rem 1.3rem;
+				border-radius: var(--radius);
+				border: 1px solid var(--line);
+				background: var(--card-solid);
+				box-shadow: var(--shadow-sm);
+				text-decoration: none;
+				color: inherit;
+				transition: border-color var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft), transform var(--dur-base) var(--ease-soft);
+			}
+			.devlog:hover {
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-md);
+				transform: translateY(-2px);
+			}
+			.devlog .label {
+				font-family: var(--font-mono);
+				font-size: 0.82rem;
+				color: var(--primary);
+				letter-spacing: 0.04em;
+			}
+			.devlog .title {
+				font-weight: 600;
+			}
+			.devlog .go {
+				margin-left: auto;
+				color: var(--primary);
+				transition: transform var(--dur-fast) var(--ease-soft);
+			}
+			.devlog:hover .go {
+				transform: translateX(3px);
 			}
 		</style>
 	</head>
@@ -195,6 +159,7 @@ const troubleshooting = [
 		<Header />
 		<main class="container-narrow page-main" id="main-content" tabindex="-1">
 			<a class="back-link" href="/works/">← 返回 Projects</a>
+
 			<header class="page-head reveal">
 				<p class="eyebrow">project · {status}</p>
 				<h1>{name}</h1>
@@ -213,11 +178,14 @@ const troubleshooting = [
 				)}
 			</div>
 
-			<section class="reveal">
-				<h2>实机预览</h2>
-				<div class="shots">
+			<div class="shots reveal">
+				<figure class="lead">
+					<Image src={shots[0].src} alt={`${name} ${shots[0].caption}`} />
+					<figcaption>{shots[0].caption}</figcaption>
+				</figure>
+				<div class="rest">
 					{
-						shots.map((s) => (
+						shots.slice(1).map((s) => (
 							<figure>
 								<Image src={s.src} alt={`${name} ${s.caption}`} />
 								<figcaption>{s.caption}</figcaption>
@@ -225,78 +193,19 @@ const troubleshooting = [
 						))
 					}
 				</div>
-			</section>
+			</div>
 
-			<section class="reveal">
-				<h2>项目简介</h2>
-				<div class="rs-intro">
-					<p>{description}</p>
-					<figure class="portrait">
-						<Image src={PreviewStaff} alt={`${name} 法杖与法阵主视图`} />
-						<figcaption>法杖与法阵 · 主视图</figcaption>
-					</figure>
-				</div>
-			</section>
-
-			<section class="reveal">
-				<h2>前置与安装</h2>
-				<ul class="feature-list">
-					<li>REFramework——没有它 <code>pak_mods</code> 不加载，mod 无效</li>
-					<li>REFramework → Advanced Options → 打开 <strong>Alternate PAK Folder</strong></li>
-				</ul>
-				<ol class="steps">
-					<li>下载 zip</li>
-					<li>把 zip 拖进 Fluffy Mod Manager</li>
-					<li>启用</li>
-				</ol>
-				<div class="note">
-					不需要「防御时才显示」的话，删掉 <code>rune_guard_circle.lua</code>，法阵就常显。
-				</div>
-			</section>
-
-			<section class="reveal">
-				<h2>排错</h2>
-				<table class="troubleshoot">
-					<thead>
-						<tr><th>症状</th><th>处理</th></tr>
-					</thead>
-					<tbody>
-						{
-							troubleshooting.map(([sym, fix]) => (
-								<tr>
-									<td>{sym}</td>
-									<td>{fix}</td>
-								</tr>
-							))
-						}
-					</tbody>
-				</table>
-			</section>
-
-			<section class="reveal">
-				<h2>附注</h2>
-				<p>
-					截图中的角色皮肤是 mod「理科魔女 / Witch Shinano」，作者 Fruit milk（
-					<a href="https://space.bilibili.com/2438342" target="_blank" rel="noopener">space.bilibili.com/2438342</a>
-					）。本 mod 不分发它，也不依赖它，法杖配饰的造型参考了那个角色的设计。
-				</p>
-			</section>
-
-			<section class="reveal">
-				<h2>许可</h2>
-				<p>
-					与 Capcom 无关联，《怪物猎人 荒野》及其资产版权归 Capcom。<code>RuneStaff.pak</code>
-					是游戏原有资源的修改产物，请在自己拥有该游戏的机器上使用。内置的
-					<code>rune_guard_circle.lua</code> 为本项目原创，MIT。
-				</p>
-			</section>
-
-			<section class="reveal">
-				<h2>技术构成</h2>
+			<div class="summary reveal">
+				<p>{description}</p>
 				<div class="tech-list">
 					{tech.map((t) => <span class="tag">{t}</span>)}
 				</div>
-			</section>
+				<a class="devlog" href={devlog.href}>
+					<span class="label">开发历程</span>
+					<span class="title">{devlog.title}</span>
+					<span class="go" aria-hidden="true">→</span>
+				</a>
+			</div>
 		</main>
 		<Footer />
 	</body>
