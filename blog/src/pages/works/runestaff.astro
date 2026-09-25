@@ -3,9 +3,9 @@ import { Image } from 'astro:assets';
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
-import ShotPreview from '../../assets/works/preview_staff.jpg';
-import ShotStaff from '../../assets/works/game-staff.jpg';
-import ShotAxe from '../../assets/works/game-axe.jpg';
+import ShotStance from '../../assets/works/stance.jpg';
+import ShotShield from '../../assets/works/shield.jpg';
+import ShotAxe from '../../assets/works/axe.jpg';
 import { SITE_TITLE } from '../../consts';
 import { works } from '../../data/projects';
 
@@ -13,9 +13,9 @@ const project = works.find((p) => p.slug === 'runestaff')!;
 const { name, subtitle, description, tech, links, version, status } = project;
 
 const shots = [
-	{ src: ShotPreview, caption: '模型预览' },
-	{ src: ShotStaff, caption: '实机 · 持杖' },
-	{ src: ShotAxe, caption: '实机 · 斧形态' },
+	{ src: ShotStance, caption: '站立' },
+	{ src: ShotShield, caption: '剑盾形态 · 防御中' },
+	{ src: ShotAxe, caption: '斧形态 · 双月刃' },
 ];
 
 // 详情都在开发记录里，这一页只留最简单的东西
@@ -62,7 +62,7 @@ const devlog = { href: '/blog/rune-staff/', title: '首谈法杖盾斧的开发�
 				align-items: stretch;
 			}
 			.shots .lead {
-				flex: 0 0 36%;
+				flex: 0 0 54%;
 			}
 			.shots .rest {
 				flex: 1 1 auto;
