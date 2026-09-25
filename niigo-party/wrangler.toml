@@ -1,0 +1,32 @@
+name = "niigo-party"
+main = "src/worker/index.js"
+compatibility_date = "2025-06-01"
+
+# 自定义域名（Custom Domain：自动创建 DNS + 证书）
+[[routes]]
+pattern = "niigo-party.qmzhj.top"
+custom_domain = true
+
+# 前端静态资源（Vite 构建产物 dist/）
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+# WebSocket 与 API 必须先进 Worker，否则会直接命中静态资源——连不上的第一排查项
+run_worker_first = ["/ws*", "/api/*"]
+
+# 房间：每房一个 DO 实例
+[[durable_objects.bindings]]
+name = "ROOM"
+class_name = "NiigoRoom"
+
+# 首次部署必须注册 DO 类。
+# ★ 免费计划只支持 SQLite 存储后端，必须写 new_sqlite_classes，否则 deploy 报 code:10097
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["NiigoRoom"]
+
+# 密钥（不在仓库里，部署时留在 Cloudflare 侧）：
+#   npx wrangler secret put IDENTITY_SECRET
+#   npx wrangler secret put SESSION_SECRET   ← 必须与 sekai-auth 用同一个值
+# 本地开发写在 .dev.vars（已 gitignore）

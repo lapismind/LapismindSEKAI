@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+dev.log
+*.log
+
+# 字体资产（5MB+，不提交）
+# 唯一真源在 packages/design-kit/fonts/，dev/build 前由 predev/prebuild 同步进来
+public/fonts/
+
+# ★ 素材产物（不提交）
+# 唯一真源在另一个仓库：C:\Projects\AI-game\niigo\
+# dev/build 前由 scripts/sync-assets.mjs 同步进来
+public/assets/
+
+# UI 截图（本地评审用）
+screenshots/
