@@ -58,6 +58,16 @@ export const games: Project[] = [
 			github: 'https://github.com/lapismind/showhand',
 		},
 	},
+
+	{
+		slug: 'niigo-party',
+		name: 'niigo-party',
+		subtitle: '25時、ナイトコードで。 四人回合制派对游戏（开发中）',
+		description: '现在正在紧张刺激地开发中。以 pjsk 25时，Nightcord见。 为主题的派对游戏，敬请期待。',
+		status: 'developing',
+		tech: ['Vue3', 'Pinia', 'Vite', 'Tailwind', 'lobby-kit', 'Cloudflare Workers'],
+		links: {},
+	},
 ];
 
 /** Projects 板块：游戏之外的软件作品（工具 / mod / 开源仓库） */

@@ -11,6 +11,7 @@ import Mascot from '../assets/mascot.webp';
 import HeroBg from '../assets/mafuyu-hero.webp';
 import AbracadawhatCover from '../assets/covers/abracadawhat-cover.png';
 import StaffCard from '../assets/works/staff-card.jpg';
+import NiigoPartyLineup from '../assets/covers/niigo-party-cover.jpg';
 import songs from '../data/music-player.json';
 import { games, works } from '../data/projects';
 
@@ -543,6 +544,44 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 				font-family: var(--font-mono);
 			}
 
+			/* 「is coming.」开发预告板块：整幅长图卡，链接到详情页 */
+			.coming-card {
+				display: block;
+				text-decoration: none;
+				color: inherit;
+				background: var(--glass-bg);
+				backdrop-filter: blur(12px) saturate(1.1);
+				-webkit-backdrop-filter: blur(12px) saturate(1.1);
+				border: 1px solid var(--line);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-sm);
+				overflow: hidden;
+				transition: transform var(--dur-base) var(--ease-soft),
+					box-shadow var(--dur-base) var(--ease-soft),
+					border-color var(--dur-base) var(--ease-soft);
+			}
+			.coming-card:hover {
+				transform: translateY(calc(-1 * var(--lift-hover)));
+				border-color: var(--primary-soft);
+				box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-soft);
+			}
+			.coming-card :global(img) {
+				width: 100%;
+				height: auto;
+				display: block;
+			}
+			.coming-body {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+				flex-wrap: wrap;
+				padding: 1.2rem 1.5rem;
+			}
+			.coming-body h3 {
+				margin: 0;
+				font-size: 1.25rem;
+			}
+
 			.posts-list {
 				display: flex;
 				flex-direction: column;
@@ -699,6 +738,24 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 						))
 					}
 				</div>
+			</section>
+
+			<section class="site-section reveal" id="coming">
+				<div class="section-title">
+					<div>
+						<p class="eyebrow">is coming</p>
+						<h2>is coming.</h2>
+					</div>
+				</div>
+				<a class="coming-card reveal" href="/projects/niigo-party/">
+					<Image src={NiigoPartyLineup} alt="niigo-party 立绘阵容" />
+					<div class="coming-body">
+						<h3>niigo-party</h3>
+						<span class="status-badge status-developing">开发中</span>
+						<p class="card-subtitle" style="margin:0">25時、ナイトコードで。 四人回合制派对游戏</p>
+						<span class="card-arrow" aria-hidden="true">→</span>
+					</div>
+				</a>
 			</section>
 
 			<section class="site-section reveal">
