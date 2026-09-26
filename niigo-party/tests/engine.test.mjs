@@ -411,7 +411,7 @@ test('自踩陷阱：自己的炸弹不炸自己', () => {
   s.overlays.push({ tile: 1, kind: 'bomb', ownerId: 'p1', dmg: 3 });
   s.players[0].hp = 9;
   rollMove(s, constRng(face10(1)));
-  moveStep(s); // 踏上自己的炸弹
+  moveStep(s, constRng(face10(1))); // 踏上自己的炸弹（rng 注入保持确定性）
   assert.equal(s.players[0].hp, 9, '自己的陷阱不触发');
   assert.equal(s.players[0].coins, 10 + 8, '自己陷阱不触发伤害，脚下横财照常结算（8）');
 });
