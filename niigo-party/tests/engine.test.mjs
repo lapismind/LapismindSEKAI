@@ -11,6 +11,8 @@ import {
 } from '../src/game/engine.js';
 import { TILES, mirrorTile, directedDistance, LOOP_B } from '../src/game/board.js';
 import { LEVEL_COST } from '../src/game/board.js';
+import { CARDS } from '../src/game/cards.js';
+import { activeTargets } from '../src/game/engine.js';
 
 // ── rng 工具 ───────────────────────────────────────────────
 /** 固定值 rng：所有 roll 都取同一原始值 */
@@ -271,4 +273,75 @@ test('商店：5 星币一张、库存内购买', () => {
   assert.equal(s.players[0].hand.length, 2);
   closeShop(s);
   assert.equal(s.pending, null);
+});
+
+// ── 整局随机模拟：验证热座闭环可自然打完（无死锁、能分出胜负）────
+test('整局随机模拟：随机合法操作 8000 步内分出胜负', () => {
+  const rng = Math.random;
+  for (let game = 0; game < 5; game++) {
+    let s = createGame([
+      { charKey: 'ena' }, { charKey: 'knd' }, { charKey: 'mfy_yuki' }, { charKey: 'mzk' },
+    ]);
+    let turns = 0;
+    while (s.phase !== 'over' && turns < 8000) {
+      turns++;
+      const p = s.players[s.current];
+      if (s.phase === 'roll') {
+        rollMove(s, rng, p.fixedRollPending ? { fixed: 1 + Math.floor(rng() * 10) } : {});
+        continue;
+      }
+      if (s.phase === 'moving') {
+        if (s.pending?.type === 'branch') chooseBranch(s, rng() < 0.5 ? 'A' : 'B');
+        else if (s.pending?.type === 'battleOffer') resolveBattleOffer(s, rng() < 0.6, rng);
+        else moveStep(s, rng);
+        continue;
+      }
+      if (s.phase === 'battle') {
+        const b = s.battle;
+        if (b.phase === 'attack_cards') {
+          const playable = s.players.find((x) => x.id === b.attackerId)
+            .hand.filter((id) => CARDS[id].kind === 'battle' && CARDS[id].side === 'attack' && b.atkSpent + CARDS[id].cost <= 3);
+          if (playable.length && rng() < 0.6) playBattleCard(s, playable[0], rng);
+          else confirmBattleCards(s);
+        } else if (b.phase === 'defense_cards') {
+          const playable = s.players.find((x) => x.id === b.defenderId)
+            .hand.filter((id) => CARDS[id].kind === 'battle' && CARDS[id].side === 'defense' && b.defSpent + CARDS[id].cost <= 3);
+          if (playable.length && rng() < 0.5) playBattleCard(s, playable[0], rng);
+          else confirmBattleCards(s);
+        } else if (b.phase === 'defend_choice') {
+          chooseDefense(s, rng() < 0.5 ? 'defend' : 'dodge', rng);
+        } else if (b.phase === 'done') {
+          closeBattle(s, rng);
+        }
+        continue;
+      }
+      if (s.phase === 'action') {
+        if (s.pending?.type === 'shop') {
+          if (rng() < 0.5 && p.coins >= 5 && s.pending.stock.length) buyCard(s, s.pending.stock[0]);
+          else closeShop(s);
+          continue;
+        }
+        // 三成概率出效果牌（随机合法目标）
+        const held = p.hand.map((id) => CARDS[id]).filter((c) => c.kind !== 'battle');
+        const effect = held.find((c) => !(c.kind === 'effect' && p.effectPlayed));
+        if (effect && rng() < 0.35) {
+          if (effect.target === 'self') playEffectCard(s, effect.id, {}, rng);
+          else if (effect.target === 'opponent') {
+            const ts = activeTargets(s, p);
+            if (ts.length) playEffectCard(s, effect.id, { targetId: ts[Math.floor(rng() * ts.length)].id }, rng);
+          } else if (effect.target === 'tile') {
+            const ts = TILES.map((t) => t.i)
+              .filter((i) => i !== p.tile && directedDistance(p.tile, i) <= effect.range
+                && !s.overlays.some((o) => o.tile === i));
+            if (ts.length) playEffectCard(s, effect.id, { tileIdx: ts[Math.floor(rng() * ts.length)] }, rng);
+          }
+        }
+        endAction(s);
+        continue;
+      }
+      break; // 未知状态
+    }
+    assert.equal(s.phase, 'over', `第 ${game + 1} 局 8000 步内未结束，卡在 phase=${s.phase} pending=${JSON.stringify(s.pending ?? null)}`);
+    assert.ok(s.winner);
+  }
 });
