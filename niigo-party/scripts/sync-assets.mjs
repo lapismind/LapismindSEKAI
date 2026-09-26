@@ -24,7 +24,9 @@ const DEST_ROOT = join(PROJECT_ROOT, 'public', 'assets', 'niigo')
 const SRC_ROOT = resolve(process.env.NIIGO_ASSET_SRC ?? join(PROJECT_ROOT, '../../../AI-game/niigo'))
 
 // 只同步游戏运行时要用的目录；art/02_video_src（源视频）不进运行时
+// 00_chibi_base：chibi 定稿基底（MVP 唯一的角色贴片源），2026-09-26 按用户确认加入
 const SYNC_DIRS = [
+  { from: 'art/00_chibi_base', to: 'chibi_base' },
   { from: 'art/01_portrait', to: 'portrait' },
   { from: 'art/03_frames', to: 'frames' },
   { from: 'art/04_scene', to: 'scene' },
