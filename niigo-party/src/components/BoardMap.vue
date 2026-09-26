@@ -118,8 +118,11 @@ const cellWidth = (t) => (t.type === 'cross' ? 3 : 1.5);
 
     <!-- 玩家贴片 -->
     <g v-for="tk in tokens" :key="tk.p.id">
-      <circle :cx="tk.x" :cy="tk.y" r="14" :fill="tk.p.color" opacity="0.35"
-              :stroke="tk.isCurrent ? '#fde047' : 'transparent'" stroke-width="2" />
+      <circle
+        :cx="tk.x" :cy="tk.y" r="14"
+        :fill="tk.ko ? '#4b5563' : tk.p.color" opacity="0.35"
+        :stroke="tk.isCurrent ? '#fde047' : 'transparent'" stroke-width="2"
+      />
       <image
         :x="tk.x - 13" :y="tk.y - 13" width="26" height="26"
         :href="`/assets/niigo/chibi_base/${tk.p.img}.png`"

@@ -91,7 +91,7 @@ const fxText = computed(() => {
           class="h-10 w-10 rounded-full object-contain" :style="{ backgroundColor: cur.color + '55' }" alt=""
         />
         <div>
-          <div class="text-sm text-slate-400">第 {{ s.round }} 轮 · 行动中</div>
+          <div class="text-sm text-slate-400">第 {{ Math.min(s.round, 25) }}/25 轮 · {{ phaseText[s.phase] }}</div>
           <div class="text-lg font-bold" :style="{ color: cur.color }">{{ cur.name }}</div>
         </div>
       </div>
@@ -246,23 +246,7 @@ const fxText = computed(() => {
       </aside>
     </div>
 
-    <!-- 交点选环 -->
-    <div v-if="s.pending?.type === 'branch'" class="fixed inset-0 z-30 flex items-center justify-center bg-black/70">
-      <div class="rounded-xl border border-cyan-500/40 bg-slate-900 p-6 text-center">
-        <p class="text-lg font-bold text-slate-100">交点：选择路线</p>
-        <p class="mt-1 text-xs text-slate-400">外环 = 稳健收益 · 内环 = 高收益高风险</p>
-        <div class="mt-4 flex gap-3">
-          <button
-            class="rounded-lg bg-slate-700 px-6 py-3 text-sm font-medium text-slate-100 hover:bg-slate-600"
-            @click="store.chooseBranch('A')"
-          >外环 A（顺时针）</button>
-          <button
-            class="rounded-lg bg-violet-700 px-6 py-3 text-sm font-medium text-slate-100 hover:bg-violet-600"
-            @click="store.chooseBranch('B')"
-          >内环 B（抄近道）</button>
-        </div>
-      </div>
-    </div>
+    <!-- 交点选环已改为棋盘上的方向箭头（见 BoardMap），无全屏弹窗 -->
 
     <!-- 遭遇对手 -->
     <div v-if="s.pending?.type === 'battleOffer'" class="fixed inset-0 z-30 flex items-center justify-center bg-black/70">
@@ -316,5 +300,13 @@ const fxText = computed(() => {
       @defense="store.chooseDefense($event)"
       @close="store.closeBattle()"
     />
+
+    <!-- 轻提示（无效点击反馈） -->
+    <transition name="fade">
+      <div
+        v-if="toast"
+        class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-medium text-slate-900 shadow-xl"
+      >{{ toast }}</div>
+    </transition>
   </div>
 </template>
