@@ -127,7 +127,35 @@ export function nextTile(i, loop) {
   if (IS_CROSS(i)) return CROSSES[i][loop];
   const loopArr = loop === 'B' ? LOOP_B : LOOP_A;
   const at = loopArr.indexOf(i);
+  if (at < 0) return undefined; // 该格不属于此环（调用方应改用 successors）
   return loopArr[(at + 1) % loopArr.length];
+}
+
+// 有向 后继表：从 LOOP_A / LOOP_B 的环序生成（交点天然有两条出边）。
+// directedDistance / 射程判定一律以它为准——不得对任意格滥用 nextTile(i, 任一环)。
+const SUCC = (() => {
+  const m = new Map();
+  const add = (i, j) => {
+    if (!m.has(i)) m.set(i, []);
+    if (!m.get(i).includes(j)) m.get(i).push(j);
+  };
+  for (const arr of [LOOP_A, LOOP_B]) {
+    for (let k = 0; k < arr.length; k++) add(arr[k], arr[(k + 1) % arr.length]);
+  }
+  return m;
+})();
+
+/** 格 i 沿行进方向的合法后继（交点 2 条，普通格 1 条） */
+export function successors(i) {
+  return SUCC.get(i) ?? [];
+}
+
+/** 格 i 所属环；交点返回 null（两环皆是） */
+export function ringOfTile(i) {
+  const onA = LOOP_A.includes(i);
+  const onB = LOOP_B.includes(i);
+  if (onA && onB) return null;
+  return onA ? 'A' : 'B';
 }
 
 /** 中心对称格（传送门落点） */
@@ -147,8 +175,7 @@ export function directedDistance(from, to) {
     d++;
     const next = [];
     for (const i of frontier) {
-      const outs = IS_CROSS(i) ? Object.values(CROSSES[i]) : [nextTile(i, 'A'), nextTile(i, 'B')];
-      for (const j of outs) {
+      for (const j of successors(i)) {
         if (j === to) return d;
         if (!seen.has(j)) { seen.add(j); next.push(j); }
       }
@@ -166,7 +193,7 @@ export function tilePos(i) {
 
 export const TILE_COLORS = {
   start: '#3b82f6', upgrade: '#a855f7', shop: '#f97316', card: '#22c55e',
-  coin: '#eab308', coinhi: '#f5d020', misfortune: '#ef4444', hospital: '#f9a8d4',
+  coin: '#d69e05', coinhi: '#fff3a0', misfortune: '#ef4444', hospital: '#f9a8d4',
   swift: '#06b6d4', cross: '#fde047', teleport: '#a78bfa', trial: '#fb7185',
 };
 export const TILE_LABEL = {

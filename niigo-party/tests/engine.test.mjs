@@ -345,3 +345,84 @@ test('整局随机模拟：随机合法操作 8000 步内分出胜负', () => {
     assert.ok(s.winner);
   }
 });
+
+// ── M0 试玩修复回归 ────────────────────────────────────────
+test('射程：BFS 修复后跨环远格不可达（硬编码期望，非同函数互证）', () => {
+  assert.equal(directedDistance(0, 5), 5);   // 外环同环 5 步
+  assert.equal(directedDistance(0, 64), 5);  // 经交点 4 切内环：4→64
+  assert.equal(directedDistance(0, 36), 10); // 经交点 4→64…→27→36
+  assert.equal(directedDistance(0, 40), 14);
+  assert.ok(directedDistance(0, 40) > 3, '射程 3 的牌不应达远格');
+});
+
+test('射程：板砖超射程被拒（不消耗），近距命中', () => {
+  const s = newGame();
+  s.players[0].hand.push('brick');
+  s.players[1].tile = 10; // dist(0,10) = 10 > 3
+  s.phase = 'action';
+  playEffectCard(s, 'brick', { targetId: 'p2' });
+  assert.equal(s.players[1].hp, 8, '超射程不掉血');
+  assert.equal(s.players[0].effectPlayed, false, '被拒不消耗效果牌次数');
+  s.players[1].tile = 2; // dist(0,2) = 2 ≤ 3
+  playEffectCard(s, 'brick', { targetId: 'p2' });
+  assert.equal(s.players[1].hp, 3); // 8 - 5
+  assert.equal(s.players[0].effectPlayed, true);
+});
+
+test('起始点：回 2 HP（规格 §3.2）', () => {
+  const s = newGame();
+  s.players[0].hp = 5;
+  s.players[0].tile = 35; // 外环，0 号起始点在前 1 格
+  s.players[1].tile = 40; // 挪开
+  s.players[0].coins = 0; // 避免升级干扰
+  rollMove(s, constRng(face10(1)));
+  moveStep(s);
+  assert.equal(s.players[0].tile, 0);
+  assert.equal(s.players[0].hp, 7); // 5 + 2
+});
+
+test('医院免疫：效果牌不可指定免疫者', () => {
+  const s = newGame();
+  s.players[1].immune = true;
+  s.players[1].hp = 8;
+  s.players[0].hand.push('band', 'snatch');
+  s.phase = 'action';
+  playEffectCard(s, 'band', { targetId: 'p2' });
+  assert.equal(s.players[1].hp, 8, '免疫者不受伤害');
+  playEffectCard(s, 'snatch', { targetId: 'p2' });
+  assert.equal(s.players[1].coins, 10, '免疫者不被抢');
+});
+
+test('以牙还牙：反弹后受益人 = 原目标（不是自己抢自己）', () => {
+  const s = newGame();
+  s.players[1].status.reflect = 1;
+  s.players[1].coins = 0;
+  s.players[0].coins = 20;
+  s.players[0].hand.push('snatch');
+  s.phase = 'action';
+  playEffectCard(s, 'snatch', { targetId: 'p2' });
+  // 反弹：原施放者 P1 被抢 10，原目标 P2 得 10
+  assert.equal(s.players[0].coins, 10);
+  assert.equal(s.players[1].coins, 10);
+});
+
+test('自踩陷阱：自己的炸弹不炸自己', () => {
+  const s = newGame();
+  s.overlays.push({ tile: 1, kind: 'bomb', ownerId: 'p1', dmg: 3 });
+  s.players[0].hp = 9;
+  rollMove(s, constRng(face10(1)));
+  moveStep(s); // 踏上自己的炸弹
+  assert.equal(s.players[0].hp, 9, '自己的陷阱不触发');
+  assert.equal(s.players[0].coins, 10 + 8, '自己陷阱不触发伤害，脚下横财照常结算（8）');
+});
+
+test('回合上限：25 轮到点按 等级→星币→HP 排名结算', () => {
+  const s = newGame();
+  s.round = 25;
+  s.current = 1; // P2 行动结束即跨轮
+  s.phase = 'action';
+  s.players[0].level = 2; // 排名第一
+  endAction(s);
+  assert.equal(s.phase, 'over');
+  assert.equal(s.winner, 'p1'); // 玩家 id 从 p1 起编，p1 = 座位 0（绘名，Lv2）
+});

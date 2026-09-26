@@ -10,7 +10,7 @@
  */
 
 import {
-  TILES, nextTile, mirrorTile, directedDistance, IS_CROSS,
+  TILES, nextTile, mirrorTile, directedDistance, IS_CROSS, ringOfTile,
   LEVEL_COST, WIN_LEVEL, SHOP_PRICE, START_COINS, HAND_LIMIT, MOVE_DIE,
 } from './board.js';
 import { CHARACTERS } from './characters.js';
@@ -179,16 +179,22 @@ export function moveStep(state, rng = Math.random) {
     state.pending = { type: 'branch', tile: p.tile };
     return 'pending';
   }
+  // 环归属兜底：所在格不属于当前环（理论不该发生）时按所在环走
+  const ownerLoop = ringOfTile(p.tile);
+  const useLoop = ownerLoop && ownerLoop !== p.loop ? ownerLoop : p.loop;
 
-  p.tile = nextTile(p.tile, p.loop);
+  p.tile = nextTile(p.tile, useLoop);
   p.branchChosenAt = null;
   state.remaining -= 1;
   log(state, `${p.name} 移动到 ${p.tile} 号格`);
 
   // 到达检查（顺序：叠加物 → 传送门 → 对手）
   const ovIdx = state.overlays.findIndex((o) => o.tile === p.tile);
-  if (ovIdx >= 0) {
-    const ov = state.overlays[ovIdx];
+  const ov = ovIdx >= 0 ? state.overlays[ovIdx] : null;
+  if (ov && ov.ownerId === p.id) {
+    log(state, `${p.name} 路过自己放的${ov.kind === 'roadblock' ? '路障' : '陷阱'}，不触发`);
+  } else if (ov) {
+    const o = ov;
     if (ov.kind === 'roadblock') {
       state.remaining = 0;
       log(state, `${p.name} 撞上路障，停止移动`);
@@ -380,6 +386,10 @@ function land(state, rng) {
       break;
     case 'start':
     case 'upgrade':
+      if (p.hp < p.maxHp) {
+        p.hp = Math.min(p.maxHp, p.hp + 2);
+        log(state, `${p.name} 休息回 2 HP（现有 ${p.hp}）`);
+      }
       log(state, `${p.name} 停在${type === 'start' ? '起始点' : '升级格'}`);
       tryLevelUp(state, p);
       break;
@@ -411,10 +421,10 @@ function applyTargeted(state, caster, target, apply) {
   if (target.status.reflect > 0) {
     target.status.reflect -= 1;
     log(state, `${target.name} 的以牙还牙生效，效果反弹给 ${caster.name}！`);
-    apply(caster);
+    apply(caster, target); // 受害人 = 原施放者，受益人 = 原目标
     return;
   }
-  apply(target);
+  apply(target, caster);
 }
 
 /** 出效果牌 / 反制牌。effect 每回合限 1 张；opts: {targetId?, tileIdx?} */
@@ -423,11 +433,29 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
   if (state.phase !== 'action' || state.pending) return;
   const card = CARDS[cardId];
   if (!card || !p.hand.includes(cardId)) return;
-  if (card.kind === 'effect') {
-    if (p.effectPlayed) { log(state, '本回合的效果牌已经用过了'); return; }
-    p.effectPlayed = true;
+  if (card.kind === 'effect' && p.effectPlayed) { log(state, '本回合的效果牌已经用过了'); return; }
+
+  // 目标校验先行：不合法不消耗卡牌（远格/无目标/占位冲突都不白费一张卡）
+  const needsTarget = ['band', 'brick', 'snatch'].includes(cardId); // 对手指向（band/brick/snatch）
+  const isTileTarget = card.target === 'tile'; // phish/bomb/roadblock
+  const target = needsTarget ? findPlayer(state, opts.targetId) : null;
+  if (needsTarget) {
+    if (!target) { log(state, '需要指定一名目标'); return; }
+    if (target.immune || target.ko) { log(state, '目标住院/KO，不可指定'); return; }
+    if (card.range && directedDistance(p.tile, target.tile) > card.range) {
+      log(state, '目标超出射程'); return;
+    }
   }
+  if (isTileTarget) {
+    const tileIdx = opts.tileIdx;
+    if (typeof tileIdx !== 'number' || !TILES[tileIdx]) { log(state, '需要选择一个格子'); return; }
+    if (directedDistance(p.tile, tileIdx) > card.range) { log(state, '超出射程'); return; }
+    if (state.overlays.some((o) => o.tile === tileIdx)) { log(state, '该格已有陷阱/路障'); return; }
+  }
+
+  // 校验通过，正式消耗
   p.hand.splice(p.hand.indexOf(cardId), 1);
+  if (card.kind === 'effect') p.effectPlayed = true;
   log(state, `${p.name} 打出「${card.name}」`);
 
   if (card.kind === 'counter') {
@@ -446,21 +474,17 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
       break;
     case 'band':
     case 'brick': {
-      const target = findPlayer(state, opts.targetId);
-      if (!target) return;
       applyTargeted(state, p, target, (t) => {
         damage(state, t, card.dmg, p, card.name);
       });
       break;
     }
     case 'snatch': {
-      const target = findPlayer(state, opts.targetId);
-      if (!target) return;
-      applyTargeted(state, p, target, (t) => {
+      applyTargeted(state, p, target, (t, gainer) => {
         const take = Math.min(card.coins, t.coins);
         t.coins -= take;
-        p.coins += take;
-        log(state, `${p.name} 抢走 ${t.name} ${take} 星币`);
+        gainer.coins += take;
+        log(state, `${gainer.name} 抢走 ${t.name} ${take} 星币`);
       });
       break;
     }
@@ -468,9 +492,6 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
     case 'bomb':
     case 'roadblock': {
       const tileIdx = opts.tileIdx;
-      if (typeof tileIdx !== 'number' || !TILES[tileIdx]) return;
-      if (directedDistance(p.tile, tileIdx) > card.range) { log(state, '超出射程'); return; }
-      if (state.overlays.some((o) => o.tile === tileIdx)) { log(state, '该格已有陷阱/路障'); return; }
       state.overlays.push({ tile: tileIdx, kind: card.overlay.kind, ownerId: p.id, ...card.overlay, expiresAtTurn: state.turnCount + 24 });
       log(state, `${p.name} 在 ${tileIdx} 号格放置了「${card.name}」`);
       break;
@@ -508,6 +529,17 @@ export function endAction(state) {
 
 // ── 回合推进 ───────────────────────────────────────────────
 
+/** 回合上限到点：按 等级 → 星币 → HP 排名结算（规格 §5.4） */
+function settleEnd(state) {
+  const ranked = [...state.players].sort(
+    (a, b) => b.level - a.level || b.coins - a.coins || b.hp - a.hp,
+  );
+  state.winner = ranked[0].id;
+  state.phase = 'over';
+  ranked.forEach((p, i) => log(state, `第 ${i + 1} 名：${p.name}（Lv${p.level} · ${p.coins} 币 · HP ${p.hp}）`));
+  log(state, `25 轮到点，${ranked[0].name} 综合排名第一获胜`);
+}
+
 export function endTurn(state, rng = Math.random) {
   if (state.phase === 'over') return;
   // 清理过期叠加物
@@ -516,7 +548,10 @@ export function endTurn(state, rng = Math.random) {
   let next = state.current;
   for (let i = 0; i < state.players.length; i++) {
     next = (next + 1) % state.players.length;
-    if (next === 0) state.round += 1;
+    if (next === 0) {
+      state.round += 1;
+      if (state.round > 25) { settleEnd(state); return; } // 回合上限：排名结算（§5.4）
+    }
     const p = state.players[next];
     if (!p.ko) break;
     if (!p.missedTurn) {

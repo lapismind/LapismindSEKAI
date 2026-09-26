@@ -6,6 +6,8 @@ import { defineStore } from 'pinia';
 import * as E from '@/game/engine';
 import { CHARACTERS } from '@/game/characters';
 
+const SAVE_KEY = 'niigo-party-save-v1';
+
 export const useGameStore = defineStore('game', {
   state: () => ({
     s: null,        // 引擎状态（普通对象，整体响应式）
@@ -13,6 +15,7 @@ export const useGameStore = defineStore('game', {
     moving: false,  // 自动步进动画中
     lastFx: null,   // {type, playerId} 触发全屏特效（KO/复活/传送/升级）
     picked: [],     // 设置界面选中的角色键
+    hasSave: !!localStorage.getItem(SAVE_KEY), // 热座存档（F5 恢复用）
   }),
 
   getters: {
@@ -41,12 +44,31 @@ export const useGameStore = defineStore('game', {
         playerName: names?.[i] || CHARACTERS[charKey].name,
       })));
       this.view = 'game';
+      this.persist();
+    },
+    /** F5 恢复：从 localStorage 读回引擎状态快照 */
+    resume() {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      try {
+        this.s = JSON.parse(raw);
+        this.view = 'game';
+      } catch { localStorage.removeItem(SAVE_KEY); this.hasSave = false; }
+    },
+    discardSave() {
+      localStorage.removeItem(SAVE_KEY);
+      this.hasSave = false;
+    },
+    persist() {
+      if (!this.s || this.s.phase === 'over') { localStorage.removeItem(SAVE_KEY); this.hasSave = false; return; }
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.s)); this.hasSave = true; } catch { /* 存储满等，忽略 */ }
     },
 
     // ── 回合 ──
     roll(fixed) {
       if (!this.s) return;
       E.rollMove(this.s, Math.random, { fixed });
+this.persist();
       if (this.s.phase === 'moving') this.autoMove();
     },
     async autoMove() {
@@ -61,20 +83,24 @@ export const useGameStore = defineStore('game', {
       }
       this.consumeFx();
       this.moving = false;
+      this.persist();
     },
     chooseBranch(loop) {
       if (!this.s) return;
       E.chooseBranch(this.s, loop);
+this.persist();
       this.consumeFx();
       if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
     },
     acceptBattle() {
       if (!this.s) return;
       E.resolveBattleOffer(this.s, true, Math.random);
+this.persist();
     },
     declineBattle() {
       if (!this.s) return;
       E.resolveBattleOffer(this.s, false, Math.random);
+this.persist();
       this.consumeFx();
       if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
     },
@@ -83,19 +109,23 @@ export const useGameStore = defineStore('game', {
     playBattle(cardId) {
       if (!this.s) return;
       E.playBattleCard(this.s, cardId, Math.random);
+this.persist();
     },
     confirmCards() {
       if (!this.s) return;
       E.confirmBattleCards(this.s);
+this.persist();
     },
     chooseDefense(mode) {
       if (!this.s) return;
       E.chooseDefense(this.s, mode, Math.random);
+this.persist();
       this.consumeFx();
     },
     closeBattle() {
       if (!this.s) return;
       E.closeBattle(this.s, Math.random);
+this.persist();
       this.consumeFx();
       if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
     },
@@ -104,19 +134,23 @@ export const useGameStore = defineStore('game', {
     playCard(cardId, opts) {
       if (!this.s) return;
       E.playEffectCard(this.s, cardId, opts || {}, Math.random);
+this.persist();
       this.consumeFx();
     },
     buy(cardId) {
       if (!this.s) return;
       E.buyCard(this.s, cardId);
+this.persist();
     },
     closeShop() {
       if (!this.s) return;
       E.closeShop(this.s);
+this.persist();
     },
     endTurn() {
       if (!this.s) return;
       E.endAction(this.s);
+this.persist();
       this.consumeFx();
     },
 

@@ -4,7 +4,7 @@
  */
 import { computed, ref } from 'vue';
 import { useGameStore } from '@/stores/game.js';
-import { TILES, directedDistance, TILE_LABEL } from '@/game/board.js';
+import { TILES, directedDistance, TILE_LABEL, LEVEL_COST } from '@/game/board.js';
 import { CARDS, CARD_IDS } from '@/game/cards.js';
 import BoardMap from '@/components/BoardMap.vue';
 import PlayerCard from '@/components/PlayerCard.vue';
@@ -14,10 +14,23 @@ const store = useGameStore();
 const s = computed(() => store.s);
 const cur = computed(() => store.current);
 
+// 无效点击的轻提示
+const toast = ref(null);
+let toastTimer = null;
+function notify(text) {
+  toast.value = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.value = null; }, 1800);
+}
+
+const phaseText = {
+  roll: '等待掷骰', moving: '移动中', action: '行动中', battle: '战斗中', over: '已结束',
+};
+
 // ── 行动阶段：手牌与效果牌指向 ──
 const selectedCard = ref(null); // {id, need: 'opponent'|'tile'}
 const targets = computed(() =>
-  s.value ? s.value.players.filter((p) => p.id !== cur.value.id && !p.ko) : []);
+  s.value ? s.value.players.filter((p) => p.id !== cur.value.id && !p.ko && !p.immune) : []);
 const rangeTiles = computed(() => {
   if (!s.value || selectedCard.value?.need !== 'tile') return [];
   const card = CARDS[selectedCard.value.id];
@@ -31,9 +44,14 @@ const shopStock = computed(() => s.value?.pending?.type === 'shop' ? s.value.pen
 
 function clickHandCard(id) {
   const card = CARDS[id];
+  if (card.kind === 'battle') { notify('战斗牌要在战斗里才能用'); return; }
   if (card.kind === 'effect') {
-    if (cur.value.effectPlayed) return;
-    if (card.target === 'opponent') { selectedCard.value = { id, need: 'opponent' }; return; }
+    if (cur.value.effectPlayed) { notify('本回合的效果牌已经用过了'); return; }
+    if (card.target === 'opponent') {
+      if (!targets.value.length) { notify('没有可指定的目标（住院/KO 免疫）'); return; }
+      selectedCard.value = { id, need: 'opponent' };
+      return;
+    }
     if (card.target === 'tile') { selectedCard.value = { id, need: 'tile' }; return; }
     store.playCard(id, {});
   } else if (card.kind === 'counter') {
@@ -79,14 +97,14 @@ const fxText = computed(() => {
       </div>
       <div class="text-right text-xs text-slate-500">
         <div>68 格 · 双矩形 45° 互穿 · 热座 M0</div>
-        <div>移动骰 1d10 · 战斗骰 1d6 · 升级 {{ [15, 25, 35, 45][cur.level] }} 币</div>
+        <div>移动骰 1d10 · 战斗骰 1d6 · {{ cur.level >= 4 ? '已满级' : `升级 ${LEVEL_COST[cur.level]} 币` }}</div>
       </div>
     </header>
 
     <div class="flex flex-col gap-4 p-4 lg:flex-row">
       <!-- 棋盘 -->
       <div class="relative min-h-[420px] flex-1 rounded-xl border border-slate-800 bg-slate-900/50 p-2">
-        <BoardMap :state="s" />
+        <BoardMap :state="s" @choose-branch="store.chooseBranch($event)" />
 
         <!-- 特效横幅 -->
         <transition name="fade">
@@ -280,6 +298,7 @@ const fxText = computed(() => {
               @click="store.buy(id)"
             >购买</button>
           </div>
+          <p v-if="!shopStock.length" class="py-4 text-center text-sm text-slate-500">已售罄</p>
         </div>
         <button
           class="mt-4 w-full rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-600"

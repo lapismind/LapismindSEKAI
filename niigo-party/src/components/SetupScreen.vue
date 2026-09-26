@@ -24,6 +24,27 @@ function confirmSeats() {
         25時、ナイトコードで。四人回合制派对游戏 · 68 格互穿棋盘 · 图版层复刻星引擎
       </p>
 
+      <!-- F5 恢复入口 -->
+      <div
+        v-if="store.hasSave"
+        class="mt-6 flex items-center justify-between rounded-xl border border-amber-400/50 bg-amber-400/10 px-5 py-4"
+      >
+        <div>
+          <div class="text-sm font-bold text-amber-300">检测到上局存档</div>
+          <div class="text-xs text-slate-400">F5/关闭页面不会丢局，可直接继续</div>
+        </div>
+        <div class="flex gap-2">
+          <button
+            class="rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-slate-900 hover:bg-amber-400"
+            @click="store.resume()"
+          >继续上局</button>
+          <button
+            class="rounded-lg bg-slate-700 px-4 py-2 text-sm text-slate-200 hover:bg-slate-600"
+            @click="store.discardSave()"
+          >放弃</button>
+        </div>
+      </div>
+
       <div class="mt-8 flex items-center justify-between">
         <h2 class="text-lg font-bold">选人（{{ store.picked.length }}/4）</h2>
         <span class="text-xs text-slate-500">同一素材键只能选一次；mfy 两形态算两个候选</span>

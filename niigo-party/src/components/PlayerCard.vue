@@ -1,5 +1,7 @@
 <script setup>
 /** PlayerCard.vue —— 单个玩家的状态条 */
+import { CARDS } from '@/game/cards.js';
+
 defineProps({
   player: { type: Object, required: true },
   isCurrent: { type: Boolean, default: false },

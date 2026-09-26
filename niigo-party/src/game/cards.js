@@ -11,12 +11,12 @@
 
 export const CARDS = {
   // ── 战斗牌（攻守各 3 档，每场每人 3 费上限）─────────────
-  atk1: { id: 'atk1', name: '攻击·1费', kind: 'battle', side: 'attack', cost: 1, min: 1, max: 4 },
-  atk2: { id: 'atk2', name: '攻击·2费', kind: 'battle', side: 'attack', cost: 2, min: 1, max: 7 },
-  atk3: { id: 'atk3', name: '攻击·3费', kind: 'battle', side: 'attack', cost: 3, min: 1, max: 10 },
-  def1: { id: 'def1', name: '防御·1费', kind: 'battle', side: 'defense', cost: 1, min: 1, max: 4 },
-  def2: { id: 'def2', name: '防御·2费', kind: 'battle', side: 'defense', cost: 2, min: 1, max: 7 },
-  def3: { id: 'def3', name: '防御·3费', kind: 'battle', side: 'defense', cost: 3, min: 1, max: 10 },
+  atk1: { id: 'atk1', name: '攻击·1费', kind: 'battle', side: 'attack', cost: 1, min: 1, max: 4, desc: '攻击奖励 +1~4' },
+  atk2: { id: 'atk2', name: '攻击·2费', kind: 'battle', side: 'attack', cost: 2, min: 1, max: 7, desc: '攻击奖励 +1~7' },
+  atk3: { id: 'atk3', name: '攻击·3费', kind: 'battle', side: 'attack', cost: 3, min: 1, max: 10, desc: '攻击奖励 +1~10' },
+  def1: { id: 'def1', name: '防御·1费', kind: 'battle', side: 'defense', cost: 1, min: 1, max: 4, desc: '防御奖励 +1~4' },
+  def2: { id: 'def2', name: '防御·2费', kind: 'battle', side: 'defense', cost: 2, min: 1, max: 7, desc: '防御奖励 +1~7' },
+  def3: { id: 'def3', name: '防御·3费', kind: 'battle', side: 'defense', cost: 3, min: 1, max: 10, desc: '防御奖励 +1~10' },
 
   // ── 效果牌（每回合限 1 张）──────────────────────────────
   cake: { id: 'cake', name: '巧克力蛋糕', kind: 'effect', target: 'self',
