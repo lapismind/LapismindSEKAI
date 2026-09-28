@@ -104,8 +104,10 @@
 	};
 
 	function runIntro() {
-		const root = document.getElementById('intro');
-		if (!root) return;
+		const found = document.getElementById('intro');
+		if (!found) return;
+		// 闭包里到处用：直接给非空类型的常量，免得 TS 收窄不跨闭包
+		const root: HTMLElement = found;
 		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
 		let playedBefore = false;
 		try {
