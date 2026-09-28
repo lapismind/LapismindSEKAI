@@ -49,18 +49,28 @@ export const useGameStore = defineStore('game', {
     /** F5 恢复：从 localStorage 读回引擎状态快照 */
     resume() {
       const raw = localStorage.getItem(SAVE_KEY);
-      if (!raw) return;
+      if (!raw) return false;
       try {
-        this.s = JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        // 只接受稳定态存档（roll/action/over）。moving 态存档属历史遗留，丢弃让玩家重掷
+        if (parsed.phase === 'moving' || !Array.isArray(parsed.players)) {
+          localStorage.removeItem(SAVE_KEY);
+          this.hasSave = false;
+          return false;
+        }
+        this.s = parsed;
         this.view = 'game';
-      } catch { localStorage.removeItem(SAVE_KEY); this.hasSave = false; }
+        return true;
+      } catch { localStorage.removeItem(SAVE_KEY); this.hasSave = false; return false; }
     },
     discardSave() {
       localStorage.removeItem(SAVE_KEY);
       this.hasSave = false;
     },
     persist() {
-      if (!this.s || this.s.phase === 'over') { localStorage.removeItem(SAVE_KEY); this.hasSave = false; return; }
+      // 只在稳定态落盘：moving 态绝不覆盖上一次的稳定快照（F5 恢复后从掷骰前重掷，绝不卡死）
+      if (!this.s || this.s.phase === 'moving') return;
+      if (this.s.phase === 'over') { localStorage.removeItem(SAVE_KEY); this.hasSave = false; return; }
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.s)); this.hasSave = true; } catch { /* 存储满等，忽略 */ }
     },
 
@@ -72,18 +82,23 @@ this.persist();
       if (this.s.phase === 'moving') this.autoMove();
     },
     async autoMove() {
-      // 逐步自动推进（220ms/格），遇 pending 停下等玩家决策
+      // 逐步自动推进（220ms/格），遇 pending 停下等玩家决策；
+      // 每步只在稳定态落盘（moving 态 persist 内部跳过），胜利当步立即清档，不留竞态窗口
       if (this.moving) return;
       this.moving = true;
-      await new Promise((r) => setTimeout(r, 60));
-      while (this.s && this.s.phase === 'moving' && !this.s.pending) {
-        E.moveStep(this.s, Math.random);
-        this.consumeFx();
-        await new Promise((r) => setTimeout(r, 220));
+      try {
+        await new Promise((r) => setTimeout(r, 60));
+        while (this.s && this.s.phase === 'moving' && !this.s.pending) {
+          E.moveStep(this.s, Math.random);
+          this.consumeFx();
+          if (this.s.phase !== 'moving') break; // 落地/胜利：稳定态，跳出立即持久化
+          await new Promise((r) => setTimeout(r, 220));
+        }
+      } finally {
+        this.moving = false;
+        this.persist();
       }
       this.consumeFx();
-      this.moving = false;
-      this.persist();
     },
     chooseBranch(loop) {
       if (!this.s) return;

@@ -21,3 +21,6 @@ docs/agent/scripts/out/
 # Python 缓存（分析脚本用 ImageGen 的 venv 跑，会生成）
 __pycache__/
 *.pyc
+
+# 脚本输出（截图、dump、渲染产物），按 AGENTS.md 约定留在本地
+_out/

@@ -541,8 +541,10 @@ HP ≤ 0（战斗 / 板砖 / 地块 / 陷阱皆可）
 
 **实现**：`src/game/`（board/characters/cards/engine 纯函数引擎，联机时整体可搬服务端）
 + `src/stores/game.js`（热座壳）+ 组件（SetupScreen / GameScreen / BoardMap / PlayerCard /
-BattleOverlay）；单测 16 项（`npm test`，含整局随机模拟回归）。
-本地游玩：`npm run dev`。
+BattleOverlay）；单测 23 项（`npm test`，含整局随机模拟回归）。
+本地游玩：`npm run dev`。**试玩修复后已在真实浏览器（Playwright headless）逐项点验
+14/14 通过**——复现脚本：`docs/agent/scripts/m0-playwright-verify.py`
+（覆盖：起始格错开、掷骰/轮转、toast、交点箭头、F5 恢复不卡死、KO 压黑、25 轮结算、商店售罄）。
 
 **与本文的偏差（M0 简化，联机前需复核）**：
 1. 反制牌简化为预置标记（打出即生效，无响应窗口）

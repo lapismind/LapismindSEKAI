@@ -59,7 +59,7 @@ export function createGame(seats) {
         def: c.def,
         coins: START_COINS,
         level: 0,
-        tile: i === 0 ? 0 : 18, // 两个起始点，中心对称
+        tile: [0, 18, 35, 17][i] ?? 0, // 起始格错开：0/18 两个起始点，35/17 排在其行进方向前一位
         loop: 'A',
         hand: [],
         status: { shield: 0, reflect: 0 },
@@ -536,6 +536,9 @@ function settleEnd(state) {
   );
   state.winner = ranked[0].id;
   state.phase = 'over';
+  state.pending = null;
+  state.battle = null;
+  state.remaining = 0;
   ranked.forEach((p, i) => log(state, `第 ${i + 1} 名：${p.name}（Lv${p.level} · ${p.coins} 币 · HP ${p.hp}）`));
   log(state, `25 轮到点，${ranked[0].name} 综合排名第一获胜`);
 }

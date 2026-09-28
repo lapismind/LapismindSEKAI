@@ -45,7 +45,7 @@ defineProps({
       <span
         v-for="c in player.hand" :key="c"
         class="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300"
-      >{{ c }}</span>
+      >{{ CARDS[c]?.name ?? c }}</span>
       <span v-if="!player.hand.length" class="text-[10px] text-slate-600">（无手牌）</span>
     </div>
   </div>
