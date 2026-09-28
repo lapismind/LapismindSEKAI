@@ -7,4 +7,4 @@ export const GITHUB_URL = 'https://github.com/lapismind';
 
 /** Cloudflare Web Analytics 的 beacon token（仪表板创建站点后填入；留空则不加载 beacon）。
  *  同一个值也作为 RUM siteTag 填进 wrangler.toml 的 CF_RUM_SITE_TAG，供 /api/visits 查询。 */
-export const CF_BEACON_TOKEN = '';
+export const CF_BEACON_TOKEN = '264cfed0caf24c059b0374d5b383d08a';

@@ -39,8 +39,9 @@ interface CacheLike {
 	put(request: Request, response: Response): Promise<void>;
 }
 
-/** /api/visits 的 RUM 聚合组（GraphQL rumAdaptiveGroups 行） */
-type RumGroups = { sum?: { visits?: number; pageViews?: number } }[] | undefined;
+/** /api/visits 的 RUM 聚合组（GraphQL rumPageloadEventsAdaptiveGroups 行）。
+ *  sum 里只有 visits；每次 pageload 事件即一次 PV，pageViews 用 count。 */
+type RumGroups = { count?: number; sum?: { visits?: number } }[] | undefined;
 
 // encodeBody 是 Cloudflare 运行时的专有选项，标准 lib.dom 的 ResponseInit 里没有。
 // 实测 workerd 只接受 'manual'——写 'auto' 会抛 "encodeBody: unexpected value: auto"，
@@ -116,11 +117,13 @@ async function handleVisits(
 	query($accountTag: String!, $siteTag: String!, $dayStart: Time!, $weekStart: Time!, $now: Time!) {
 		viewer {
 			accounts(filter: { accountTag: $accountTag }) {
-				today: rumAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $dayStart, datetime_leq: $now }, limit: 1) {
-					sum { visits pageViews }
+				today: rumPageloadEventsAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $dayStart, datetime_leq: $now }, limit: 1) {
+					count
+					sum { visits }
 				}
-				week: rumAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $weekStart, datetime_leq: $now }, limit: 1) {
-					sum { visits pageViews }
+				week: rumPageloadEventsAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $weekStart, datetime_leq: $now }, limit: 1) {
+					count
+					sum { visits }
 				}
 			}
 		}
@@ -150,7 +153,7 @@ async function handleVisits(
 	if (!account) return json({ ok: false, reason: 'no-data' }, 502);
 	const pick = (g: RumGroups) => ({
 		visits: g?.[0]?.sum?.visits ?? 0,
-		pageViews: g?.[0]?.sum?.pageViews ?? 0,
+		pageViews: g?.[0]?.count ?? 0,
 	});
 	const res = json(
 		{
