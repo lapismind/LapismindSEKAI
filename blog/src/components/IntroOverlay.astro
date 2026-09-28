@@ -1,12 +1,13 @@
 ---
-// 进站开屏：25时碎球缓散 + 四色渗光（Canvas 2D，零依赖）。
-// 视觉规格与 _out/intro-demo/index.html 同源：四人代表色碎片聚成空心球，
-// 缓缓扩散，彩光从球心渗透；无爆闪无突变。出场纪律见脚本内注释。
+// 进站开屏：25时碎球 + TAP TO START（Canvas 2D，零依赖）。
+// 视觉规格与 _out/intro-demo 同源：四人代表色碎片聚成空心球悬停呼吸，
+// 用户点按（或 6s 无操作自动）揭球——碎球绽开、四色光从球心渗出，进入 SEKAI。
+// 出场纪律见脚本内注释。
 <div class="intro" id="intro" aria-hidden="true">
 	<canvas class="intro-canvas"></canvas>
 	<div class="intro-title">
 		<p class="intro-eyebrow">25時、ナイトコードで。</p>
-		<div class="intro-bar"><i></i></div>
+		<p class="intro-tap">TAP TO START</p>
 	</div>
 </div>
 
@@ -17,7 +18,8 @@
 		z-index: 300;
 		background: #0f0c1d;
 		overflow: hidden;
-		transition: opacity 1s ease;
+		cursor: pointer;
+		transition: opacity 1.1s ease;
 	}
 	.intro.exit {
 		opacity: 0;
@@ -41,6 +43,7 @@
 		text-align: center;
 		pointer-events: none;
 		padding: 0 3rem;
+		gap: 3.2rem;
 	}
 	.intro-eyebrow {
 		margin: 0;
@@ -49,34 +52,33 @@
 		letter-spacing: 0.34em;
 		color: #ece5ff;
 		opacity: 0;
-		transform: translateY(12px);
+		transform: translateY(10px);
 		filter: blur(6px);
 		transition: opacity 1.1s ease, transform 1.1s ease, filter 1.1s ease;
 		text-shadow: 0 0 22px oklch(0.8 0.1 290 / 0.75), 0 1px 10px oklch(0 0 0 / 0.5);
 	}
-	.intro-bar {
-		margin-top: 1.5rem;
-		width: min(300px, 62vw);
-		height: 2px;
-		border-radius: 2px;
-		background: oklch(1 0 0 / 0.12);
-		overflow: hidden;
-		opacity: 0;
-		transition: opacity 0.8s ease 0.5s;
-	}
 	.intro.show .intro-eyebrow { opacity: 1; transform: none; filter: none; }
-	.intro.show .intro-bar { opacity: 1; }
-	.intro-bar i {
-		display: block;
-		height: 100%;
-		width: 34%;
-		border-radius: 2px;
-		background: linear-gradient(90deg, #bb6688, #8888cc, #ccaa88, #ddaacc);
-		animation: intro-sweep 1.6s ease-in-out infinite;
+	.intro-tap {
+		margin: 0;
+		font-family: var(--font-mono);
+		font-size: 0.8rem;
+		letter-spacing: 0.46em;
+		text-indent: 0.46em;
+		color: #d8e0ff;
+		opacity: 0;
+		transition: opacity 0.4s ease;
+		text-shadow: 0 0 14px oklch(0.85 0.08 260 / 0.6);
 	}
-	@keyframes intro-sweep {
-		0% { transform: translateX(-110%); }
-		100% { transform: translateX(300%); }
+	.intro.ready .intro-tap {
+		animation: intro-tap-breathe 2.2s ease-in-out infinite;
+	}
+	.intro.tapdone .intro-tap {
+		animation: none;
+		opacity: 0 !important;
+	}
+	@keyframes intro-tap-breathe {
+		0%, 100% { opacity: 0.4; }
+		50% { opacity: 1; }
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.intro { display: none; }
@@ -90,9 +92,9 @@
 	// 宵崎奏 / 朝比奈まふゆ / 東雲絵名 / 暁山瑞希（萌娘百科代表色）
 	const MEMBERS = ['#bb6688', '#8888cc', '#ccaa88', '#ddaacc'];
 	const SHARD_COLS = [...MEMBERS, ...MEMBERS, '#ffffff', '#9df5cf'];
-	const T_FORM = 1.5; // 碎球成形，开始缓散 + 渗光
-	const T_TITLE = 2.3;
-	const T_EXPAND = 4.2;
+	const T_FORM = 1.5;      // 碎球成形，进入悬停待点
+	const T_EXPAND = 4.2;    // 揭球后缓散主时长
+	const AUTO_REVEAL = 6.0; // 无操作自动揭球（含成形时间）
 
 	type Shard = {
 		u: number[]; jr: number; sz: number; rot: number; rv: number;
@@ -237,20 +239,20 @@
 			const a = R(0, TAU), d = R(0.4, 0.7) * Math.hypot(W, H) / 2;
 			return { a, d, sz: R(0.6, 1.8), v: R(0.7, 1.15), col: Math.random() < 0.7 ? '#bfe9ff' : pick(MEMBERS) };
 		});
-		// 彩光团：四色各一，中心按象限错开，从球心附近慢慢长出来
+		// 彩光团：四色各一，中心按象限错开，揭球后从球心附近慢慢长出来
 		const lights = MEMBERS.map((col, i) => ({
 			col,
 			dir: i * (TAU / 4) + R(-0.35, 0.35),
 			off: R(0.75, 1.25),
 			grow: R(1.5, 2.1),
-			delay: T_FORM * 0.55 + i * 0.22,
+			delay: i * 0.22,
 			dur: R(3.2, 4.2),
 			ph: R(0, TAU),
 		}));
 
 		const yaw0 = R(0, TAU);
 		function ballRot(t: number) {
-			const spin = 0.34 - 0.18 * clamp01((t - T_FORM) / T_EXPAND);
+			const spin = 0.34;
 			return { yaw: yaw0 + spin * t + t * t * 0.012, pitch: 0.32 + 0.1 * Math.sin(t * 0.7) };
 		}
 		function rotU(u: number[], rot: { yaw: number; pitch: number }) {
@@ -302,38 +304,74 @@
 			}
 			ctx.restore();
 		}
-		function drawLights(t: number, mul: number, behind: boolean) {
+		function drawLights(tr: number, mul: number, behind: boolean) {
 			ctx.save();
 			ctx.globalCompositeOperation = 'screen';
 			for (const L of lights) {
-				const p = easeInOutSine(clamp01((t - L.delay) / L.dur));
+				const p = easeInOutSine(clamp01((tr - L.delay) / L.dur));
 				if (p <= 0) continue;
 				const rad = r0() * (0.35 + L.grow * p);
 				const ox = Math.cos(L.dir) * r0() * L.off * p;
 				const oy = Math.sin(L.dir) * r0() * L.off * p;
-				const breathe = 0.92 + 0.08 * Math.sin(t * 0.7 + L.ph); // 十秒级缓摆，不闪
+				const breathe = 0.92 + 0.08 * Math.sin(tr * 0.7 + L.ph); // 十秒级缓摆，不闪
 				ctx.globalAlpha = mul * p * breathe * (behind ? 1 : 0.25);
 				ctx.drawImage(SPR.blobs[L.col], CX + ox - rad, CY + oy - rad, rad * 2, rad * 2);
 			}
 			ctx.restore();
 		}
 
+		// ---- 揭球交互：成形后即可点（点击 / 回车 / 空格），无操作 AUTO_REVEAL 自动揭 ----
+		let revealedAt: number | null = null; // 以成形时刻为 0 的揭球秒数
+		function reveal(now: number) {
+			if (revealedAt !== null || now < T_FORM) return;
+			revealedAt = now - T_FORM; // 缓散/渗光时间轴从成形时刻起算
+			root.classList.remove('ready');
+			root.classList.add('tapdone');
+			// 收场：揭球后播完缓散再整体淡出揭示主页
+			setTimeout(() => root.classList.add('exit'), T_EXPAND * 1000 + 1100);
+			setTimeout(() => {
+				root.classList.add('gone');
+				root.remove();
+			}, T_EXPAND * 1000 + 2400);
+			setTimeout(() => {
+				cancelAnimationFrame(raf);
+				removeEventListener('resize', onResize);
+				window.removeEventListener('keydown', onKey);
+			}, T_EXPAND * 1000 + 3600);
+		}
+		root.addEventListener('pointerdown', () => reveal((performance.now() - t0) / 1000));
+		// 键盘事件挂 window（div 不可聚焦）；动画层已被清掉时不响应
+		function onKey(ev: KeyboardEvent) {
+			if (!root.isConnected) return;
+			if (ev.code === 'Enter' || ev.code === 'Space') reveal((performance.now() - t0) / 1000);
+		}
+		window.addEventListener('keydown', onKey);
+
 		// ---- 主循环 ----
 		const t0 = performance.now();
 		let last = t0;
 		let raf = 0;
 		let titleShown = false;
+		let tapShown = false;
+		const ambient: { x: number; y: number; v: number; sz: number; a: number; col: string; rot: number; rv: number }[] = [];
 		function frame(now: number) {
+			if (!root.isConnected) { cancelAnimationFrame(raf); return; } // 换页被清掉就停表
 			const t = (now - t0) / 1000;
 			const dt = Math.min(0.05, (now - last) / 1000);
 			last = now;
+			const revealed = revealedAt !== null;
+			const tr = revealed ? t - T_FORM - revealedAt! : 0; // 揭球后经过的秒数
 			const rot = ballRot(t);
 			const forming = t < T_FORM;
 			const fp = easeInQuad(clamp01(t / T_FORM));
+			// 球壳半径：成形期收拢 → 悬停期呼吸 → 揭球后持续缓涨
+			const idleBreathe = 0.05 * Math.sin((t - T_FORM) * 1.15);
 			const shellR = forming
 				? r0() * (1.06 - 0.22 * fp)
-				: r0() * (0.84 + 2.2 * easeInOutSine(clamp01((t - T_FORM) / T_EXPAND)) + Math.max(0, t - T_FORM - T_EXPAND) * 0.22);
-			const lightAmt = easeInOutSine(clamp01((t - T_FORM * 0.55) / (T_EXPAND * 0.9)));
+				: revealed
+					? r0() * (0.84 + 2.2 * easeInOutSine(clamp01(tr / T_EXPAND)) + Math.max(0, tr - T_EXPAND) * 0.22)
+					: r0() * (0.86 + idleBreathe);
+			const lightAmt = revealed ? easeInOutSine(clamp01(tr / (T_EXPAND * 0.9))) : 0;
 
 			ctx.save();
 			const zoom = 1 + 0.04 * easeInOutSine(clamp01(t / (T_FORM + T_EXPAND * 0.6)));
@@ -344,7 +382,7 @@
 			ctx.save();
 			ctx.globalCompositeOperation = 'lighter';
 			for (const d of dust) {
-				const dd = d.d * (1 - easeInQuad(clamp01(t / T_FORM)) * d.v * 0.9) + Math.max(0, t - T_FORM) * 14 * d.v;
+				const dd = d.d * (1 - easeInQuad(clamp01(t / T_FORM)) * d.v * 0.9) + tr * 14 * d.v;
 				ctx.globalAlpha = (0.1 + 0.34 * fp) * Math.max(0.25, 1 - lightAmt * 0.5);
 				ctx.fillStyle = d.col;
 				ctx.beginPath();
@@ -353,18 +391,22 @@
 			}
 			ctx.restore();
 
-			if (forming) {
-				const cr = r0() * (0.25 + 1.05 * fp * fp);
+			// 中心辉光：成形期点亮，悬停期呼吸，揭球后随彩光接管而退场
+			if (t >= T_FORM * 0.3) {
+				const idleGlow = forming ? fp : 1;
+				const cr = r0() * (0.25 + 1.05 * idleGlow * idleGlow);
+				const dim = revealed ? 1 - lightAmt * 0.85 : 1;
+				const breathe = forming ? 1 : 0.88 + 0.12 * Math.sin(t * 1.3);
 				ctx.save();
 				ctx.globalCompositeOperation = 'screen';
-				ctx.globalAlpha = 0.25 + 0.65 * fp;
+				ctx.globalAlpha = (0.25 + 0.65 * idleGlow) * dim * breathe;
 				ctx.drawImage(SPR.white!, CX - cr, CY - cr, cr * 2, cr * 2);
-				ctx.globalAlpha = 0.8 * fp;
+				ctx.globalAlpha = 0.8 * idleGlow * dim * breathe;
 				ctx.drawImage(SPR.lav!, CX - cr * 1.15, CY - cr * 1.15, cr * 2.3, cr * 2.3);
 				ctx.restore();
 			}
 
-			drawLights(t, lightAmt, true);
+			drawLights(tr, lightAmt, true);
 
 			const items: { x: number; y: number; depth: number; fade: number; s: Shard }[] = [];
 			for (const s of ball) {
@@ -390,7 +432,9 @@
 					x = CX + spin[0] * dist;
 					y = CY + spin[1] * dist * 0.96;
 					depth = spin[2];
-					fade = Math.max(0.35, 1 - Math.max(0, t - T_FORM - T_EXPAND * 0.72) / 1.6);
+					fade = revealed
+						? Math.max(0.35, 1 - Math.max(0, tr - T_EXPAND * 0.72) / 1.6)
+						: 1;
 				}
 				items.push({ x, y, depth, fade, s });
 			}
@@ -399,12 +443,12 @@
 				const s = it.s;
 				const persp = 0.62 + 0.38 * it.depth;
 				const base = 0.5 + 0.5 * it.depth;
-				const spinT = t * (forming ? 0.35 : 0.22);
+				const spinT = t * (revealed ? 0.22 : 0.3);
 				drawShardTri(it.x, it.y, s.sz * persp, s.rot + spinT * s.rv, s.col, base * it.fade, s);
 			}
 
-			// 待机缓浮小三角
-			if (t > T_FORM + T_EXPAND * 0.5 && Math.random() < 0.2) {
+			// 揭球后段：待机缓浮小三角
+			if (revealed && tr > T_EXPAND * 0.5 && Math.random() < 0.2) {
 				ambient.push({
 					x: R(0, W), y: H + 10, v: R(10, 26), sz: R(2, 5), a: R(0.08, 0.25),
 					col: pick(SHARD_COLS), rot: R(0, TAU), rv: R(-0.8, 0.8),
@@ -426,29 +470,15 @@
 				ctx.restore();
 			}
 
-			drawLights(t, lightAmt, false);
+			drawLights(tr, lightAmt, false);
 			ctx.restore();
 
-			if (!titleShown && t >= T_TITLE) { titleShown = true; root.classList.add('show'); }
+			if (!titleShown && t >= T_FORM) { titleShown = true; root.classList.add('show'); }
+			if (!tapShown && t >= T_FORM + 0.35) { tapShown = true; root.classList.add('ready'); }
+			if (!revealed && t >= AUTO_REVEAL) reveal(t);
 			raf = requestAnimationFrame(frame);
 		}
-		const ambient: { x: number; y: number; v: number; sz: number; a: number; col: string; rot: number; rv: number }[] = [];
 		raf = requestAnimationFrame(frame);
-
-		// ---- 收场：播完整体淡出 revealing 主页 ----
-		setTimeout(() => root.classList.add('exit'), 5400);
-		setTimeout(() => {
-			root.classList.add('gone');
-			cancelAnimationFrame(raf);
-			removeEventListener('resize', onResize);
-			root.remove();
-		}, 6600);
-		// 兜底：无论如何 8s 后清掉
-		setTimeout(() => {
-			const el = document.getElementById('intro');
-			if (el) { el.classList.add('gone'); el.remove(); }
-			cancelAnimationFrame(raf);
-		}, 8000);
 	}
 
 	document.addEventListener('astro:page-load', runIntro);
