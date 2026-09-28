@@ -113,6 +113,24 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 				letter-spacing: 0.06em;
 				text-shadow: 0 1px 12px oklch(0 0 0 / 0.45);
 			}
+			/* 打字机光标：挂在正在敲的那行末尾，敲完由 JS 摘除 */
+			.type-caret {
+				display: inline-block;
+				width: 3px;
+				min-width: 2px;
+				height: 0.95em;
+				margin-left: 0.12em;
+				vertical-align: -0.08em;
+				background: currentColor;
+				animation: caret-blink 0.9s steps(1) infinite;
+			}
+			@keyframes caret-blink {
+				0%, 100% { opacity: 1; }
+				50% { opacity: 0; }
+			}
+			@media (prefers-reduced-motion: reduce) {
+				.type-caret { display: none; }
+			}
 			.hero-inner > * {
 				animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 			}
@@ -789,3 +807,66 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 
 	</body>
 </html>
+
+<script>
+	// Hero 打字机：等进站开屏结束（没有开屏就直接开始）后，
+	// h1 → lead 逐字敲出；标点带停顿、字速带抖动，模拟真人节奏。
+	// HTML 里始终是完整原文（SEO / 无 JS 可读），敲字由 JS 接管。
+	const TYPE_PAUSE: Record<string, number> = {
+		'，': 420, '、': 380, '。': 560, '！': 560, '？': 560, ' ': 90,
+	};
+	function sleep(ms: number) {
+		return new Promise((r) => setTimeout(r, ms));
+	}
+	function typeText(el: HTMLElement, speed = 115) {
+		return new Promise<void>((resolve) => {
+			const text = el.dataset.type ?? el.textContent ?? '';
+			el.dataset.type = text;
+			el.textContent = '';
+			el.setAttribute('aria-label', text);
+			const caret = document.createElement('span');
+			caret.className = 'type-caret';
+			el.appendChild(caret);
+			let i = 0;
+			function step() {
+				if (i >= text.length) {
+					caret.remove();
+					resolve();
+					return;
+				}
+				// 长破折号「——」整体敲出
+				const chunk = text.slice(i, i + 2) === '——' ? 2 : 1;
+				const ch = text[i];
+				el.insertBefore(document.createTextNode(text.slice(i, i + chunk)), caret);
+				let d = speed * (0.75 + Math.random() * 0.5);
+				d += TYPE_PAUSE[ch] ?? 0;
+				if (chunk === 2) d += 480;
+				i += chunk;
+				setTimeout(step, d);
+			}
+			step();
+		});
+	}
+	async function waitIntroGone() {
+		// 开屏最长 6.6s 自动清场；每 100ms 看一眼，最多等 8s
+		for (let i = 0; i < 80; i++) {
+			const el = document.getElementById('intro');
+			if (!el || el.classList.contains('exit')) return;
+			await sleep(100);
+		}
+	}
+	async function typeHero() {
+		const h1 = document.querySelector<HTMLElement>('.hero h1');
+		const lead = document.querySelector<HTMLElement>('.hero .lead');
+		if (!h1 || !lead || h1.dataset.typeDone) return;
+		h1.dataset.typeDone = '1';
+		if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		await waitIntroGone();
+		await sleep(350);
+		await typeText(h1);
+		await sleep(320);
+		await typeText(lead, 105);
+	}
+	document.addEventListener('astro:page-load', typeHero);
+	typeHero();
+</script>
