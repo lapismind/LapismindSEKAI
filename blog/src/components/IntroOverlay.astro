@@ -321,11 +321,66 @@
 			ctx.restore();
 		}
 
+		// ---- 揭球音效：WebAudio 现场合成「渐入溅出」，无音频素材 ----
+		// 噪声带通扫频（whoosh）+ 三枚正弦小水滴上行，主增益渐入。
+		// AudioContext 必须在用户手势里创建/恢复——只挂在点按/键盘路径上，
+		// 6s 无操作自动揭球走静音路径（无手势时浏览器禁止出声）。
+		let audioCtx: AudioContext | null = null;
+		function playSplash() {
+			try {
+				audioCtx ??= new AudioContext();
+				if (audioCtx.state === 'suspended') audioCtx.resume();
+				const t = audioCtx.currentTime;
+				const master = audioCtx.createGain();
+				master.gain.setValueAtTime(0.0001, t);
+				master.gain.linearRampToValueAtTime(0.22, t + 0.12); // 渐入
+				master.connect(audioCtx.destination);
+				// whoosh：白噪声过带通，中心频率 400Hz → 3.5kHz 上扫
+				const dur = 0.7;
+				const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
+				const data = buf.getChannelData(0);
+				for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+				const noise = audioCtx.createBufferSource();
+				noise.buffer = buf;
+				const bp = audioCtx.createBiquadFilter();
+				bp.type = 'bandpass';
+				bp.Q.value = 1.1;
+				bp.frequency.setValueAtTime(400, t);
+				bp.frequency.exponentialRampToValueAtTime(3500, t + 0.45);
+				const ng = audioCtx.createGain();
+				ng.gain.setValueAtTime(0.9, t);
+				ng.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+				noise.connect(bp);
+				bp.connect(ng);
+				ng.connect(master);
+				noise.start(t);
+				noise.stop(t + dur);
+				// 水滴：三枚正弦，音高上行，指尖落点错开
+				[880, 1174.7, 1568].forEach((f, i) => {
+					const o = audioCtx!.createOscillator();
+					o.type = 'sine';
+					o.frequency.value = f;
+					const g = audioCtx!.createGain();
+					const st = t + 0.05 + i * 0.07;
+					g.gain.setValueAtTime(0, st);
+					g.gain.linearRampToValueAtTime(0.16, st + 0.02);
+					g.gain.exponentialRampToValueAtTime(0.001, st + 0.3);
+					o.connect(g);
+					g.connect(master);
+					o.start(st);
+					o.stop(st + 0.35);
+				});
+			} catch {
+				// 音频失败静默忽略：开屏不该因为声音挂掉
+			}
+		}
+
 		// ---- 揭球交互：成形后即可点（点击 / 回车 / 空格），无操作 AUTO_REVEAL 自动揭 ----
 		let revealedAt: number | null = null; // 以成形时刻为 0 的揭球秒数
-		function reveal(now: number) {
+		function reveal(now: number, withSound = false) {
 			if (revealedAt !== null || now < T_FORM) return;
 			revealedAt = now - T_FORM; // 缓散/渗光时间轴从成形时刻起算
+			if (withSound) playSplash();
 			root.classList.remove('ready');
 			root.classList.add('tapdone');
 			// 收场：揭球后播完缓散再整体淡出揭示主页
@@ -340,11 +395,11 @@
 				window.removeEventListener('keydown', onKey);
 			}, T_EXPAND * 1000 + 3600);
 		}
-		root.addEventListener('pointerdown', () => reveal((performance.now() - t0) / 1000));
+		root.addEventListener('pointerdown', () => reveal((performance.now() - t0) / 1000, true));
 		// 键盘事件挂 window（div 不可聚焦）；动画层已被清掉时不响应
 		function onKey(ev: KeyboardEvent) {
 			if (!root.isConnected) return;
-			if (ev.code === 'Enter' || ev.code === 'Space') reveal((performance.now() - t0) / 1000);
+			if (ev.code === 'Enter' || ev.code === 'Space') reveal((performance.now() - t0) / 1000, true);
 		}
 		window.addEventListener('keydown', onKey);
 
