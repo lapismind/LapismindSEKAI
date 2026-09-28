@@ -342,6 +342,17 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 				color: var(--ink-soft);
 				line-height: 1.85;
 			}
+			.now-visitors {
+				margin: 0.9rem 0 0;
+				font-family: var(--font-mono);
+				font-size: 0.8rem;
+				letter-spacing: 0.1em;
+				color: var(--muted);
+			}
+			.now-visitors b {
+				font-weight: 700;
+				color: var(--ink-soft);
+			}
 			/* 运行指示灯。外圈呼吸式扩散表示"在跑"，减少动效时只留静态的实心点。 */
 			.now-dot {
 				position: relative;
@@ -695,6 +706,9 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 						SEKAI is running
 					</p>
 					<p class="now-lead">现在，我将演示 SEKAI 运行的框架。</p>
+					<p class="now-visitors" hidden>
+						今夜来访 <b id="now-visitors">—</b> 人 · 七日 <b id="week-visitors">—</b> 人
+					</p>
 				</div>
 				<div class="now-stats">
 					<div class="stat">
@@ -869,4 +883,25 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 	}
 	document.addEventListener('astro:page-load', typeHero);
 	typeHero();
+
+	// 今夜来访：同源 Worker 接口查 Web Analytics RUM 数据。
+	// 未配置（404）或失败时整行隐藏，不留占位符。
+	async function loadVisitors() {
+		const line = document.querySelector<HTMLElement>('.now-visitors');
+		const el = document.getElementById('now-visitors');
+		if (!line || !el) return;
+		try {
+			const r = await fetch('/api/visits');
+			if (!r.ok) throw new Error(String(r.status));
+			const d = await r.json();
+			if (!d.ok) throw new Error('no-data');
+			document.getElementById('week-visitors')!.textContent = String(d.week.visits);
+			el.textContent = String(d.today.visits);
+			line.hidden = false;
+		} catch {
+			line.hidden = true;
+		}
+	}
+	document.addEventListener('astro:page-load', loadVisitors);
+	loadVisitors();
 </script>

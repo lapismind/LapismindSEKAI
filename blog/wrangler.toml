@@ -12,4 +12,11 @@ custom_domain = true
 binding = "ASSETS"
 directory = "./dist"
 not_found_handling = "404-page"
-run_worker_first = ["/live2d/*"]
+run_worker_first = ["/live2d/*", "/api/*"]
+
+[vars]
+# GraphQL 查询 RUM 数据用（账户 ID 非敏感）。RUM siteTag = Web Analytics 的 beacon
+# token，在仪表板创建站点后填入，并同步到 src/consts.ts 的 CF_BEACON_TOKEN。
+CF_ACCOUNT_ID = "b1be74348aa61eb993748d18c2561866"
+CF_RUM_SITE_TAG = ""
+# 密钥不入库：npx wrangler secret put CF_API_TOKEN（需 Account Analytics Read 权限）

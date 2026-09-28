@@ -1,4 +1,4 @@
-// 轻量入口：静态资产照常由 ASSETS 提供，只做两件额外的事。
+// 轻量入口：静态资产照常由 ASSETS 提供，只做三件额外的事。
 //
 // 1. /live2d/ 防盗链：同源请求、直接在地址栏打开（Sec-Fetch-Site: none）、
 //    无来源头均放行；其他网站的页面嵌入或直链（cross-site）返回 403。
@@ -24,7 +24,23 @@
 
 interface Env {
 	ASSETS: { fetch(request: Request): Promise<Response> };
+	// /api/visits 用：三值任缺则端点返回 404，前端自动隐藏访客数
+	CF_API_TOKEN?: string;
+	CF_ACCOUNT_ID?: string;
+	CF_RUM_SITE_TAG?: string;
 }
+
+// 项目不装 @cloudflare/workers-types（见下方 CfResponseInit 的注释），只声明用到的面
+interface CfExecutionContext {
+	waitUntil(promise: Promise<unknown>): void;
+}
+interface CacheLike {
+	match(request: Request): Promise<Response | undefined>;
+	put(request: Request, response: Response): Promise<void>;
+}
+
+/** /api/visits 的 RUM 聚合组（GraphQL rumAdaptiveGroups 行） */
+type RumGroups = { sum?: { visits?: number; pageViews?: number } }[] | undefined;
 
 // encodeBody 是 Cloudflare 运行时的专有选项，标准 lib.dom 的 ResponseInit 里没有。
 // 实测 workerd 只接受 'manual'——写 'auto' 会抛 "encodeBody: unexpected value: auto"，
@@ -65,9 +81,96 @@ async function fetchPrecompressed(
 	return res;
 }
 
+/**
+ * /api/visits：从 Web Analytics 的 RUM 数据集查真实访客数（beacon 上报，
+ * 不含爬虫与静态资源——zone 级的 httpRequestsOverviewAdaptiveGroups 不是人流量）。
+ * 同源接口，无 CORS；结果边缘缓存 10 分钟，避免每次进页都打 GraphQL。
+ * 今夜 = UTC+8 当日零点起（「25時」的夜属于今天）。
+ */
+async function handleVisits(
+	request: Request,
+	env: Env,
+	ctx: CfExecutionContext,
+): Promise<Response> {
+	const headers = {
+		'Content-Type': 'application/json; charset=utf-8',
+		'Cache-Control': 'public, max-age=600',
+	};
+	const json = (body: unknown, status: number) =>
+		new Response(JSON.stringify(body), { status, headers });
+
+	if (!isAllowedSource(request)) return new Response('Forbidden', { status: 403 });
+	if (!env.CF_API_TOKEN || !env.CF_ACCOUNT_ID || !env.CF_RUM_SITE_TAG) {
+		return json({ ok: false, reason: 'not-configured' }, 404);
+	}
+
+	const cache = (caches as unknown as { default: CacheLike }).default;
+	const cached = await cache.match(request);
+	if (cached) return cached;
+
+	const now = new Date();
+	// UTC+8 当日零点：当日 UTC 零点再减 8 小时
+	const dayStart = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - 8 * 3600_000;
+	const weekStart = dayStart - 6 * 86400_000;
+	const query = `
+	query($accountTag: String!, $siteTag: String!, $dayStart: Time!, $weekStart: Time!, $now: Time!) {
+		viewer {
+			accounts(filter: { accountTag: $accountTag }) {
+				today: rumAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $dayStart, datetime_leq: $now }, limit: 1) {
+					sum { visits pageViews }
+				}
+				week: rumAdaptiveGroups(filter: { siteTag: $siteTag, datetime_geq: $weekStart, datetime_leq: $now }, limit: 1) {
+					sum { visits pageViews }
+				}
+			}
+		}
+	}`;
+	const resp = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${env.CF_API_TOKEN}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			query,
+			variables: {
+				accountTag: env.CF_ACCOUNT_ID,
+				siteTag: env.CF_RUM_SITE_TAG,
+				dayStart: new Date(dayStart).toISOString(),
+				weekStart: new Date(weekStart).toISOString(),
+				now: now.toISOString(),
+			},
+		}),
+	});
+	if (!resp.ok) return json({ ok: false, reason: 'upstream' }, 502);
+	const payload: {
+		data?: { viewer?: { accounts?: Array<{ today?: RumGroups; week?: RumGroups }> } };
+	} = await resp.json();
+	const account = payload.data?.viewer?.accounts?.[0];
+	if (!account) return json({ ok: false, reason: 'no-data' }, 502);
+	const pick = (g: RumGroups) => ({
+		visits: g?.[0]?.sum?.visits ?? 0,
+		pageViews: g?.[0]?.sum?.pageViews ?? 0,
+	});
+	const res = json(
+		{
+			ok: true,
+			today: pick(account.today),
+			week: pick(account.week),
+		},
+		200,
+	);
+	ctx.waitUntil(cache.put(request, res.clone()));
+	return res;
+}
+
 export default {
-	async fetch(request: Request, env: Env): Promise<Response> {
+	async fetch(request: Request, env: Env, ctx: CfExecutionContext): Promise<Response> {
 		const { pathname } = new URL(request.url);
+
+		if (pathname === '/api/visits') {
+			return handleVisits(request, env, ctx);
+		}
 
 		if (!pathname.startsWith('/live2d/')) {
 			return env.ASSETS.fetch(request);

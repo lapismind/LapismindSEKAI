@@ -3,7 +3,7 @@
 // all pages through the use of the <BaseHead /> component.
 import '../styles/global.css';
 import DefaultOgImage from '../assets/site/og-card.jpg';
-import { SITE_TITLE } from '../consts';
+import { SITE_TITLE, CF_BEACON_TOKEN } from '../consts';
 import { Font } from 'astro:assets';
 import { ClientRouter } from 'astro:transitions';
 import ConsoleEasterEgg from './ConsoleEasterEgg.astro';
@@ -73,6 +73,16 @@ const ogImage = new URL(imageUrl ?? DefaultOgImage.src, Astro.url);
 </script>
 
 <ClientRouter />
+
+<!-- Cloudflare Web Analytics：隐私友好 beacon（无 Cookie）。token 留空则不加载。 -->
+{CF_BEACON_TOKEN && (
+	<script
+		is:inline
+		defer
+		src="https://static.cloudflareinsights.com/beacon.min.js"
+		data-cf-beacon={JSON.stringify({ token: CF_BEACON_TOKEN })}
+	></script>
+)}
 
 <!-- 控制台彩蛋：打开开发者工具可见 -->
 <ConsoleEasterEgg />
