@@ -10,7 +10,7 @@
  */
 
 import {
-  TILES, nextTile, mirrorTile, directedDistance, IS_CROSS, ringOfTile,
+  TILES, mirrorTile, directedDistance, IS_CROSS, ringOfTile, neighbors, loopPrev, exits,
   LEVEL_COST, WIN_LEVEL, SHOP_PRICE, START_COINS, HAND_LIMIT, MOVE_DIE,
 } from './board.js';
 import { CHARACTERS } from './characters.js';
@@ -61,7 +61,9 @@ export function createGame(seats) {
         coins: START_COINS,
         level: 0,
         tile: [0, 18, 35, 17][i] ?? 0, // 起始格错开：0/18 两个起始点，35/17 排在其行进方向前一位
-        loop: 'A',
+        loop: 'A',               // 最近所在的环（只作朝向兜底用）
+        prev: loopPrev([0, 18, 35, 17][i] ?? 0, 'A'), // 上一格 = 朝向；开局沿外环正向
+        choice: null,            // 交点上已选的下一格
         hand: [],
         status: { shield: 0, reflect: 0 },
         fixedRollPending: false, // 遥控骰子：下次掷骰改为自选
@@ -159,11 +161,13 @@ export function rollMove(state, rng, opts = {}) {
     steps = 1 + Math.floor(rng() * MOVE_DIE);
     log(state, `${p.name} 掷出 ${steps} 点`);
   }
+  // 供 UI 播放大字骰点（seq 递增，同点数连掷也能触发）
+  state.lastRoll = { value: steps, seq: (state.lastRoll?.seq ?? 0) + 1, playerId: p.id, fixed: !!opts.fixed };
   if (state.phase === 'action') p.extraRoll = false;
   state.remaining = steps;
   state.phase = 'moving';
   state.moveTeleported = false;
-  p.branchChosenAt = null;
+  p.choice = null;
 }
 
 /**
@@ -175,17 +179,17 @@ export function moveStep(state, rng = Math.random) {
   if (state.phase !== 'moving' || state.pending) return 'pending';
   if (state.remaining <= 0) { land(state, rng); return 'done'; }
 
-  // 站在交点上：先选环才能迈步（已在交点选过 / 步数耗尽则直接走或落地）
-  if (IS_CROSS(p.tile) && p.branchChosenAt !== p.tile) {
-    state.pending = { type: 'branch', tile: p.tile };
+  // 十字路口：站在交点上要先选方向（直行 / 左转 / 右转，不许掉头）才能迈步
+  const from = heading(p);
+  if (IS_CROSS(p.tile) && p.choice == null) {
+    state.pending = { type: 'branch', tile: p.tile, from, options: exits(p.tile, from) };
     return 'pending';
   }
-  // 环归属兜底：所在格不属于当前环（理论不该发生）时按所在环走
-  const ownerLoop = ringOfTile(p.tile);
-  const useLoop = ownerLoop && ownerLoop !== p.loop ? ownerLoop : p.loop;
-
-  p.tile = nextTile(p.tile, useLoop);
-  p.branchChosenAt = null;
+  const next = p.choice ?? exits(p.tile, from)[0];
+  p.choice = null;
+  p.prev = p.tile;
+  p.tile = next;
+  p.loop = ringOfTile(next) ?? p.loop;
   state.remaining -= 1;
   log(state, `${p.name} 移动到 ${p.tile} 号格`);
 
@@ -235,13 +239,21 @@ export function moveStep(state, rng = Math.random) {
   return 'moving';
 }
 
-/** 交点选环 */
-export function chooseBranch(state, loop) {
+/**
+ * 当前朝向：上一格 prev 若确实与所在格相邻就用它；否则（旧存档 / 测试直接改了 tile）
+ * 按所在环的正向推一个默认朝向——交点不属于单一环，用最近所在的环。
+ */
+function heading(p) {
+  if (neighbors(p.tile).includes(p.prev)) return p.prev;
+  return loopPrev(p.tile, ringOfTile(p.tile) ?? p.loop ?? 'A');
+}
+
+/** 十字路口选方向：next 必须是 pending.options 之一 */
+export function chooseBranch(state, next) {
   const p = cur(state);
-  if (state.pending?.type !== 'branch') return;
-  p.loop = loop;
-  p.branchChosenAt = p.tile;
-  log(state, `${p.name} 在交点选择走 ${loop === 'A' ? '外环' : '内环'}`);
+  if (state.pending?.type !== 'branch' || !state.pending.options.includes(next)) return;
+  p.choice = next;
+  log(state, `${p.name} 在 ${p.tile} 号路口选择前往 ${next} 号格`);
   state.pending = null;
 }
 

@@ -100,6 +100,8 @@ export const TILE_TYPES = {
       if (state.moveTeleported) return;
       const dest = api.mirrorTile(p.tile);
       state.moveTeleported = true;
+      // 180° 旋转保持行进方向：上一格也取对称格，朝向不乱
+      if (p.prev != null) p.prev = api.mirrorTile(p.prev);
       p.tile = dest;
       api.log(state, `${p.name} 触发传送门，跃迁到 ${dest} 号格`);
       api.fx(state, 'teleport', p.id);

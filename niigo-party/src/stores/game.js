@@ -7,6 +7,7 @@ import * as E from '@/game/engine';
 import { CHARACTERS } from '@/game/characters';
 
 const SAVE_KEY = 'niigo-party-save-v1';
+export const ROLL_SHOW_MS = 900; // 掷骰后大字停留时间，之后才开始逐格移动
 
 export const useGameStore = defineStore('game', {
   state: () => ({
@@ -78,16 +79,16 @@ export const useGameStore = defineStore('game', {
     roll(fixed) {
       if (!this.s) return;
       E.rollMove(this.s, Math.random, { fixed });
-this.persist();
-      if (this.s.phase === 'moving') this.autoMove();
+      this.persist();
+      if (this.s.phase === 'moving') this.autoMove(ROLL_SHOW_MS); // 先让大字骰点亮一会儿再走
     },
-    async autoMove() {
+    async autoMove(delay = 60) {
       // 逐步自动推进（220ms/格），遇 pending 停下等玩家决策；
       // 每步只在稳定态落盘（moving 态 persist 内部跳过），胜利当步立即清档，不留竞态窗口
       if (this.moving) return;
       this.moving = true;
       try {
-        await new Promise((r) => setTimeout(r, 60));
+        await new Promise((r) => setTimeout(r, delay));
         while (this.s && this.s.phase === 'moving' && !this.s.pending) {
           E.moveStep(this.s, Math.random);
           this.consumeFx();
@@ -100,9 +101,9 @@ this.persist();
       }
       this.consumeFx();
     },
-    chooseBranch(loop) {
+    chooseBranch(next) {
       if (!this.s) return;
-      E.chooseBranch(this.s, loop);
+      E.chooseBranch(this.s, next);
 this.persist();
       this.consumeFx();
       if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();

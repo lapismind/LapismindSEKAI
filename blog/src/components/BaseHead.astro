@@ -226,6 +226,27 @@ const ogImage = new URL(imageUrl ?? DefaultOgImage.src, Astro.url);
 	}
 
 	document.addEventListener('astro:page-load', initGlobalBehaviors);
+
+	// 点击打击特效：PJSK 判定线上的扁圈 + 四粒碎光。挂在 document 上只绑一次
+	// （ClientRouter 换页不换 document）；特效节点插在 body 末尾，动画结束自删。
+	// 输入框里点不出特效，免得挡住光标；减少动效时整段不启用。
+	const tw = window as Window & { __tapFxBound?: boolean };
+	if (!tw.__tapFxBound && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		tw.__tapFxBound = true;
+		document.addEventListener('pointerdown', (e) => {
+			if (e.button !== 0) return;
+			const t = e.target as Element | null;
+			if (t?.closest('input, textarea, select, [contenteditable], .note-lane')) return;
+			const fx = document.createElement('span');
+			fx.className = 'tap-fx';
+			fx.setAttribute('aria-hidden', 'true');
+			fx.style.left = `${e.clientX}px`;
+			fx.style.top = `${e.clientY}px`;
+			fx.innerHTML = '<i></i><i></i><i></i><i></i>';
+			document.body.appendChild(fx);
+			fx.addEventListener('animationend', () => fx.remove(), { once: true });
+		});
+	}
 </script>
 
 <!-- Canonical URL -->

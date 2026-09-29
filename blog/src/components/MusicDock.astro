@@ -67,6 +67,74 @@ import songs from '../data/music-player.json';
 	let zhLines = [];
 	let els = {};
 
+	/* ── 起播淡入 ──
+	   每次从头开始播（换曲 / 换音源 / 从 0 起播）时，把音量从 0 渐升到 1（约 1.5s），
+	   避免"直接响"。首选 WebAudio 增益节点（音频元素经 MediaElementSource 接入图表，
+	   每个元素只能接一次，所以懒创建并复用）；图表建不起来时退回 audio.volume 斜坡。
+	   所有 play() 都来自用户手势，AudioContext 的 resume() 在这里调用是合法的。 */
+	let actx = null;
+	let gainNode = null;
+	let fadeRaf = 0;
+	const FADE_SEC = 1.5;
+
+	function ensureGraph() {
+		if (actx !== null) return;
+		try {
+			const AC = window.AudioContext || window.webkitAudioContext;
+			actx = new AC();
+			gainNode = actx.createGain();
+			gainNode.connect(actx.destination);
+			gainNode.gain.value = 1;
+			actx.createMediaElementSource(audio).connect(gainNode);
+		} catch {
+			actx = null;
+			gainNode = null;
+		}
+	}
+
+	function startFade() {
+		if (fadeRaf) {
+			cancelAnimationFrame(fadeRaf);
+			fadeRaf = 0;
+		}
+		if (gainNode) {
+			const t = actx.currentTime;
+			gainNode.gain.cancelScheduledValues(t);
+			gainNode.gain.setValueAtTime(0.0001, t);
+			gainNode.gain.exponentialRampToValueAtTime(1, t + FADE_SEC);
+			return;
+		}
+		// 退路：直接在元素音量上做平方斜坡
+		const t0 = performance.now();
+		const step = (now) => {
+			const k = Math.min(1, (now - t0) / (FADE_SEC * 1000));
+			audio.volume = k * k;
+			fadeRaf = k < 1 ? requestAnimationFrame(step) : 0;
+		};
+		fadeRaf = requestAnimationFrame(step);
+	}
+
+	function cancelFade() {
+		if (fadeRaf) {
+			cancelAnimationFrame(fadeRaf);
+			fadeRaf = 0;
+		}
+		if (gainNode) {
+			gainNode.gain.cancelScheduledValues(actx.currentTime);
+			gainNode.gain.value = 1;
+		} else {
+			audio.volume = 1;
+		}
+	}
+
+	function playWithFade() {
+		ensureGraph();
+		if (actx) actx.resume().catch(() => {});
+		// 只有"从头开始"才淡入；歌曲中段暂停后继续不淡
+		if (audio.currentTime < 0.6) startFade();
+		return audio.play();
+	}
+
 	function fmtTime(s) {
 		if (!Number.isFinite(s)) return '0:00';
 		const m = Math.floor(s / 60);
@@ -142,7 +210,7 @@ import songs from '../data/music-player.json';
 		if (audio) {
 			audio.preload = 'auto';
 			audio.src = source === 'se' && song.hasSe ? song.se : song.vs;
-			if (keepPlaying) audio.play().catch(() => {});
+			if (keepPlaying) playWithFade().catch(() => {});
 		}
 		fetchZhLyrics(song.id).then((lines) => {
 			zhLines = lines;
@@ -180,6 +248,13 @@ import songs from '../data/music-player.json';
 		for (let k = 0; k < lrc.length; k++) {
 			if (lrc[k].t <= t + 0.25) i = k;
 			else break;
+		}
+		if (t + 0.25 < lrc[0].t) {
+			// 第一句还没开唱：字幕留空、列表不高亮（前奏期不提前挂歌词）
+			els.subJp.textContent = '';
+			els.subZh.textContent = '';
+			highlightLine(-1);
+			return;
 		}
 		els.subJp.textContent = lrc[i].jp || '';
 		if (zhLines.length) {
@@ -239,7 +314,7 @@ import songs from '../data/music-player.json';
 				setTrack(0);
 			}
 			audio.preload = 'auto';
-			if (audio.paused) audio.play().then(() => els.play.classList.add('playing')).catch(() => {});
+			if (audio.paused) playWithFade().then(() => els.play.classList.add('playing')).catch(() => {});
 			else {
 				audio.pause();
 				els.play.classList.remove('playing');
@@ -256,7 +331,7 @@ import songs from '../data/music-player.json';
 			const song = SONGS[index];
 			audio.preload = 'auto';
 			audio.src = source === 'se' && song.hasSe ? song.se : song.vs;
-			audio.play().then(() => els.play.classList.add('playing')).catch(() => {});
+			playWithFade().then(() => els.play.classList.add('playing')).catch(() => {});
 		});
 		// 点击面板外关闭
 		document.addEventListener('click', (e) => {
@@ -302,6 +377,7 @@ import songs from '../data/music-player.json';
 				els.dur.textContent = fmtTime(audio.duration);
 			});
 			audio.addEventListener('pause', () => {
+				cancelFade(); // 淡入途中被暂停：取消斜坡并复原音量，避免恢复播放时音量卡在半途
 				els.play.classList.remove('playing');
 				refreshTitle();
 			});
@@ -380,9 +456,9 @@ import songs from '../data/music-player.json';
 		document.getElementById('md-toggle').setAttribute('aria-expanded', 'true');
 		if (!audio || !audio.src) {
 			setTrack(0, true);
-			audio.play().catch(() => {});
+			playWithFade().catch(() => {});
 		} else if (audio.paused) {
-			audio.play().catch(() => {});
+			playWithFade().catch(() => {});
 		}
 	}
 	window.__mdOpenMusic = openAndPlay;

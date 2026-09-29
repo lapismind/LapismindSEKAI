@@ -1,0 +1,465 @@
+---
+/**
+ * 首页「SEKAI is running」下的迷你谱面：PJSK 式梯形轨道 + 自动演奏。
+ * 纯装饰（aria-hidden），点轨道只出打击特效，不计分。
+ *
+ * 生命周期（见 lessons #70）：ClientRouter 换页会换掉 canvas，
+ * 每次 astro:page-load 先清掉上一轮的 RAF / 观察器再重新初始化。
+ * 离屏、后台页签时暂停；prefers-reduced-motion 下只画一帧静态画面。
+ */
+---
+
+<div class="note-lane" aria-hidden="true">
+	<canvas class="note-lane-canvas"></canvas>
+</div>
+
+<style>
+	.note-lane {
+		grid-column: 1 / -1;
+		height: 132px;
+		margin-top: 0.2rem;
+	}
+	.note-lane-canvas {
+		display: block;
+		width: 100%;
+		height: 100%;
+		cursor: var(--cursor-pointer);
+		touch-action: manipulation;
+	}
+	@media (max-width: 720px) {
+		.note-lane {
+			height: 108px;
+		}
+	}
+</style>
+
+<script>
+	type NoteType = 'tap' | 'crit' | 'flick' | 'hold';
+	interface Note {
+		t: number;
+		l: number; // 起始格（0—11，PJSK 的 12 格宽度单位）
+		w: number; // 宽度（格）
+		type: NoteType;
+		len: number; // 长按时长（秒）
+	}
+	interface Fx {
+		l: number;
+		w: number;
+		t0: number;
+		type: NoteType;
+	}
+
+	const STEP = 0.2; // 八分音符（150 BPM）
+	const STEPS = 64;
+	const LOOP = STEP * STEPS;
+	const VIS = 1.1; // 音符从远端到判定线的时间
+	const COLORS: Record<NoteType, string> = {
+		tap: '#4cc6dc',
+		crit: '#f0bd45',
+		flick: '#ec6fa6',
+		hold: '#56c98a',
+	};
+
+	/** 固定种子的谱面：左右交替 → 一手长按一手点 → 加密 → 全宽 crit 收尾 */
+	function buildChart(): Note[] {
+		let seed = 25;
+		const rnd = () => {
+			seed = (seed * 1664525 + 1013904223) >>> 0;
+			return seed / 4294967296;
+		};
+		const notes: Note[] = [];
+		let left = true;
+		for (let s = 0; s < STEPS - 2; s++) {
+			const sec = Math.floor(s / 16);
+			const t = s * STEP;
+			if (s === 16 || s === 40) {
+				notes.push({ t, l: 1, w: 4, type: 'hold', len: STEP * 6 });
+				continue;
+			}
+			const inHold = (s > 16 && s <= 22) || (s > 40 && s <= 46);
+			const dense = sec >= 2;
+			if (s % 2 !== 0 && !(dense && rnd() < 0.55)) continue;
+			const w = 2 + Math.floor(rnd() * 2);
+			const side = inHold ? false : left;
+			const l = side ? Math.floor(rnd() * (6 - w + 1)) : 6 + Math.floor(rnd() * (6 - w + 1));
+			const type: NoteType = s % 8 === 0 ? 'crit' : rnd() < 0.14 ? 'flick' : 'tap';
+			notes.push({ t, l, w, type, len: 0 });
+			left = !left;
+		}
+		notes.push({ t: (STEPS - 2) * STEP, l: 0, w: 12, type: 'crit', len: 0 });
+		return notes;
+	}
+	const CHART = buildChart();
+
+	const lw = window as Window & { __noteLaneCleanup?: () => void };
+
+	function initNoteLane() {
+		lw.__noteLaneCleanup?.();
+		lw.__noteLaneCleanup = undefined;
+		const canvas = document.querySelector<HTMLCanvasElement>('.note-lane-canvas');
+		if (!canvas) return;
+		const ctx = canvas.getContext('2d');
+		if (!ctx) return;
+		const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+		let W = 0;
+		let H = 0;
+		let theme = { primary: '#8888cc', ink: '#333', muted: '#888', dark: false };
+		const readTheme = () => {
+			const cs = getComputedStyle(document.documentElement);
+			theme = {
+				primary: cs.getPropertyValue('--primary').trim() || '#8888cc',
+				ink: cs.getPropertyValue('--ink').trim() || '#333',
+				muted: cs.getPropertyValue('--muted').trim() || '#888',
+				dark: document.documentElement.dataset.theme === 'dark',
+			};
+		};
+		readTheme();
+
+		const resize = () => {
+			const r = canvas.getBoundingClientRect();
+			const dpr = Math.min(window.devicePixelRatio || 1, 2);
+			W = r.width;
+			H = r.height;
+			canvas.width = Math.round(W * dpr);
+			canvas.height = Math.round(H * dpr);
+			ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+		};
+
+		// ── 透视几何：p = 0 远端，p = 1 判定线 ──
+		const geo = () => {
+			const topY = 4;
+			const lineY = H - 24;
+			const bw = Math.min(W * 0.62, 700);
+			return { topY, lineY, bw, tw: bw * 0.3, cx: W / 2 };
+		};
+		const yAt = (p: number) => {
+			const g = geo();
+			return g.topY + (g.lineY - g.topY) * p;
+		};
+		const xAt = (u: number, p: number) => {
+			const g = geo();
+			const half = (g.tw + (g.bw - g.tw) * p) / 2;
+			return g.cx - half + (u / 12) * half * 2;
+		};
+		// 越靠近判定线走得越快，模拟纵深
+		const depth = (dt: number) => {
+			const s = 1 - dt / VIS;
+			return s * s * 0.55 + s * 0.45;
+		};
+		const wrap = (d: number) => ((((d + LOOP / 2) % LOOP) + LOOP) % LOOP) - LOOP / 2;
+
+		const fx: Fx[] = [];
+		let combo = 0;
+		let judgeT = -9;
+		let comboT = -9;
+		let clock = 0;
+		let prevNow = 0;
+
+		const roundRect = (x: number, y: number, w: number, h: number, r: number) => {
+			ctx.beginPath();
+			ctx.roundRect(x, y, w, h, r);
+		};
+
+		const drawField = () => {
+			const g = geo();
+			const pBot = (H - g.topY) / (g.lineY - g.topY);
+			ctx.save();
+			// 轨道底
+			ctx.beginPath();
+			ctx.moveTo(xAt(0, 0), yAt(0));
+			ctx.lineTo(xAt(12, 0), yAt(0));
+			ctx.lineTo(xAt(12, pBot), H);
+			ctx.lineTo(xAt(0, pBot), H);
+			ctx.closePath();
+			const bg = ctx.createLinearGradient(0, 0, 0, H);
+			bg.addColorStop(0, 'rgba(0,0,0,0)');
+			bg.addColorStop(1, theme.primary);
+			ctx.fillStyle = bg;
+			ctx.globalAlpha = theme.dark ? 0.22 : 0.12;
+			ctx.fill();
+			// 分轨线（6 轨）
+			ctx.strokeStyle = theme.primary;
+			ctx.lineWidth = 1;
+			for (let i = 0; i <= 6; i++) {
+				ctx.globalAlpha = i === 0 || i === 6 ? 0.5 : 0.18;
+				ctx.beginPath();
+				ctx.moveTo(xAt(i * 2, 0), yAt(0));
+				ctx.lineTo(xAt(i * 2, pBot), H);
+				ctx.stroke();
+			}
+			// 判定线
+			ctx.globalAlpha = 1;
+			ctx.shadowColor = theme.primary;
+			ctx.shadowBlur = 8;
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			ctx.moveTo(xAt(0, 1) - 6, g.lineY);
+			ctx.lineTo(xAt(12, 1) + 6, g.lineY);
+			ctx.stroke();
+			ctx.restore();
+		};
+
+		const drawNote = (n: Note, dt: number) => {
+			const p = depth(dt);
+			const y = yAt(p);
+			const x0 = xAt(n.l + 0.1, p);
+			const x1 = xAt(n.l + n.w - 0.1, p);
+			const h = 3 + 6 * p;
+			const c = COLORS[n.type];
+			ctx.save();
+			ctx.globalAlpha = Math.min(1, p * 3);
+			roundRect(x0, y - h / 2, x1 - x0, h, h / 2);
+			ctx.fillStyle = c;
+			ctx.shadowColor = c;
+			ctx.shadowBlur = 6 * p;
+			ctx.fill();
+			ctx.shadowBlur = 0;
+			// 白芯
+			roundRect(x0 + h * 0.6, y - h * 0.14, x1 - x0 - h * 1.2, h * 0.28, h * 0.14);
+			ctx.fillStyle = 'rgba(255,255,255,0.85)';
+			ctx.fill();
+			if (n.type === 'flick') {
+				const mx = (x0 + x1) / 2;
+				const a = 5 + 6 * p;
+				ctx.beginPath();
+				ctx.moveTo(mx - a, y - h / 2 - 1);
+				ctx.lineTo(mx, y - h / 2 - 1 - a);
+				ctx.lineTo(mx + a, y - h / 2 - 1);
+				ctx.closePath();
+				ctx.fillStyle = c;
+				ctx.fill();
+			}
+			ctx.restore();
+		};
+
+		const drawHold = (n: Note, now: number) => {
+			const head = wrap(n.t - now);
+			const tail = head + n.len;
+			if (tail < 0 || head > VIS) return;
+			const pa = depth(Math.max(0, Math.min(VIS, head)));
+			const pb = depth(Math.max(0, Math.min(VIS, tail)));
+			ctx.save();
+			ctx.beginPath();
+			ctx.moveTo(xAt(n.l + 0.3, pa), yAt(pa));
+			ctx.lineTo(xAt(n.l + n.w - 0.3, pa), yAt(pa));
+			ctx.lineTo(xAt(n.l + n.w - 0.3, pb), yAt(pb));
+			ctx.lineTo(xAt(n.l + 0.3, pb), yAt(pb));
+			ctx.closePath();
+			ctx.fillStyle = COLORS.hold;
+			ctx.globalAlpha = 0.4;
+			ctx.fill();
+			ctx.restore();
+			if (head > 0) drawNote(n, head);
+			if (tail > 0 && tail < VIS) drawNote({ ...n, type: 'hold' }, tail);
+			// 按住期间判定线上持续发光
+			if (head <= 0 && tail > 0) {
+				const g = geo();
+				ctx.save();
+				ctx.globalAlpha = 0.5 + 0.3 * Math.sin(clock * 30);
+				ctx.fillStyle = COLORS.hold;
+				ctx.shadowColor = COLORS.hold;
+				ctx.shadowBlur = 14;
+				roundRect(xAt(n.l, 1), g.lineY - 3, xAt(n.l + n.w, 1) - xAt(n.l, 1), 6, 3);
+				ctx.fill();
+				ctx.restore();
+			}
+		};
+
+		const drawFx = () => {
+			const g = geo();
+			for (let i = fx.length - 1; i >= 0; i--) {
+				const f = fx[i];
+				const k = (clock - f.t0) / 0.42;
+				if (k >= 1) {
+					fx.splice(i, 1);
+					continue;
+				}
+				const x0 = xAt(f.l, 1);
+				const x1 = xAt(f.l + f.w, 1);
+				const mx = (x0 + x1) / 2;
+				const c = COLORS[f.type];
+				ctx.save();
+				// 光柱
+				const colH = g.lineY * (0.9 - 0.3 * k);
+				const col = ctx.createLinearGradient(0, g.lineY - colH, 0, g.lineY);
+				col.addColorStop(0, 'rgba(255,255,255,0)');
+				col.addColorStop(1, c);
+				ctx.globalAlpha = (1 - k) * 0.55;
+				ctx.fillStyle = col;
+				ctx.fillRect(x0 + 2, g.lineY - colH, x1 - x0 - 4, colH);
+				// 扁椭圆打击圈
+				ctx.globalAlpha = 1 - k;
+				ctx.strokeStyle = c;
+				ctx.lineWidth = 2.5 * (1 - k) + 0.5;
+				ctx.beginPath();
+				ctx.ellipse(mx, g.lineY, ((x1 - x0) / 2) * (0.7 + k * 0.7), 8 + k * 10, 0, 0, Math.PI * 2);
+				ctx.stroke();
+				// 碎光
+				ctx.fillStyle = c;
+				for (let j = 0; j < 5; j++) {
+					const a = -Math.PI / 2 + (j - 2) * 0.45;
+					const r = 10 + k * 34;
+					ctx.fillRect(mx + Math.cos(a) * r - 1.5, g.lineY + Math.sin(a) * r - 1.5, 3, 3);
+				}
+				ctx.restore();
+			}
+		};
+
+		const drawHud = () => {
+			const g = geo();
+			const right = xAt(12, 1);
+			// COMBO：判定线右侧，窄屏时靠右缘
+			const cxCombo = Math.min(W - 34, right + (W - right) / 2);
+			const pop = Math.max(0, 1 - (clock - comboT) / 0.15);
+			ctx.save();
+			ctx.textAlign = 'center';
+			ctx.fillStyle = theme.muted;
+			ctx.font = '600 10px ui-monospace, Consolas, monospace';
+			ctx.fillText('COMBO', cxCombo, g.topY + 30);
+			ctx.fillStyle = theme.ink;
+			ctx.font = `700 ${Math.round(28 + pop * 6)}px Atkinson, system-ui, sans-serif`;
+			ctx.fillText(String(combo), cxCombo, g.topY + 62);
+			// 左侧标签
+			const leftX = Math.max(34, xAt(0, 1) / 2);
+			ctx.fillStyle = theme.muted;
+			ctx.font = '600 10px ui-monospace, Consolas, monospace';
+			ctx.fillText('AUTO', leftX, g.topY + 30);
+			ctx.fillStyle = theme.primary;
+			ctx.font = '700 12px ui-monospace, Consolas, monospace';
+			ctx.fillText('LV.25', leftX, g.topY + 48);
+			// PERFECT
+			const jk = (clock - judgeT) / 0.5;
+			if (jk >= 0 && jk < 1) {
+				const s = 1 + 0.25 * Math.max(0, 1 - jk * 5);
+				ctx.globalAlpha = jk < 0.7 ? 1 : (1 - jk) / 0.3;
+				ctx.translate(g.cx, yAt(0.58));
+				ctx.scale(s, s);
+				const grad = ctx.createLinearGradient(-50, 0, 50, 0);
+				grad.addColorStop(0, '#ff8fc8');
+				grad.addColorStop(0.5, '#ffd36e');
+				grad.addColorStop(1, '#6fdcf0');
+				ctx.fillStyle = grad;
+				ctx.font = 'italic 800 17px Atkinson, system-ui, sans-serif';
+				ctx.fillText('PERFECT', 0, 0);
+			}
+			ctx.restore();
+		};
+
+		const hit = (n: Note) => {
+			fx.push({ l: n.l, w: n.w, t0: clock, type: n.type });
+			combo++;
+			judgeT = clock;
+			comboT = clock;
+		};
+
+		const render = (now: number) => {
+			ctx.clearRect(0, 0, W, H);
+			drawField();
+			for (const n of CHART) {
+				if (n.type === 'hold') {
+					drawHold(n, now);
+					continue;
+				}
+				const dt = wrap(n.t - now);
+				if (dt > 0 && dt < VIS) drawNote(n, dt);
+			}
+			drawFx();
+			drawHud();
+		};
+
+		// 自动演奏：本帧越过判定线的音符算命中（长按的头尾各算一次）
+		const autoplay = (prev: number, now: number) => {
+			const passed = (t: number) => {
+				const a = wrap(t - prev);
+				const b = wrap(t - now);
+				return a > 0 && b <= 0;
+			};
+			for (const n of CHART) {
+				if (passed(n.t)) hit(n);
+				if (n.type === 'hold' && passed(n.t + n.len)) hit(n);
+			}
+		};
+
+		let raf = 0;
+		let last = 0;
+		let visible = true;
+		const frame = (ts: number) => {
+			const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0;
+			last = ts;
+			clock += dt;
+			const now = clock % LOOP;
+			autoplay(prevNow, now);
+			prevNow = now;
+			render(now);
+			raf = requestAnimationFrame(frame);
+		};
+		const start = () => {
+			if (raf || reduce || !visible || document.hidden) return;
+			last = 0;
+			raf = requestAnimationFrame(frame);
+		};
+		const stop = () => {
+			cancelAnimationFrame(raf);
+			raf = 0;
+		};
+
+		const onTap = (e: PointerEvent) => {
+			const r = canvas.getBoundingClientRect();
+			const x = e.clientX - r.left;
+			const x0 = xAt(0, 1);
+			const u = ((x - x0) / (xAt(12, 1) - x0)) * 12;
+			if (u < 0 || u > 12) return;
+			const l = Math.max(0, Math.min(10, Math.floor(u) - 1));
+			fx.push({ l, w: 2, t0: clock, type: 'tap' });
+			if (reduce) {
+				// 静态模式下没有动画循环，补画一帧让点击有反馈后再复原
+				render(prevNow);
+				setTimeout(() => {
+					fx.length = 0;
+					render(prevNow);
+				}, 200);
+			}
+		};
+
+		const ro = new ResizeObserver(() => {
+			resize();
+			render(prevNow);
+		});
+		ro.observe(canvas);
+		const io = new IntersectionObserver((entries) => {
+			visible = entries[0]?.isIntersecting ?? true;
+			if (visible) start();
+			else stop();
+		});
+		io.observe(canvas);
+		const mo = new MutationObserver(() => {
+			readTheme();
+			if (!raf) render(prevNow);
+		});
+		mo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+		const onVis = () => (document.hidden ? stop() : start());
+		document.addEventListener('visibilitychange', onVis);
+		canvas.addEventListener('pointerdown', onTap);
+
+		resize();
+		if (reduce) {
+			// 静态帧：取一个音符较多的时刻
+			prevNow = 7.3;
+			combo = CHART.filter((n) => n.t < prevNow).length;
+		}
+		render(prevNow);
+		start();
+
+		lw.__noteLaneCleanup = () => {
+			stop();
+			ro.disconnect();
+			io.disconnect();
+			mo.disconnect();
+			document.removeEventListener('visibilitychange', onVis);
+			canvas.removeEventListener('pointerdown', onTap);
+		};
+	}
+
+	document.addEventListener('astro:page-load', initNoteLane);
+</script>

@@ -72,7 +72,7 @@ test('掷骰：1d10 移动并逐格落地进入行动阶段', () => {
   const r = moveStep(s);
   assert.equal(r, 'pending');
   assert.equal(s.pending.type, 'branch');
-  chooseBranch(s, 'A');
+  chooseBranch(s, 5); // 十字路口直行：沿外环到 5
   assert.equal(s.players[0].tile, 4);
   const r2 = moveStep(s);
   assert.equal(r2, 'done'); // 步数耗尽 → 落地（5 号疾行）
@@ -86,7 +86,7 @@ test('交点选内环：B 环继续行进', () => {
   rollMove(s, constRng(face10(2)));
   moveStep(s); // 选环挂起
   assert.equal(s.pending.type, 'branch');
-  chooseBranch(s, 'B'); // 内环：4 → 64（中央左缘）
+  chooseBranch(s, 64); // 右转进内环：4 → 64（中央左缘）
   moveStep(s);
   moveStep(s);
   assert.equal(s.players[0].tile, 65);
@@ -250,7 +250,7 @@ test('效果牌：每回合限 1 张；遥控骰子指定 1~10', () => {
   // 走完 7 步落地（途中 4 号交点会弹选环），进入行动阶段后回血
   let guard = 20;
   while (s.phase === 'moving' && guard--) {
-    if (s.pending?.type === 'branch') chooseBranch(s, 'A');
+    if (s.pending?.type === 'branch') chooseBranch(s, s.pending.options[0]);
     else moveStep(s);
   }
   assert.equal(s.phase, 'action');
@@ -291,7 +291,7 @@ test('整局随机模拟：随机合法操作 8000 步内分出胜负', () => {
         continue;
       }
       if (s.phase === 'moving') {
-        if (s.pending?.type === 'branch') chooseBranch(s, rng() < 0.5 ? 'A' : 'B');
+        if (s.pending?.type === 'branch') chooseBranch(s, s.pending.options[Math.floor(rng() * s.pending.options.length)]);
         else if (s.pending?.type === 'battleOffer') resolveBattleOffer(s, rng() < 0.6, rng);
         else moveStep(s, rng);
         continue;
@@ -425,4 +425,77 @@ test('回合上限：25 轮到点按 等级→星币→HP 排名结算', () => {
   endAction(s);
   assert.equal(s.phase, 'over');
   assert.equal(s.winner, 'p1'); // 玩家 id 从 p1 起编，p1 = 座位 0（绘名，Lv2）
+});
+
+// ── 十字路口：三个方向（直行 / 左转 / 右转），不许掉头 ─────────────
+import { neighbors, exits } from '../src/game/board.js';
+
+test('十字路口：4 个交点各有 4 个相邻格，进入后可选 3 个方向且不含来路', () => {
+  for (const c of [4, 9, 22, 27]) {
+    assert.equal(neighbors(c).length, 4, `交点 ${c} 应有 4 个相邻格`);
+    for (const from of neighbors(c)) {
+      const ex = exits(c, from);
+      assert.equal(ex.length, 3, `从 ${from} 进 ${c} 应有 3 个出口`);
+      assert.ok(!ex.includes(from), '不许掉头');
+    }
+  }
+  // 普通格只有一条出路
+  assert.deepEqual(exits(1, 0), [2]);
+});
+
+test('十字路口 22：三个方向都能走，逆着内环走也会沿该方向继续', () => {
+  for (const pickDir of exits(22, 21)) {
+    const s = newGame();
+    s.players[0].tile = 21; s.players[0].prev = 20; // 外环正向走来
+    s.players[1].tile = 40;
+    rollMove(s, constRng(face10(3)));
+    moveStep(s);                                   // 21 → 22
+    assert.equal(s.players[0].tile, 22);
+    moveStep(s);                                   // 路口挂起
+    assert.equal(s.pending?.type, 'branch');
+    assert.equal(s.pending.options.length, 3);
+    chooseBranch(s, pickDir);
+    moveStep(s);
+    assert.equal(s.players[0].tile, pickDir);
+    const after = s.players[0].tile;
+    moveStep(s);                                   // 再走一步：必须沿该方向继续，不能折回 22
+    assert.notEqual(s.players[0].tile, 22, `选 ${pickDir} 后第二步折回了路口`);
+    assert.ok(neighbors(after).includes(s.players[0].tile));
+  }
+});
+
+test('十字路口：不在选项里的格子被拒', () => {
+  const s = newGame();
+  s.players[0].tile = 21; s.players[0].prev = 20;
+  s.players[1].tile = 40;
+  rollMove(s, constRng(face10(2)));
+  moveStep(s); moveStep(s);
+  assert.equal(s.pending?.type, 'branch');
+  chooseBranch(s, 21);                              // 掉头
+  assert.equal(s.pending?.type, 'branch', '掉头应被拒，仍在等待选路');
+  chooseBranch(s, 60);                              // 不相邻
+  assert.equal(s.pending?.type, 'branch');
+});
+
+test('传送门：跃迁后朝向随之 180° 翻转，继续沿原行进方向', () => {
+  const s = newGame();
+  s.players[0].tile = 15; s.players[0].prev = 14;
+  s.players[1].tile = 40;
+  rollMove(s, constRng(face10(2)));
+  moveStep(s);                                      // 16 → 传到 34
+  assert.equal(s.players[0].tile, 34);
+  assert.equal(s.players[0].prev, mirrorTile(15));  // 33
+  moveStep(s);
+  assert.equal(s.players[0].tile, 35);              // 沿外环正向继续
+});
+
+test('掷骰记录 lastRoll：值与序号递增（UI 大字用）', () => {
+  const s = newGame();
+  s.players[1].tile = 40;
+  rollMove(s, constRng(face10(7)));
+  assert.equal(s.lastRoll.value, 7);
+  const seq = s.lastRoll.seq;
+  s.phase = 'roll'; s.remaining = 0;
+  rollMove(s, constRng(face10(7)));
+  assert.equal(s.lastRoll.seq, seq + 1);
 });

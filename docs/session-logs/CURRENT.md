@@ -28,9 +28,10 @@
 - 门禁全绿：build / check / lint / test / ui_ux_regression_v2 6/6（本地）。
   视觉验收子代理当时不可用，主代理逐页目检；改前/改后截图在
   `docs/agent/scripts/out/before|after/`（脚本 `docs/agent/scripts/playwright-blog-visual-audit.py`）。
-- **下一步（另一台机器或下次会话）**：部署 `cd blog && npm run build && npx wrangler deploy`，
-  部署后重点实测：首页→游戏→首页不再黑屏、入场动画只播一次、手机端无横向滚动。
-- 计划文件：`.planning/2026-09-29-blog-frontend-editorial/`；踩坑 lessons #71–75。
+- 已部署（2026-09-29 第二次上线）：入场修复 + 25時夜间状态等一批已上线；随后又上线了
+  音乐修复——12 个 mp3 剪掉开头约 9 秒前导静音（歌词轴本对官方完整版，剪后反而对齐，lessons #76）、
+  起播 1.5s WebAudio 淡入、第一句开唱前字幕留空。
+- 计划文件：`.planning/2026-09-29-blog-frontend-editorial/`；踩坑 lessons #71–76。
 
 ## 任务二：niigo-party 事件格与梗素材重调研（⏸️ 暂停中，未被本轮改动）
 

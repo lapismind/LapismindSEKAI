@@ -113,6 +113,40 @@ export function successors(i) {
   return SUCC.get(i) ?? [];
 }
 
+// 无向邻接：每格在所属环上的前后两格（普通格 2 个，交点 4 个——两环各前后一格）。
+// 移动按"朝向"走：记住上一格 prev，普通格只有一条不掉头的出路；
+// 交点是十字路口，不掉头的出路有 3 条（直行 / 左转 / 右转）。
+const NEI = (() => {
+  const m = new Map();
+  const add = (a, b) => {
+    for (const [x, y] of [[a, b], [b, a]]) {
+      if (!m.has(x)) m.set(x, []);
+      if (!m.get(x).includes(y)) m.get(x).push(y);
+    }
+  };
+  for (const arr of [LOOP_A, LOOP_B]) {
+    for (let k = 0; k < arr.length; k++) add(arr[k], arr[(k + 1) % arr.length]);
+  }
+  return m;
+})();
+
+/** 格 i 的全部相邻格（不分方向） */
+export function neighbors(i) {
+  return NEI.get(i) ?? [];
+}
+
+/** 沿 loop 正向行进时 i 的上一格（用作默认朝向；i 不在该环上返回 undefined） */
+export function loopPrev(i, loop) {
+  const arr = loop === 'B' ? LOOP_B : LOOP_A;
+  const at = arr.indexOf(i);
+  return at < 0 ? undefined : arr[(at - 1 + arr.length) % arr.length];
+}
+
+/** 从 prev 走进 i 之后，下一步能去的格（不许原路掉头）：普通格 1 个，交点 3 个 */
+export function exits(i, prev) {
+  return neighbors(i).filter((j) => j !== prev);
+}
+
 /** 格 i 所属环；交点返回 null（两环皆是） */
 export function ringOfTile(i) {
   const onA = LOOP_A.includes(i);
