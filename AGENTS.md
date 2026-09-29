@@ -4,21 +4,22 @@
 
 ## 会话启动（必做）
 
-1. **先拉远端：`.\scripts\sync.ps1 pull`。** 两台机器共用 main，仓库是唯一接力载具——不 pull 就开工，会拿着过期状态动手（见 `docs/agent/handoff.md` 两条纪律）。
+1. **先拉远端：`.\scripts\sync.ps1 pull`。** 开发以家机单机为主，pull 兼作备份核对；若在另一台机器动过仓库，pull 防冲突（见 `docs/agent/handoff.md`）。
 2. 读本文件。
 3. 读 `docs/agent/README.md` —— Agent 规范总入口，按它的索引去读需要的细则。
-4. **接手上一段工作时**，先读 `docs/session-logs/CURRENT.md`（跨设备/跨会话的唯一接力入口）。
+4. **接手上一段工作时**，先读 `docs/session-logs/CURRENT.md`（进行中任务的索引；细节住在它指向的 `.planning/` 文件里）。
 5. 进入某个项目前，读该项目的 `AGENTS.md`。
 
 ## 会话收尾（离开这台机器前）
 
-把状态写回 `docs/session-logs/CURRENT.md`，然后一条命令提交并推送：
+核对 `docs/session-logs/CURRENT.md` 的索引行是否仍准确——它只做"一行一个任务"的索引，
+**仅在任务开工 / 暂停 / 完成时增删改一行，不写叙述**；然后一条命令提交并推送：
 
 ```powershell
 .\scripts\sync.ps1 ship -m "做到哪了 / 下次从哪继续"
 ```
 
-跨设备开发的完整流程见 [`docs/agent/handoff.md`](docs/agent/handoff.md)。
+接力约定（单机为主、公司机仅应急）见 [`docs/agent/handoff.md`](docs/agent/handoff.md)。
 
 ## 最重要的四条
 

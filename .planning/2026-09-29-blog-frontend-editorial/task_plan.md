@@ -42,3 +42,10 @@
       （text-autospace + 正文 42em 行宽上限）；文章末尾期号翻页；日文明朝体子集（Shippori Mincho 7KB，仅首屏日文行）；
       404 编辑式重排；页脚立绘上提收掉大空档；Hero 改真 img（srcset + fetchpriority=high）
 - [ ] 提交 / 部署：等用户确认
+
+## 追加（同日，另一会话完成并上线）
+
+- [x] 音游元素（提交 `65319cf`，已随 `ca34082` 后的部署上线）：首页状态条下迷你谱面 `NoteLane.astro`
+      （自动演奏、离屏暂停、减少动效时静帧）；全站点击打击特效 `.tap-fx`（BaseHead 脚本 + global.css）；
+      板块页眉音符滑入打中编号。冒烟：`py -3.14 docs/agent/scripts/playwright-blog-rhythm.py`
+      （需先 `npx astro preview --port 4399`）。
