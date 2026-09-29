@@ -163,6 +163,24 @@ import songs from '../data/music-player.json';
 		}
 	}
 
+	/* 今日箱曲：周一~周六按曲库时间线各固定一首（周一=第 1 首……周六=第 6 首），周日随机。
+	   周日的随机用日期做种子（Knuth 乘散列打散，直接按周取模会退化成顺序轮换）——
+	   同一天内刷新、切页都是同一首，不会每切一页换一首。 */
+	function defaultIndex(songs) {
+		if (!songs.length) return 0;
+		const now = new Date();
+		const dow = now.getDay();
+		if (dow > 0) return dow - 1;
+		const seed = (now.getFullYear() * 366 + (now.getMonth() + 1) * 31 + now.getDate()) * 2654435761 % 4294967296;
+		return seed % songs.length;
+	}
+
+	/* 首页 Hero 芯片上的歌名跟着今日箱曲走（芯片只在首页存在，找不到就算了） */
+	function updateChipSong() {
+		const b = document.querySelector('#md-open-chip [data-chip-song]');
+		if (b && SONGS.length) b.textContent = SONGS[defaultIndex(SONGS)].title;
+	}
+
 	function renderTracks() {
 		els.tracks.innerHTML = '';
 		SONGS.forEach((s, i) => {
@@ -311,7 +329,7 @@ import songs from '../data/music-player.json';
 		});
 		els.play.addEventListener('click', () => {
 			if (!audio.src) {
-				setTrack(0);
+				setTrack(defaultIndex(SONGS));
 			}
 			audio.preload = 'auto';
 			if (audio.paused) playWithFade().then(() => els.play.classList.add('playing')).catch(() => {});
@@ -394,11 +412,12 @@ import songs from '../data/music-player.json';
 		}
 		bind();
 		renderTracks();
+		updateChipSong();
 
 		if (!initialized) {
-			// 首次加载：只就位默认曲（バグ），不自动播放
+			// 首次加载：只就位今日箱曲，不自动播放
 			initialized = true;
-			const defIdx = Math.max(0, SONGS.findIndex((s) => s.id === 248));
+			const defIdx = defaultIndex(SONGS);
 			setTrack(defIdx);
 			if (!audio.src) audio.src = SONGS[defIdx].vs;
 			els.title.textContent = SONGS[defIdx].title + '（未播放）';
@@ -434,14 +453,14 @@ import songs from '../data/music-player.json';
 			} else {
 				index = 0;
 				source = 'se';
-				setTrack(0);
+				setTrack(defaultIndex(SONGS));
 			}
 			refreshTitle();
 			// 恢复播放按钮状态（新 DOM 收不到旧的 play 事件）
 			els.play.classList.toggle('playing', !audio.paused);
 		} else {		index = 0;
 			source = 'se';
-			const defIdx = Math.max(0, SONGS.findIndex((s) => s.id === 248));
+			const defIdx = defaultIndex(SONGS);
 			setTrack(defIdx);
 			els.title.textContent = SONGS[defIdx].title + '（未播放）';
 		}
@@ -455,7 +474,7 @@ import songs from '../data/music-player.json';
 		p.classList.add('open');
 		document.getElementById('md-toggle').setAttribute('aria-expanded', 'true');
 		if (!audio || !audio.src) {
-			setTrack(0, true);
+			setTrack(defaultIndex(SONGS), true);
 			playWithFade().catch(() => {});
 		} else if (audio.paused) {
 			playWithFade().catch(() => {});
