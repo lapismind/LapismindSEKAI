@@ -10,7 +10,7 @@
  */
 import { computed, ref, watch } from 'vue';
 import { useGameStore } from '@/stores/game.js';
-import { TILES, directedDistance, LEVEL_COST } from '@/game/board.js';
+import { TILES, tileDistance, LEVEL_COST } from '@/game/board.js';
 import { tileDef } from '@/game/tiles.js';
 import { CARDS } from '@/game/cards.js';
 import { SCREEN_W, SCREEN_H, SCREEN_TILES } from '@/game/screen.js';
@@ -91,7 +91,7 @@ function targetsFor(id) {
   if (!s.value) return [];
   const range = CARDS[id]?.range;
   return s.value.players.filter((p) => p.id !== cur.value.id && !p.ko && !p.immune
-    && (!range || directedDistance(cur.value.tile, p.tile) <= range));
+    && (!range || tileDistance(cur.value.tile, p.tile) <= range));
 }
 const targets = computed(() => (selectedCard.value?.need === 'opponent' ? targetsFor(selectedCard.value.id) : []));
 const rangeTiles = computed(() => {
@@ -99,7 +99,7 @@ const rangeTiles = computed(() => {
   const card = CARDS[selectedCard.value.id];
   return TILES
     .filter((t) => t.i !== cur.value.tile
-      && directedDistance(cur.value.tile, t.i) <= card.range
+      && tileDistance(cur.value.tile, t.i) <= card.range
       && !s.value.overlays.some((o) => o.tile === t.i))
     .map((t) => t.i);
 });

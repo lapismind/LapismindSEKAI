@@ -95,7 +95,7 @@ export function nextTile(i, loop) {
 }
 
 // 有向 后继表：从 LOOP_A / LOOP_B 的环序生成（交点天然有两条出边）。
-// directedDistance / 射程判定一律以它为准——不得对任意格滥用 nextTile(i, 任一环)。
+// 只描述环的正向；射程判定改用无向的 tileDistance（见下）。
 const SUCC = (() => {
   const m = new Map();
   const add = (i, j) => {
@@ -173,6 +173,29 @@ export function directedDistance(from, to) {
     const next = [];
     for (const i of frontier) {
       for (const j of successors(i)) {
+        if (j === to) return d;
+        if (!seen.has(j)) { seen.add(j); next.push(j); }
+      }
+    }
+    frontier = next;
+  }
+  return Infinity;
+}
+
+/**
+ * 两格之间的最短步数（无向：沿格子相邻关系，前后左右都算）；用于卡牌射程判定。
+ * 移动按朝向走、十字路口三向可选，所以射程也不分方向——站在路口旁四条路都够得着。
+ */
+export function tileDistance(from, to) {
+  if (from === to) return 0;
+  const seen = new Set([from]);
+  let frontier = [from];
+  let d = 0;
+  while (frontier.length) {
+    d++;
+    const next = [];
+    for (const i of frontier) {
+      for (const j of neighbors(i)) {
         if (j === to) return d;
         if (!seen.has(j)) { seen.add(j); next.push(j); }
       }

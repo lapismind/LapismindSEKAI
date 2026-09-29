@@ -9,7 +9,7 @@ import {
   selectBattleCard, lockBattleSide, rollAttackD6, chooseDefense, rollDefenseD6, rollBattleCards, battleTotals, closeBattle,
   playEffectCard, endAction, buyCard, closeShop,
 } from '../src/game/engine.js';
-import { TILES, mirrorTile, directedDistance, LOOP_B } from '../src/game/board.js';
+import { TILES, mirrorTile, directedDistance, tileDistance, LOOP_B } from '../src/game/board.js';
 import { LEVEL_COST } from '../src/game/board.js';
 import { CARDS } from '../src/game/cards.js';
 import { activeTargets } from '../src/game/engine.js';
@@ -384,7 +384,7 @@ test('整局随机模拟：随机合法操作 8000 步内分出胜负', () => {
             if (ts.length) playEffectCard(s, effect.id, { targetId: ts[Math.floor(rng() * ts.length)].id }, rng);
           } else if (effect.target === 'tile') {
             const ts = TILES.map((t) => t.i)
-              .filter((i) => i !== p.tile && directedDistance(p.tile, i) <= effect.range
+              .filter((i) => i !== p.tile && tileDistance(p.tile, i) <= effect.range
                 && !s.overlays.some((o) => o.tile === i));
             if (ts.length) playEffectCard(s, effect.id, { tileIdx: ts[Math.floor(rng() * ts.length)] }, rng);
           }
@@ -441,6 +441,19 @@ test('射程：BFS 修复后跨环远格不可达（硬编码期望，非同函�
   assert.equal(directedDistance(0, 36), 10); // 经交点 4→64…→27→36
   assert.equal(directedDistance(0, 40), 14);
   assert.ok(directedDistance(0, 40) > 3, '射程 3 的牌不应达远格');
+});
+
+test('射程不分方向：站在路口旁，四条路都够得着（爆破专家 3 格）', () => {
+  // 3 号格紧挨交点 4；4 的四个邻格 3 / 5 / 63 / 64
+  assert.deepEqual([...neighbors(4)].sort((a, b) => a - b), [3, 5, 63, 64]);
+  const reach = TILES.map((t) => t.i).filter((i) => i !== 3 && tileDistance(3, i) <= 3);
+  for (const i of [5, 6, 63, 62, 64, 65, 2, 1, 0]) assert.ok(reach.includes(i), `3 格内应含 ${i}`);
+  assert.equal(tileDistance(3, 1), 2, '身后也算');
+  const s = newGame();
+  s.players[0].tile = 3;
+  s.players[0].hand.push('bomb');
+  playEffectCard(s, 'bomb', { tileIdx: 62 }); // 路口左转方向，距离 3
+  assert.ok(s.overlays.some((o) => o.tile === 62 && o.kind === 'bomb'), '左转那条路能放');
 });
 
 test('射程：板砖超射程被拒（不消耗），近距命中', () => {

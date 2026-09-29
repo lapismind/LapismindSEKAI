@@ -13,7 +13,7 @@
  */
 
 import {
-  TILES, mirrorTile, directedDistance, IS_CROSS, ringOfTile, neighbors, loopPrev, exits,
+  TILES, mirrorTile, tileDistance, IS_CROSS, ringOfTile, neighbors, loopPrev, exits,
   LEVEL_COST, WIN_LEVEL, SHOP_PRICE, START_COINS, HAND_LIMIT, MOVE_DIE,
 } from './board.js';
 import { CHARACTERS } from './characters.js';
@@ -510,14 +510,14 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
   if (needsTarget) {
     if (!target) { log(state, '需要指定一名目标'); return; }
     if (target.immune || target.ko) { log(state, '目标住院/KO，不可指定'); return; }
-    if (card.range && directedDistance(p.tile, target.tile) > card.range) {
+    if (card.range && tileDistance(p.tile, target.tile) > card.range) {
       log(state, '目标超出射程'); return;
     }
   }
   if (isTileTarget) {
     const tileIdx = opts.tileIdx;
     if (typeof tileIdx !== 'number' || !TILES[tileIdx]) { log(state, '需要选择一个格子'); return; }
-    if (directedDistance(p.tile, tileIdx) > card.range) { log(state, '超出射程'); return; }
+    if (tileDistance(p.tile, tileIdx) > card.range) { log(state, '超出射程'); return; }
     if (state.overlays.some((o) => o.tile === tileIdx)) { log(state, '该格已有陷阱/路障'); return; }
   }
 
