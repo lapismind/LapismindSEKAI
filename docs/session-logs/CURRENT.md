@@ -1,7 +1,19 @@
-# 当前任务：blog 前端已改版待上线；niigo-party 事件调研暂停中
+# 当前任务：blog 前端已改版待上线；niigo-party 2.5D 地图 + 编辑器已落地；事件调研暂停中
 
 > 日期：2026-09-29
 > 本轮工作在 Windows 机完成，已提交推送。
+
+## 任务零：niigo-party 2.5D 地图 + 地块封装 + 地图编辑器（✅ 已完成，待用户定稿布局）
+
+- 提交 `bbcc21a`（本仓）+ AI-game `4a74031`（底图 `niigo/art/04_scene/board_bg.jpeg`，经 sync-assets 引用）。
+- 棋盘换成 Image 2.5 重绘底图；格子坐标来自 Blender 同相机导出（`niigo-party/src/game/maps/twin-cross-68.screen.json`）。
+- 地块注册表 `src/game/tiles.js`（onLand/onEnter），布局 `maps/twin-cross-68.layout.json`，校验 `src/game/layout.js`。
+- 地图编辑器：`npm run dev` → `/#editor`（仅 dev、仅本机可保存）。细节见 `niigo-party/docs/进度.md`「地图与地块」。
+- 地砖不上色（重绘后底座逐格偏差，2D 色块对不齐，已放弃，见 `niigo-party/docs/lessons-learned.md`）。
+- **下一步**：用户在编辑器里定稿布局 → Blender `build_board.py --pass tiles --layout <布局>` 重渲格子层 →
+  Image 2.5 按遮罩重绘环境（素材包 `C:\Tool\Blender\projects\niigo-board\_out\repaint\`）→ `overlay_tiles.py` 叠回。
+- ⚠️ `C:\Tool\Blender\projects\niigo-board\` **不在任何 git 仓库**，只在这台 Windows 机上；换机器前需拷贝或迁入仓库（待用户决定）。
+- 验证：单测 31 项；Playwright 冒烟 `py -3.14 docs/agent/scripts/playwright-niigo-board-editor.py`（需先 `npx vite --port 5199`）。
 
 ## 任务一：blog 前端「编辑式改版」（✅ 已完成，待部署）
 
