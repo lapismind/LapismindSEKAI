@@ -5,8 +5,12 @@
  * （中央正方形四角），走到交点可二选一切环。地块分布 180° 中心对称。
  *
  * 坐标 (x, y) 为"棋盘系"直角坐标（未旋转），渲染层负责旋转 45° 呈 X 形。
+ * 地块类型不写死在这里：来自 maps/*.layout.json（地图编辑器产出），行为见 tiles.js 注册表。
  * 纯数据模块：不依赖 Vue / DOM，可被服务器端复用。
  */
+
+import layout from './maps/twin-cross-68.layout.json' with { type: 'json' };
+import { TILE_TYPES } from './tiles.js';
 
 export const MOVE_DIE = 10; // 移动骰 1d10（规格 v2.6）
 export const LEVEL_COST = [15, 25, 35, 45]; // Lv1~Lv4 升级所需星币（累计 120）
@@ -51,61 +55,20 @@ const B_perimeter = [
 const CROSS_KEY = new Set(Object.keys(CROSS_IDX));
 const B_own_pts = B_perimeter.filter((p) => !CROSS_KEY.has(key(p)));
 
-// ── 地块类型表（180° 中心对称，规格 §3.2）──────────────────
-const A_TYPES = {
-  0: 'start', 1: 'coin', 2: 'card', 3: 'coin', 4: 'cross', 5: 'swift', 6: 'coin',
-  7: 'card', 8: 'misfortune', 9: 'cross', 10: 'coin', 11: 'coin', 12: 'card',
-  13: 'misfortune', 14: 'shop', 15: 'swift', 16: 'teleport', 17: 'coin',
-  18: 'start', 19: 'coin', 20: 'card', 21: 'coin', 22: 'cross', 23: 'swift',
-  24: 'coin', 25: 'card', 26: 'misfortune', 27: 'cross', 28: 'coin', 29: 'coin',
-  30: 'card', 31: 'misfortune', 32: 'shop', 33: 'swift', 34: 'teleport', 35: 'coin',
-};
-// B 自有格按上面 B_own_pts 的顺序编号 36..67
-const B_TYPES = [
-  'misfortune', // 36 (−2.5,−3.5)
-  'trial',      // 37 (−2.5,−4.5)
-  'card',       // 38 (−2.5,−5.5)
-  'misfortune', // 39 (−2.5,−6.5)
-  'coinhi',     // 40 (−1.5,−6.5)
-  'coinhi',     // 41 (−0.5,−6.5)
-  'coinhi',     // 42 (0.5,−6.5)
-  'coinhi',     // 43 (1.5,−6.5)
-  'hospital',   // 44 (2.5,−6.5)
-  'upgrade',    // 45 (2.5,−5.5)
-  'misfortune', // 46 (2.5,−4.5)
-  'misfortune', // 47 (2.5,−3.5)
-  'card',       // 48 (2.5,−1.5) 中央右缘
-  'coin',       // 49 (2.5,−0.5)
-  'coin',       // 50 (2.5,0.5)
-  'card',       // 51 (2.5,1.5)
-  'misfortune', // 52 (2.5,3.5)
-  'trial',      // 53 (2.5,4.5)
-  'card',       // 54 (2.5,5.5)
-  'misfortune', // 55 (2.5,6.5)
-  'coinhi',     // 56 (1.5,6.5)
-  'coinhi',     // 57 (0.5,6.5)
-  'coinhi',     // 58 (−0.5,6.5)
-  'coinhi',     // 59 (−1.5,6.5)
-  'hospital',   // 60 (−2.5,6.5)
-  'upgrade',    // 61 (−2.5,5.5)
-  'misfortune', // 62 (−2.5,4.5)
-  'misfortune', // 63 (−2.5,3.5)
-  'card',       // 64 (−2.5,1.5) 中央左缘
-  'coin',       // 65 (−2.5,0.5)
-  'coin',       // 66 (−2.5,−0.5)
-  'card',       // 67 (−2.5,−1.5)
-];
+// ── 地块类型：来自布局文件（地图编辑器 /editor 读写它；拓扑坐标仍由本文件生成，不可编辑）──
+// 格号顺序：外环 A 0..35（按 A_pts），内环 B 自有格 36..67（按 B_own_pts）
+export const LAYOUT = layout;
+if (!Array.isArray(layout.types) || layout.types.length !== A_pts.length + B_own_pts.length) {
+  throw new Error(`布局 ${layout.id} 应有 ${A_pts.length + B_own_pts.length} 格，实际 ${layout.types?.length}`);
+}
 
 // ── 组装 ───────────────────────────────────────────────────
-export const TILES = A_pts.map((p, i) => ({
+export const TILES = [...A_pts, ...B_own_pts].map((p, i) => ({
   i,
-  type: A_TYPES[i],
+  type: layout.types[i],
   x: p[0],
   y: p[1],
 }));
-B_own_pts.forEach((p, k) => {
-  TILES.push({ i: 36 + k, type: B_TYPES[k], x: p[0], y: p[1] });
-});
 
 const TILE_BY_KEY = new Map(TILES.map((t) => [key([t.x, t.y]), t]));
 export const LOOP_A = A_pts.map((p) => TILE_BY_KEY.get(key(p)).i);
@@ -191,12 +154,6 @@ export function tilePos(i) {
   return { x: t.x, y: t.y };
 }
 
-export const TILE_COLORS = {
-  start: '#3b82f6', upgrade: '#a855f7', shop: '#f97316', card: '#22c55e',
-  coin: '#d69e05', coinhi: '#fff3a0', misfortune: '#ef4444', hospital: '#f9a8d4',
-  swift: '#06b6d4', cross: '#fde047', teleport: '#a78bfa', trial: '#fb7185',
-};
-export const TILE_LABEL = {
-  start: '起', upgrade: '级', shop: '店', card: '卡', coin: '财', coinhi: '财',
-  misfortune: '祸', hospital: '院', swift: '疾', cross: '交', teleport: '传', trial: '试',
-};
+// 兼容旧引用：颜色 / 短标签从地块注册表派生（src/game/tiles.js）
+export const TILE_COLORS = Object.fromEntries(Object.entries(TILE_TYPES).map(([k, d]) => [k, d.color]));
+export const TILE_LABEL = Object.fromEntries(Object.entries(TILE_TYPES).map(([k, d]) => [k, d.label]));

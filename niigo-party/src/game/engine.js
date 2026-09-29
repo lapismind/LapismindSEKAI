@@ -15,6 +15,7 @@ import {
 } from './board.js';
 import { CHARACTERS } from './characters.js';
 import { CARDS, CARD_IDS } from './cards.js';
+import { tileDef } from './tiles.js';
 
 const d6 = (rng) => 1 + Math.floor(rng() * 6);
 const pick = (arr, rng) => arr[Math.floor(rng() * arr.length)];
@@ -212,13 +213,8 @@ export function moveStep(state, rng = Math.random) {
     }
   }
 
-  if (TILES[p.tile].type === 'teleport' && !state.moveTeleported) {
-    const dest = mirrorTile(p.tile);
-    state.moveTeleported = true;
-    p.tile = dest;
-    log(state, `${p.name} 触发传送门，跃迁到 ${dest} 号格`);
-    fx(state, 'teleport', p.id);
-  }
+  // 走进即触发的地块（传送门等），见 tiles.js onEnter
+  tileDef(TILES[p.tile].type).onEnter?.({ state, p, rng, api: TILE_API });
 
   if (p.hp <= 0 && !p.ko) koPlayer(state, p, null); // 兜底
 
@@ -337,67 +333,13 @@ export function closeBattle(state, rng = Math.random) {
   else state.phase = 'moving';
 }
 
-// ── 落地结算（规格 §3.2）───────────────────────────────────
+// ── 落地结算（规格 §3.2；各地块效果见 tiles.js 注册表）──────────────
 
 function land(state, rng) {
   const p = cur(state);
   state.remaining = 0;
   if (p.ko) { endTurn(state); return; } // 移动中把自己走没了（试炼/陷阱）
-  const type = TILES[p.tile].type;
-  switch (type) {
-    case 'coin': {
-      const v = pick([8, 12, 16, 20, 32], rng);
-      gainCoins(state, p, v);
-      break;
-    }
-    case 'coinhi': {
-      const v = pick([20, 28, 40], rng);
-      gainCoins(state, p, v);
-      break;
-    }
-    case 'misfortune':
-      log(state, `${p.name} 天降横祸！`);
-      damage(state, p, 2, null, '天降横祸');
-      break;
-    case 'trial': {
-      const r = d6(rng);
-      if (r >= 5) { log(state, `试炼成功（${r}）！`); gainCoins(state, p, 15); }
-      else { log(state, `试炼失败（${r}）…`); damage(state, p, 3, null, '试炼失败'); }
-      break;
-    }
-    case 'hospital':
-      p.hp = Math.min(p.maxHp, p.hp + 2);
-      p.immune = true;
-      log(state, `${p.name} 住院休养：回 2 HP，免疫到下次自己回合`);
-      break;
-    case 'shop': {
-      const free = pick(CARD_IDS, rng);
-      drawSpecific(state, p, free);
-      state.pending = { type: 'shop', stock: [pick(CARD_IDS, rng), pick(CARD_IDS, rng), pick(CARD_IDS, rng)] };
-      log(state, `${p.name} 到商店：免费拿 1 张，可花 5 星币/张补货`);
-      break;
-    }
-    case 'card':
-      drawCards(state, p, 2, rng);
-      break;
-    case 'swift':
-      p.extraRoll = true;
-      log(state, `${p.name} 踩中疾行，可再掷一次移动骰`);
-      break;
-    case 'start':
-    case 'upgrade':
-      if (p.hp < p.maxHp) {
-        p.hp = Math.min(p.maxHp, p.hp + 2);
-        log(state, `${p.name} 休息回 2 HP（现有 ${p.hp}）`);
-      }
-      log(state, `${p.name} 停在${type === 'start' ? '起始点' : '升级格'}`);
-      tryLevelUp(state, p);
-      break;
-    case 'cross':
-    case 'teleport':
-    default:
-      break;
-  }
+  tileDef(TILES[p.tile].type).onLand?.({ state, p, rng, api: TILE_API });
   if (state.phase === 'over') return;
   if (p.ko) { endTurn(state); return; } // 被横祸/试炼走没了
   state.phase = 'action';
@@ -408,6 +350,11 @@ function drawSpecific(state, p, cardId) {
   p.hand.push(cardId);
   log(state, `${p.name} 获得「${CARDS[cardId].name}」`);
 }
+
+/** 地块钩子可用的引擎能力（tiles.js 不直接 import engine，避免循环依赖） */
+const TILE_API = {
+  log, fx, damage, gainCoins, drawCards, drawSpecific, tryLevelUp, mirrorTile, pick, d6, CARD_IDS,
+};
 
 // ── 行动阶段：效果牌 / 商店 ────────────────────────────────
 
