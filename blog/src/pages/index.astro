@@ -9,6 +9,7 @@ import Live2dMascot from '../components/Live2dMascot.astro';
 import { GITHUB_URL, SITE_DESCRIPTION, SITE_TITLE } from '../consts';
 import Mascot from '../assets/mascot.webp';
 import HeroBg from '../assets/mafuyu-hero.webp';
+import MinchoSubset from '../assets/fonts/shippori-mincho-subset.woff2';
 import AbracadawhatCover from '../assets/covers/abracadawhat-cover.png';
 import StaffCard from '../assets/works/staff-card.jpg';
 import NiigoPartyLineup from '../assets/covers/niigo-party-cover.jpg';
@@ -26,9 +27,10 @@ const onlineCount = games.filter((p) => p.status === 'online').length;
 
 /** 首页「SEKAI 精选」：游戏与项目各取 featured 条目，详情页分属 /projects/ 与 /works/。 */
 const featured = [
-	...games.filter((p) => p.featured).map((p) => ({ ...p, href: `/projects/${p.slug}/` })),
-	...works.filter((p) => p.featured).map((p) => ({ ...p, href: `/works/${p.slug}/` })),
+	...games.filter((p) => p.featured).map((p) => ({ ...p, kind: '游戏', href: `/projects/${p.slug}/` })),
+	...works.filter((p) => p.featured).map((p) => ({ ...p, kind: 'Projects', href: `/works/${p.slug}/` })),
 ];
+const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const projectImages: Record<string, typeof AbracadawhatCover> = {
 	abracadawhat: AbracadawhatCover,
@@ -41,77 +43,125 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 <html lang="zh-CN">
 	<head>
 		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		{/* Astro 的 <style> 不做插值，@font-face 要内联输出才拿得到资源地址。
+		    日文明朝体：只给首屏的日文行用。子集只有这两句话的假名/汉字（7KB），
+		    缺的字自动回落到霞鹜文楷。 */}
+		<style is:inline set:html={`@font-face{font-family:'Shippori Mincho Subset';font-style:normal;font-weight:500;font-display:swap;src:url('${MinchoSubset}') format('woff2')}`} />
 		<style>
+			/* ============ Hero ============
+			   整幅卡面出血到视口边；文字落在左下，不再居中压在奏的脸上。
+			   底部一条发丝线托住玩家身份 / 今日箱曲 / 向下提示，三件事并成一行。
+			   打字机脚本认 .hero h1 与 .hero .lead，别改这两个选择器。 */
 			.hero {
 				position: relative;
 				display: flex;
-				align-items: center;
-				justify-content: center;
-				min-height: 76vh;
+				flex-direction: column;
+				justify-content: flex-end;
+				min-height: min(92vh, 920px);
 				width: 100vw;
 				margin-left: calc(50% - 50vw);
 				margin-right: calc(50% - 50vw);
 				margin-top: -64px;
-				text-align: center;
 				overflow: hidden;
-				padding: calc(64px + 5rem) 1.5rem 7rem;
+				color: #fff;
+				background: oklch(0.2 0.03 265);
 			}
 			.hero-photo {
 				position: absolute;
 				inset: 0;
-				background-size: cover;
-				background-position: center 22%;
-				z-index: 0;
-				background-color: color-mix(in oklab, var(--primary-soft) 55%, var(--page-bg));
-				animation: hero-fade 0.9s ease 0.15s both;
+				animation: hero-fade 1.1s var(--ease-soft) 0.1s both;
+			}
+			.hero-photo img {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				object-position: center 22%;
+				display: block;
 			}
 			@keyframes hero-fade {
 				from {
 					opacity: 0;
+					transform: scale(1.03);
 				}
 				to {
 					opacity: 1;
+					transform: none;
 				}
 			}
+			/* 两层压暗：左侧给标题让出可读区，底部给信息行让出可读区；
+			   中上部（两人的脸）保持原画亮度。 */
 			.hero-photo::after {
 				content: '';
 				position: absolute;
 				inset: 0;
-				background: linear-gradient(
-					180deg,
-					oklch(0.14 0.03 260 / 0.28) 0%,
-					oklch(0.14 0.03 260 / 0.22) 42%,
-					oklch(0.14 0.03 260 / 0.48) 72%,
-					oklch(0.14 0.03 260 / 0.7) 94%,
-					var(--page-bg) 100%
-				);
+				background:
+					linear-gradient(
+						90deg,
+						oklch(0.14 0.035 268 / 0.78) 0%,
+						oklch(0.14 0.035 268 / 0.42) 38%,
+						oklch(0.14 0.035 268 / 0) 70%
+					),
+					linear-gradient(
+						180deg,
+						oklch(0.14 0.035 268 / 0.4) 0%,
+						oklch(0.14 0.035 268 / 0) 22%,
+						oklch(0.14 0.035 268 / 0) 50%,
+						oklch(0.14 0.035 268 / 0.82) 100%
+					);
 			}
 			.hero-inner {
 				position: relative;
 				z-index: 1;
-				max-width: 52em;
+				width: min(1100px, 100% - 2.5rem);
+				margin-inline: auto;
+				padding-top: calc(64px + 5rem);
 			}
-			.hero .eyebrow {
-				justify-content: center;
-				color: oklch(0.92 0.02 260 / 0.9);
-				text-shadow: 0 1px 8px oklch(0 0 0 / 0.35);
+			.hero-copy {
+				max-width: 40rem;
+				padding-bottom: clamp(2.5rem, 6vh, 4.5rem);
+			}
+			.hero-copy > * {
+				animation: fade-in-up 0.8s var(--ease-soft) both;
+			}
+			.hero-copy > :nth-child(2) {
+				animation-delay: 0.1s;
+			}
+			.hero-copy > :nth-child(3) {
+				animation-delay: 0.2s;
+			}
+			.hero-copy > :nth-child(4) {
+				animation-delay: 0.3s;
+			}
+			.hero-kicker {
+				margin: 0 0 1.1rem;
+				font-family: var(--font-meta);
+				font-size: 0.74rem;
+				letter-spacing: 0.24em;
+				text-transform: uppercase;
+				color: oklch(1 0 0 / 0.72);
 			}
 			.hero h1 {
-				margin: 0 0 0.35em;
-				font-size: clamp(2.8rem, 1.6rem + 5.2vw, 5rem);
+				margin: 0 0 0.45em;
+				font-size: clamp(2.5rem, 1.3rem + 5vw, 5.2rem);
+				line-height: 1.1;
+				letter-spacing: -0.02em;
 				color: #fff;
-				text-shadow:
-					0 2px 8px oklch(0 0 0 / 0.75),
-					0 6px 34px oklch(0 0 0 / 0.4);
+				word-break: keep-all;
+				text-wrap: balance;
+				text-shadow: 0 2px 30px oklch(0.1 0.03 268 / 0.45);
 			}
 			.hero .lead {
-				font-size: clamp(1.1rem, 0.95rem + 0.8vw, 1.45rem);
-				color: oklch(0.94 0.015 260 / 0.92);
-				max-width: 36em;
-				margin: 0 auto 1.4em;
-				font-family: var(--font-mono);
-				letter-spacing: 0.06em;
-				text-shadow: 0 1px 12px oklch(0 0 0 / 0.45);
+				margin: 0 0 2.2rem;
+				font-size: clamp(1rem, 0.9rem + 0.45vw, 1.22rem);
+				letter-spacing: 0.14em;
+				color: oklch(1 0 0 / 0.84);
+				word-break: keep-all;
+			}
+			/* 日文两行（署名 + 右侧落款）用明朝体：竖排时楷体是错的气质 */
+			.hero .lead,
+			.hero-vert {
+				font-family: 'Shippori Mincho Subset', var(--font-body);
+				font-weight: 500;
 			}
 			/* 打字机光标：挂在正在敲的那行末尾，敲完由 JS 摘除 */
 			.type-caret {
@@ -131,108 +181,120 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 			@media (prefers-reduced-motion: reduce) {
 				.type-caret { display: none; }
 			}
-			.hero-inner > * {
-				animation: fade-in-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
-			}
-			.hero-inner > *:nth-child(2) {
-				animation-delay: 0.12s;
-			}
-			.hero-inner > *:nth-child(3) {
-				animation-delay: 0.24s;
-			}
-			.hero-inner > *:nth-child(4) {
-				animation-delay: 0.36s;
-			}
-			.hero-inner > *:nth-child(5) {
-				animation-delay: 0.48s;
-			}
 			.hero-actions {
 				display: flex;
-				gap: 0.8rem;
-				justify-content: center;
+				align-items: center;
+				gap: 1.6rem;
 				flex-wrap: wrap;
 			}
-			.hero .btn-ghost {
-				border-color: oklch(0.95 0.01 260 / 0.6);
-				color: #fff;
+			.hero .btn-primary {
+				background: #fff;
+				color: oklch(0.22 0.03 268);
 			}
-			.hero .btn-ghost:hover {
-				border-color: #fff;
-				background: oklch(1 0 0 / 0.12);
+			.hero .btn-primary:hover {
+				background: oklch(0.93 0.035 var(--hue-accent));
+				color: oklch(0.22 0.03 268);
+			}
+			.hero-link {
+				color: oklch(1 0 0 / 0.86);
+				font-size: 0.95rem;
+				text-decoration: underline;
+				text-decoration-color: oklch(1 0 0 / 0.4);
+				text-underline-offset: 0.35em;
+			}
+			.hero-link:hover {
 				color: #fff;
+				text-decoration-color: #fff;
+			}
+			/* 右侧竖排：团名做落款，只在宽屏出现 */
+			.hero-vert {
+				position: absolute;
+				z-index: 1;
+				top: calc(64px + 3.5rem);
+				right: max(1.25rem, calc(50vw - 550px));
+				margin: 0;
+				writing-mode: vertical-rl;
+				font-size: 0.86rem;
+				letter-spacing: 0.5em;
+				color: oklch(1 0 0 / 0.7);
+				animation: fade-in-up 1s var(--ease-soft) 0.5s both;
+			}
+			.hero-vert .tcy {
+				text-combine-upright: all;
+				letter-spacing: 0;
+			}
+			/* 25時（本地 0—5 点）：落款点亮。类由 JS 挂在 <html> 上。 */
+			.hero-vert {
+				transition: color 1.2s ease, text-shadow 1.2s ease;
+			}
+			:global(html.late-night) .hero-vert {
+				color: oklch(0.9 0.055 var(--hue-accent));
+				text-shadow:
+					0 0 3px oklch(0.95 0.03 var(--hue-accent) / 0.8),
+					0 0 16px oklch(0.66 0.11 var(--hue-accent) / 0.55);
+			}
+			.hero-foot {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem 1.6rem;
+				flex-wrap: wrap;
+				padding: 0.7rem 0 0.9rem;
+				border-top: 1px solid oklch(1 0 0 / 0.24);
 			}
 			.player-chip {
 				display: inline-flex;
 				align-items: center;
-				gap: 0.8rem;
-				margin-top: 1.6rem;
-				padding: 0.55rem 1.1rem 0.55rem 0.6rem;
-				border-radius: 999px;
-				background: var(--glass-bg);
-				border: 1px solid var(--line);
-				box-shadow: var(--shadow-sm);
-				animation: float-chip 5s ease-in-out infinite;
+				gap: 0.7rem;
+				margin: 0;
 			}
-			.hero .player-chip {
-				background: oklch(1 0 0 / 0.92);
-				box-shadow: 0 4px 20px oklch(0 0 0 / 0.25);
-			}
-			.player-chip :global(img) {
-				width: 44px;
-				height: 44px;
+			.player-chip img {
+				width: 34px;
+				height: 34px;
 				border-radius: 50%;
 				object-fit: cover;
-				border: 2px solid var(--card-solid);
-				box-shadow: 0 0 0 1px var(--line-strong);
 				margin: 0;
+				box-shadow: 0 0 0 1px oklch(1 0 0 / 0.4);
 			}
-			.player-chip .pc-name {
-				margin: 0;
-				font-size: 0.92rem;
-				font-weight: 700;
-				color: var(--ink);
-				display: flex;
+			.pc-name {
+				display: inline-flex;
 				align-items: center;
 				gap: 0.45em;
+				font-size: 0.86rem;
+				font-weight: 700;
+				letter-spacing: 0.08em;
 			}
-			.player-chip .pc-role {
-				margin: 0;
-				font-size: 0.76rem;
-				color: var(--muted);
-				font-family: var(--font-mono);
-				letter-spacing: 0.04em;
+			.pc-role {
+				font-family: var(--font-meta);
+				font-size: 0.74rem;
+				color: oklch(1 0 0 / 0.68);
 			}
 			.pc-dot {
-				width: 8px;
-				height: 8px;
+				width: 7px;
+				height: 7px;
 				border-radius: 50%;
-				background: oklch(0.72 0.16 150);
-				box-shadow: 0 0 0 3px oklch(0.72 0.16 150 / 0.2);
+				background: oklch(0.78 0.16 150);
 			}
 			.music-chip {
 				display: inline-flex;
 				align-items: center;
-				gap: 0.5em;
-				margin-top: 1rem;
-				padding: 0.5em 1.3em;
-				border-radius: 999px;
-				border: 1px solid oklch(0.95 0.01 260 / 0.4);
-				background: oklch(0.14 0.03 260 / 0.35);
-				backdrop-filter: blur(8px);
-				-webkit-backdrop-filter: blur(8px);
-				color: oklch(0.96 0.015 260 / 0.95);
-				font-size: 0.85rem;
-				font-family: var(--font-mono);
-				letter-spacing: 0.05em;
-				cursor: var(--cursor-pointer);
+				gap: 0.55em;
 				min-height: var(--tap-min);
-				box-shadow: 0 4px 18px oklch(0 0 0 / 0.25);
-				transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+				padding: 0 0.2rem;
+				border: none;
+				background: none;
+				color: oklch(1 0 0 / 0.86);
+				font: inherit;
+				font-size: 0.86rem;
+				cursor: var(--cursor-pointer);
 			}
-			.music-chip:hover {
-				transform: translateY(-2px);
-				border-color: oklch(0.9 0.06 283 / 0.7);
-				background: oklch(0.17 0.04 270 / 0.5);
+			.music-chip b {
+				font-weight: 700;
+				color: #fff;
+				border-bottom: 1px solid oklch(1 0 0 / 0.45);
+				transition: border-color var(--dur-fast) ease;
+			}
+			.music-chip:hover b {
+				border-color: #fff;
 			}
 			.music-chip .note {
 				animation: note-pulse 1.8s ease-in-out infinite;
@@ -248,110 +310,72 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 					opacity: 0.72;
 				}
 			}
-			@keyframes float-chip {
-				0%,
-				100% {
-					transform: translateY(0);
-				}
-				50% {
-					transform: translateY(-5px);
-				}
+			.foot-sep {
+				width: 1px;
+				height: 1.1rem;
+				background: oklch(1 0 0 / 0.28);
 			}
 			.scroll-hint {
-				position: absolute;
-				left: 50%;
-				bottom: 1.3rem;
-				transform: translateX(-50%);
-				z-index: 2;
+				margin-left: auto;
 				display: inline-flex;
-				flex-direction: column;
 				align-items: center;
-				gap: 0.2rem;
-				color: oklch(0.94 0.015 260 / 0.85);
-				font-family: var(--font-mono);
+				gap: 0.5em;
+				min-height: var(--tap-min);
+				font-family: var(--font-meta);
 				font-size: 0.7rem;
-				letter-spacing: 0.28em;
+				letter-spacing: 0.24em;
 				text-transform: uppercase;
 				text-decoration: none;
+				color: oklch(1 0 0 / 0.7);
+			}
+			.scroll-hint:hover {
+				color: #fff;
 			}
 			.scroll-hint svg {
 				animation: bounce-down 1.8s ease-in-out infinite;
 			}
 
-			.site-section {
-				margin-top: 3.25rem;
+			/* ============ 运行状态条 ============
+			   一条被发丝线收住的仪表行，不再是压在 Hero 上的玻璃卡。
+			   访客脚本认 .now-visitors / #now-visitors / #week-visitors。 */
+			.status {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				align-items: end;
+				gap: 1.8rem 3rem;
+				padding: 2.6rem 0 2.4rem;
+				border-bottom: var(--rule);
 			}
-			/* 「SEKAI is running」运行面板 + 站点统计。
-			   卡片压在 Hero 底边上（margin-top 负值 + z-index），别动这两条。 */
-			.now-card {
-				margin-top: -4.5rem;
-				position: relative;
-				z-index: 2;
-				padding: 1.7rem 2rem;
-				overflow: hidden;
-			}
-			.now-card::after {
-				content: '';
-				position: absolute;
-				inset: 0;
-				pointer-events: none;
-				background: radial-gradient(
-					420px 160px at 12% 0%,
-					oklch(0.72 0.14 var(--hue-accent) / 0.12),
-					transparent 70%
-				);
-			}
-			.now-head {
-				position: relative;
-				display: flex;
-				align-items: baseline;
-				justify-content: space-between;
-				gap: 0.5rem 1.5rem;
-				flex-wrap: wrap;
-			}
-			.now-updated {
-				margin: 0;
-				display: inline-flex;
-				align-items: baseline;
-				gap: 0.55em;
-				font-family: var(--font-mono);
-				font-size: 0.78rem;
-				letter-spacing: 0.1em;
-				color: var(--muted);
-			}
-			.now-updated :global(time) {
-				color: var(--ink-soft);
-			}
-			.now-main {
-				position: relative;
-				margin-top: 1rem;
-			}
-			.now-title {
-				margin: 0;
+			.status-title {
 				display: flex;
 				align-items: center;
-				gap: 0.62em;
-				font-size: 1.55rem;
+				gap: 0.65em;
+				margin: 0;
+				font-size: 1.4rem;
 				font-weight: 700;
 				letter-spacing: -0.01em;
-				color: var(--ink);
 			}
 			.now-lead {
-				margin: 0.55rem 0 0;
-				max-width: 44em;
+				margin: 0.4rem 0 0;
 				color: var(--ink-soft);
-				line-height: 1.85;
 			}
-			.now-visitors {
-				margin: 0.9rem 0 0;
-				font-family: var(--font-mono);
-				font-size: 0.8rem;
-				letter-spacing: 0.1em;
+			.status-meta {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.2rem 1.4rem;
+				margin-top: 0.9rem;
+				font-family: var(--font-meta);
+				font-size: 0.76rem;
+				letter-spacing: 0.06em;
 				color: var(--muted);
 			}
-			.now-visitors b {
-				font-weight: 700;
+			.status-meta p {
+				margin: 0;
+			}
+			.status-meta b,
+			.status-meta :global(time) {
 				color: var(--ink-soft);
+				font-weight: 600;
 			}
 			/* 运行指示灯。外圈呼吸式扩散表示"在跑"，减少动效时只留静态的实心点。 */
 			.now-dot {
@@ -361,7 +385,6 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 				height: 9px;
 				border-radius: 50%;
 				background: oklch(0.72 0.16 150);
-				box-shadow: 0 0 0 3px oklch(0.72 0.16 150 / 0.18);
 			}
 			.now-dot::after {
 				content: '';
@@ -388,262 +411,310 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 					opacity: 0;
 				}
 			}
-			/* 四格读数：数字在上、标签在下，格间用竖线分栏（首项不画）。 */
 			.now-stats {
-				position: relative;
-				margin-top: 1.5rem;
-				padding-top: 1.35rem;
-				border-top: 1px solid var(--line);
 				display: grid;
-				grid-template-columns: repeat(4, 1fr);
-				gap: 1rem;
+				grid-template-columns: repeat(4, auto);
+				margin: 0;
 			}
 			.stat {
-				display: grid;
-				gap: 0.1rem;
-			}
-			.stat + .stat {
-				border-left: 1px solid var(--line);
-				padding-left: 1.25rem;
-			}
-			.stat b {
-				font-family: var(--font-mono);
-				font-size: 1.5rem;
-				font-weight: 700;
-				line-height: 1.1;
-				color: var(--ink);
-			}
-			.stat span {
-				font-size: 0.78rem;
-				letter-spacing: 0.12em;
-				color: var(--muted);
-				font-family: var(--font-mono);
-			}
-			/* 板块标题右侧的链接组。global.css 的 .section-title .more-link 用
-			   margin-left:auto 把"单个"链接推到最右；两条并排时各自抢空白会互相
-			   推开，所以这里由容器接管 margin-left，再收回子项的。 */
-			.section-title .more-links {
-				margin-left: auto;
-				display: flex;
-				align-items: baseline;
-				gap: 1.1rem;
-				flex-wrap: wrap;
-			}
-			.section-title .more-links .more-link {
-				margin-left: 0;
-			}
-			.card-grid {
-				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-				gap: 1.6rem;
-			}
-			.project-card {
 				display: flex;
 				flex-direction: column;
-				background: var(--glass-bg);
-				backdrop-filter: blur(12px) saturate(1.1);
-				-webkit-backdrop-filter: blur(12px) saturate(1.1);
-				border: 1px solid var(--line);
-				border-radius: var(--radius-lg);
-				box-shadow: var(--shadow-sm);
+				gap: 0.35rem;
+				padding: 0 1.6rem;
+				border-left: var(--rule);
+			}
+			.stat:last-child {
+				padding-right: 0;
+			}
+			.stat dt {
+				font-family: var(--font-meta);
+				font-size: 0.72rem;
+				letter-spacing: 0.14em;
+				color: var(--muted);
+			}
+			.stat dd {
+				margin: 0;
+				font-family: var(--font-num);
+				font-size: 2.5rem;
+				font-weight: 700;
+				line-height: 1;
+				font-variant-numeric: tabular-nums;
+				color: var(--ink);
+			}
+
+			.site-section {
+				margin-top: 5rem;
+			}
+
+			/* ============ 精选：左右交替的图文跨栏 ============ */
+			.feature-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				display: grid;
+				gap: 4.5rem;
+			}
+			.feature {
+				display: grid;
+				grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+				gap: 2.8rem;
+				align-items: center;
 				text-decoration: none;
-				overflow: hidden;
-				transition: transform var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft);
+				color: inherit;
 			}
-			.project-card:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-soft);
+			.feature-list > li:nth-child(even) .feature-media {
+				order: 2;
 			}
-			.card-media {
+			.feature-media {
 				position: relative;
-				aspect-ratio: 16 / 8;
+				aspect-ratio: 16 / 10;
 				overflow: hidden;
+				border-radius: var(--r-media);
 				background: var(--primary-ghost);
 			}
-			.card-media :global(img) {
+			.feature-media :global(img) {
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
 				display: block;
 				transition: transform var(--dur-slow) var(--ease-soft);
 			}
-			.project-card:hover .card-media :global(img) {
-				transform: scale(1.02);
+			.feature:hover .feature-media :global(img) {
+				transform: scale(1.03);
 			}
-			.card-media-fallback {
+			.media-fallback {
 				display: grid;
 				place-items: center;
 				height: 100%;
-				background: var(--gradient);
-				color: #fff;
 				font-size: 3rem;
 				font-weight: 700;
+				color: var(--primary);
 			}
-			.card-body {
-				padding: 1.3rem 1.5rem 1.5rem;
-				display: flex;
-				flex-direction: column;
-				flex: 1;
-			}
-			.card-head {
+			.feature-meta {
 				display: flex;
 				align-items: center;
-				gap: 0.6rem;
-				flex-wrap: wrap;
-				margin-bottom: 0.35rem;
+				gap: 0.9rem;
+				margin: 0 0 1rem;
+				font-family: var(--font-meta);
+				font-size: 0.74rem;
+				letter-spacing: 0.12em;
+				color: var(--muted);
 			}
-			.card-head h3 {
-				margin: 0;
-				font-size: 1.25rem;
+			.feature h3 {
+				margin: 0 0 0.35rem;
+				font-size: clamp(1.6rem, 1.2rem + 1.2vw, 2.25rem);
+				line-height: 1.2;
+				transition: color var(--dur-fast) ease;
 			}
-			.card-subtitle {
-				margin: 0 0 0.55rem;
-				font-size: 0.85rem;
+			.feature:hover h3 {
 				color: var(--primary);
-				font-family: var(--font-mono);
 			}
-			.card-desc {
-				margin: 0 0 1.1rem;
-				font-size: 0.92rem;
+			.feature-sub {
+				margin: 0 0 1rem;
+				color: var(--primary);
+				font-size: 0.95rem;
+			}
+			.feature-desc {
+				margin: 0 0 1.2rem;
 				color: var(--ink-soft);
-				line-height: 1.7;
-				display: -webkit-box;
-				-webkit-line-clamp: 2;
-				-webkit-box-orient: vertical;
-				overflow: hidden;
+				font-size: 0.95rem;
+				line-height: 1.85;
 			}
 			.tech {
 				display: flex;
 				flex-wrap: wrap;
-				gap: 0.45rem;
-				margin-top: auto;
+				gap: 0.2rem 0.55rem;
 			}
-			.card-arrow {
-				margin-left: auto;
-				transition: transform var(--dur-fast) var(--ease-soft);
-			}
-			.project-card:hover .card-arrow {
-				transform: translateX(3px);
-			}
-
-			.post-card {
-				display: flex;
+			.go {
+				display: inline-flex;
 				align-items: center;
-				gap: 1.1rem;
-				padding: 1.15rem 1.4rem;
-				text-decoration: none;
-				border-radius: var(--radius);
-				background: var(--glass-bg);
-				border: 1px solid var(--line);
-				transition: transform var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft);
+				gap: 0.45em;
+				margin-top: 1.4rem;
+				padding-bottom: 2px;
+				border-bottom: 1px solid currentColor;
+				font-size: 0.9rem;
+				color: var(--ink);
+				transition: gap var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
 			}
-			.post-card:hover {
-				transform: translateX(var(--lift-hover));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
-			}
-			.post-card .idx {
-				font-family: var(--font-mono);
-				font-size: 0.8rem;
+			.feature:hover .go,
+			.coming:hover .go {
+				gap: 0.8em;
 				color: var(--primary);
-				flex-shrink: 0;
-				width: 2ch;
-			}
-			.post-card .body {
-				flex: 1;
-				min-width: 0;
-			}
-			.post-card h3 {
-				margin: 0 0 0.2em;
-				font-size: 1.06rem;
-				transition: color 0.2s ease;
-			}
-			.post-card:hover h3 {
-				color: var(--primary);
-			}
-			.post-card .date {
-				margin: 0;
-				font-size: 0.8rem;
-				color: var(--muted);
-				font-family: var(--font-mono);
 			}
 
-			/* 「is coming.」开发预告板块：整幅长图卡，链接到详情页 */
-			.coming-card {
+			/* ============ 制作中 ============ */
+			.coming {
 				display: block;
 				text-decoration: none;
 				color: inherit;
-				background: var(--glass-bg);
-				backdrop-filter: blur(12px) saturate(1.1);
-				-webkit-backdrop-filter: blur(12px) saturate(1.1);
-				border: 1px solid var(--line);
-				border-radius: var(--radius-lg);
-				box-shadow: var(--shadow-sm);
+			}
+			.coming-media {
 				overflow: hidden;
-				transition: transform var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft);
+				border-radius: var(--r-media);
+				border: var(--rule);
+				background: #fff;
 			}
-			.coming-card:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md), 0 0 0 1px var(--primary-soft);
-			}
-			.coming-card :global(img) {
+			.coming-media :global(img) {
 				width: 100%;
 				height: auto;
 				display: block;
 			}
-			.coming-body {
+			.coming-caption {
+				display: grid;
+				grid-template-columns: auto minmax(0, 1fr) auto;
+				align-items: baseline;
+				gap: 0.3rem 1.4rem;
+				padding: 1.1rem 0 0;
+			}
+			.coming-caption h3 {
+				margin: 0;
+				font-size: 1.35rem;
 				display: flex;
 				align-items: center;
-				gap: 0.6rem;
-				flex-wrap: wrap;
-				padding: 1.2rem 1.5rem;
+				gap: 0.8rem;
 			}
-			.coming-body h3 {
+			.coming-caption p {
 				margin: 0;
-				font-size: 1.25rem;
+				color: var(--ink-soft);
+				font-size: 0.92rem;
+			}
+			.coming-caption .go {
+				margin: 0;
 			}
 
-			.posts-list {
-				display: flex;
-				flex-direction: column;
-				gap: 0.9rem;
+			/* ============ 最新文章：编号索引 ============ */
+			.post-index {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.post-row {
+				display: grid;
+				grid-template-columns: 2.4rem 8.5rem minmax(0, 1fr) auto;
+				grid-template-areas: 'idx date body arrow';
+				align-items: baseline;
+				gap: 0.2rem 1.2rem;
+				padding: 1.3rem 0;
+				border-bottom: var(--rule);
+				text-decoration: none;
+				color: inherit;
+			}
+			.post-index > li:first-child .post-row {
+				padding-top: 0.2rem;
+			}
+			.post-row .idx {
+				grid-area: idx;
+				font-family: var(--font-num);
+				font-size: 0.85rem;
+				color: var(--primary);
+			}
+			.post-row .date {
+				grid-area: date;
+				margin: 0;
+				font-family: var(--font-meta);
+				font-size: 0.78rem;
+				color: var(--muted);
+				white-space: nowrap;
+			}
+			.post-row .body {
+				grid-area: body;
+				min-width: 0;
+			}
+			.post-row h3 {
+				margin: 0;
+				font-size: 1.12rem;
+				line-height: 1.5;
+				transition: color var(--dur-fast) ease;
+			}
+			.post-row .desc {
+				margin: 0.3rem 0 0;
+				font-size: 0.88rem;
+				color: var(--muted);
+				line-height: 1.7;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.post-row .arrow {
+				grid-area: arrow;
+				color: var(--muted);
+				transition: transform var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
+			}
+			.post-row:hover h3,
+			.post-row:hover .arrow {
+				color: var(--primary);
+			}
+			.post-row:hover .arrow {
+				transform: translateX(4px);
 			}
 
-			@media (max-width: 720px) {
-				.hero {
-					margin-top: -56px;
-					padding: calc(56px + 4rem) 1.25rem 5.5rem;
-					min-height: 70vh;
-				}
-				.now-card {
-					margin-top: -2rem;
-					padding: 1.4rem;
-				}
-				.now-title {
-					font-size: 1.3rem;
+			@media (max-width: 860px) {
+				.status {
+					grid-template-columns: minmax(0, 1fr);
+					padding-top: 2rem;
 				}
 				.now-stats {
-					grid-template-columns: repeat(2, 1fr);
-					gap: 1.1rem 1.25rem;
+					grid-template-columns: repeat(4, minmax(0, 1fr));
 				}
-				.stat + .stat {
+				.stat {
+					padding: 0 0.9rem;
+				}
+				.stat:first-child {
 					border-left: none;
 					padding-left: 0;
 				}
-				.stat:nth-child(even) {
-					border-left: 1px solid var(--line);
-					padding-left: 1.25rem;
+				.stat dd {
+					font-size: 1.9rem;
+				}
+				.feature {
+					grid-template-columns: minmax(0, 1fr);
+					gap: 1.4rem;
+				}
+				.feature-list > li:nth-child(even) .feature-media {
+					order: 0;
+				}
+				.feature-list {
+					gap: 3.5rem;
+				}
+			}
+			@media (max-width: 720px) {
+				.hero {
+					margin-top: -56px;
+					min-height: 88vh;
+				}
+				.hero-inner {
+					padding-top: calc(56px + 3rem);
+				}
+				.hero-vert,
+				.foot-sep,
+				.scroll-hint {
+					display: none;
+				}
+				.hero-foot {
+					gap: 0.2rem 1.2rem;
 				}
 				.site-section {
-					margin-top: 2.4rem;
+					margin-top: 3.8rem;
+				}
+				.coming-caption {
+					grid-template-columns: minmax(0, 1fr) auto;
+				}
+				.coming-caption p {
+					grid-column: 1 / -1;
+					grid-row: 2;
+				}
+				.post-row {
+					grid-template-columns: 2rem minmax(0, 1fr) auto;
+					grid-template-areas:
+						'idx date arrow'
+						'idx body arrow';
+					gap: 0.25rem 0.8rem;
+				}
+				.post-row .desc {
+					white-space: normal;
+					display: -webkit-box;
+					-webkit-line-clamp: 2;
+					-webkit-box-orient: vertical;
 				}
 			}
 		</style>
@@ -652,168 +723,166 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 		<Header overHero />
 		<main class="container" id="main-content" tabindex="-1">
 			<section class="hero">
-				<div
-					class="hero-photo"
-					role="img"
-					aria-label="《世界计划》朝比奈真冬卡面「交相辉映的笑容」插画背景"
-					style={`background-image:url('${HeroBg.src}')`}
-				></div>
+				<div class="hero-photo" aria-hidden="true">
+					<Image
+						src={HeroBg}
+						alt=""
+						widths={[640, 960, 1440, 2048]}
+						sizes="100vw"
+						loading="eager"
+						fetchpriority="high"
+						decoding="async"
+					/>
+				</div>
+				<p class="hero-vert" aria-hidden="true"><span class="tcy">25</span>時、ナイトコードで。</p>
 				<div class="hero-inner">
-					<p class="eyebrow">lapismind · game world</p>
-					<h1>谢谢你，找到了我。</h1>
-					<p class="lead">見つけてくれて、ありがとう —— 朝比奈真冬</p>
-					<div class="hero-actions">
-						<a class="btn btn-primary" href="/projects/">看看我的游戏 <span class="card-arrow">→</span></a>
-						<a class="btn btn-ghost" href={GITHUB_URL} target="_blank" rel="noopener">GitHub ↗</a>
-					</div>
-					<div class="player-chip" role="img" aria-label="Lapismind 玩家档案：在线">
-						<img src={Mascot.src} alt="Lapismind 玩家形象" width="44" height="44" />
-						<div>
-							<p class="pc-name">
-								LAPISMIND
-								<span class="pc-dot" title="在线"></span>
-							</p>
-							<p class="pc-role">独立开发者 · LV.1 成长中</p>
+					<div class="hero-copy">
+						<p class="hero-kicker">Lapismind · SEKAI</p>
+						<h1>谢谢你，找到了我。</h1>
+						<p class="lead">見つけてくれて、ありがとう —— 朝比奈真冬</p>
+						<div class="hero-actions">
+							<a class="btn btn-primary" href="/projects/">进来坐坐 <span aria-hidden="true">→</span></a>
+							<a class="hero-link" href={GITHUB_URL} target="_blank" rel="noopener">GitHub ↗</a>
 						</div>
 					</div>
-					<button class="music-chip" id="md-open-chip" type="button">
-						<svg class="note" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
-							><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"></path
-						></svg>
-						<span>今日箱曲：バグ</span>
-					</button>
+					<div class="hero-foot">
+						<p class="player-chip" aria-label="Lapismind 玩家档案：在线">
+							<img src={Mascot.src} alt="" width="34" height="34" />
+							<span class="pc-name">LAPISMIND <span class="pc-dot" title="在线"></span></span>
+							<span class="pc-role">独立开发者 · LV.1</span>
+						</p>
+						<span class="foot-sep" aria-hidden="true"></span>
+						<button class="music-chip" id="md-open-chip" type="button">
+							<svg class="note" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+								><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"></path
+							></svg>
+							<span>今日箱曲</span>
+							<b>バグ</b>
+						</button>
+						<a class="scroll-hint" href="#featured">
+							scroll
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+								stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+								><path d="M6 9l6 6 6-6"></path
+							></svg>
+						</a>
+					</div>
 				</div>
-				<a class="scroll-hint" href="#featured">
-					scroll
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-						stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-						><path d="M6 9l6 6 6-6"></path
-					></svg>
-				</a>
 			</section>
 
-			<section class="now-card glass reveal">
-				<div class="now-head">
-					<p class="eyebrow">status · 运行状态</p>
-					<p class="now-updated">
-						<span>最近更新</span>
-						<FormattedDate date={latestPost.data.pubDate} />
-					</p>
-				</div>
-				<div class="now-main">
-					<p class="now-title">
+			<section class="status reveal" aria-label="运行状态">
+				<div>
+					<p class="status-title">
 						<span class="now-dot" aria-hidden="true"></span>
 						SEKAI is running
 					</p>
 					<p class="now-lead">现在，我将演示 SEKAI 运行的框架。</p>
-					<p class="now-visitors" hidden>
-						今夜来访 <b id="now-visitors">—</b> 人 · 七日 <b id="week-visitors">—</b> 人
-					</p>
-				</div>
-				<div class="now-stats">
-					<div class="stat">
-						<b>{games.length}</b>
-						<span>游戏</span>
-					</div>
-					<div class="stat">
-						<b>{onlineCount}</b>
-						<span>已上线</span>
-					</div>
-					<div class="stat">
-						<b>{songs.length}</b>
-						<span>曲库</span>
-					</div>
-					<div class="stat">
-						<b>{allPosts.length}</b>
-						<span>文章</span>
+					<div class="status-meta">
+						<p class="late-time" id="late-time" hidden>
+							现在是 <b>--:--</b>
+						</p>
+						<p>最近更新 <FormattedDate date={latestPost.data.pubDate} /></p>
+						<p class="now-visitors" hidden>
+							今夜来访 <b id="now-visitors">—</b> 人 · 七日 <b id="week-visitors">—</b> 人
+						</p>
 					</div>
 				</div>
+				<dl class="now-stats">
+					<div class="stat"><dt>游戏</dt><dd>{games.length}</dd></div>
+					<div class="stat"><dt>已上线</dt><dd>{onlineCount}</dd></div>
+					<div class="stat"><dt>曲库</dt><dd>{songs.length}</dd></div>
+					<div class="stat"><dt>文章</dt><dd>{allPosts.length}</dd></div>
+				</dl>
 			</section>
 
-			<section class="site-section reveal" id="featured">
-				<div class="section-title">
-					<div>
-						<p class="eyebrow">sekai picks</p>
-						<h2>SEKAI 精选</h2>
-					</div>
-					<div class="more-links">
+			<section class="site-section" id="featured">
+				<header class="sec-head reveal">
+					<span class="sec-no">01</span>
+					<h2>SEKAI 精选</h2>
+					<span class="sec-en">selected</span>
+					<div class="sec-links">
 						<a class="more-link" href="/projects/">全部游戏 →</a>
 						<a class="more-link" href="/works/">全部 Projects →</a>
 					</div>
-				</div>
-				<div class="card-grid">
+				</header>
+				<ol class="feature-list">
 					{
-						featured.map((p, i) => (
-							<a class="project-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={p.href}>
-								<div class="card-media">
-									{projectImages[p.slug] ? (
-										<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 封面`} />
-									) : (
-										<div class="card-media-fallback">{p.name.slice(0, 1)}</div>
-									)}
-								</div>
-								<div class="card-body">
-									<div class="card-head">
+						featured.map((p) => (
+							<li class="reveal">
+								<a class="feature" href={p.href}>
+									<div class="feature-media">
+										{projectImages[p.slug] ? (
+											<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 封面`} widths={[480, 760, 1100]} sizes="(max-width: 860px) 92vw, 640px" />
+										) : (
+											<div class="media-fallback">{p.name.slice(0, 1)}</div>
+										)}
+									</div>
+									<div>
+										<p class="feature-meta">
+											<span>{p.kind}</span>
+											<span class={`status-badge status-${p.status}`}>
+												{p.version ?? (p.status === 'online' ? 'online' : '开发中')}
+											</span>
+										</p>
 										<h3>{p.name}</h3>
-										<span class={`status-badge status-${p.status}`}>
-											{p.version ?? (p.status === 'online' ? 'online' : '开发中')}
-										</span>
+										<p class="feature-sub">{p.subtitle}</p>
+										<p class="feature-desc">{p.description}</p>
+										<div class="tech">
+											{p.tech.map((t) => <span class="tag">{t}</span>)}
+										</div>
+										<span class="go">查看详情 <span aria-hidden="true">→</span></span>
 									</div>
-									<p class="card-subtitle">{p.subtitle}</p>
-									<p class="card-desc">{p.description}</p>
-									<div class="tech">
-										{p.tech.map((t) => <span class="tag">{t}</span>)}
-										<span class="card-arrow" aria-hidden="true">→</span>
-									</div>
-								</div>
-							</a>
+								</a>
+							</li>
 						))
 					}
-				</div>
+				</ol>
 			</section>
 
-			<section class="site-section reveal" id="coming">
-				<div class="section-title">
-					<div>
-						<p class="eyebrow">is coming</p>
-						<h2>is coming.</h2>
+			<section class="site-section" id="coming">
+				<header class="sec-head reveal">
+					<span class="sec-no">02</span>
+					<h2>is coming.</h2>
+					<span class="sec-en">in production</span>
+				</header>
+				<a class="coming reveal" href="/projects/niigo-party/">
+					<div class="coming-media">
+						<Image src={NiigoPartyLineup} alt="niigo-party 立绘阵容" />
 					</div>
-				</div>
-				<a class="coming-card reveal" href="/projects/niigo-party/">
-					<Image src={NiigoPartyLineup} alt="niigo-party 立绘阵容" />
-					<div class="coming-body">
-						<h3>niigo-party</h3>
-						<span class="status-badge status-developing">开发中</span>
-						<p class="card-subtitle" style="margin:0">25時、ナイトコードで。 四人回合制派对游戏</p>
-						<span class="card-arrow" aria-hidden="true">→</span>
+					<div class="coming-caption">
+						<h3>niigo-party <span class="status-badge status-developing">开发中</span></h3>
+						<p>25時、ナイトコードで。 四人回合制派对游戏</p>
+						<span class="go">去看看 <span aria-hidden="true">→</span></span>
 					</div>
 				</a>
 			</section>
 
-			<section class="site-section reveal">
-				<div class="section-title">
-					<div>
-						<p class="eyebrow">latest posts</p>
-						<h2>最新博客</h2>
+			<section class="site-section">
+				<header class="sec-head reveal">
+					<span class="sec-no">03</span>
+					<h2>最新博客</h2>
+					<span class="sec-en">journal</span>
+					<div class="sec-links">
+						<a class="more-link" href="/blog/">全部文章 →</a>
 					</div>
-					<a class="more-link" href="/blog/">全部文章 →</a>
-				</div>
-				<div class="posts-list">
+				</header>
+				<ol class="post-index">
 					{
 						posts.map((post, i) => (
-							<a class="post-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/blog/${post.id}/`}>
-								<span class="idx">0{i + 1}</span>
-								<div class="body">
-									<h3>{post.data.title}</h3>
-									<p class="date">
-										<FormattedDate date={post.data.pubDate} />
-									</p>
-								</div>
-								<span class="card-arrow" aria-hidden="true">→</span>
-							</a>
+							<li class="reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`}>
+								<a class="post-row" href={`/blog/${post.id}/`}>
+									<span class="idx">{pad2(i + 1)}</span>
+									<p class="date"><FormattedDate date={post.data.pubDate} /></p>
+									<div class="body">
+										<h3>{post.data.title}</h3>
+										<p class="desc">{post.data.description}</p>
+									</div>
+									<span class="arrow" aria-hidden="true">→</span>
+								</a>
+							</li>
 						))
 					}
-				</div>
+				</ol>
 			</section>
 		</main>
 		<Footer />
@@ -904,4 +973,32 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 	}
 	document.addEventListener('astro:page-load', loadVisitors);
 	loadVisitors();
+
+	// 25 時：本地时间 0—5 点算作"夜里"，0—4 点的钟点按箱区习惯写成 24—28 时。
+	// 状态条里亮出"现在是 25:14"，Hero 落款点亮（CSS 认 html.late-night）。
+	let lateTimer = 0;
+	function updateLateNight() {
+		const root = document.documentElement;
+		const el = document.getElementById('late-time');
+		if (!el && !root.classList.contains('late-night')) return;
+		const now = new Date();
+		const h = now.getHours();
+		const late = h < 5;
+		root.classList.toggle('late-night', late);
+		if (!el) return;
+		if (late) {
+			el.querySelector('b')!.textContent =
+				`${h + 24}:${String(now.getMinutes()).padStart(2, '0')}`;
+			el.hidden = false;
+		} else {
+			el.hidden = true;
+		}
+	}
+	function initLateNight() {
+		if (lateTimer) window.clearInterval(lateTimer);
+		updateLateNight();
+		lateTimer = window.setInterval(updateLateNight, 30_000);
+	}
+	document.addEventListener('astro:page-load', initLateNight);
+	initLateNight();
 </script>

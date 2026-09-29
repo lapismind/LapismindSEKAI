@@ -33,6 +33,20 @@
 	/* aliases，兼容旧页面遗留引用 */
 	--accent: var(--primary);
 	--accent-dark: var(--primary-2);
+
+	/* ── 编辑式排版（2026-09-29 改版）──
+	   站点结构靠发丝线和编号组织，不靠"一格一张圆角卡"。
+	   --r-media  图片/截图的圆角：小到只是去掉锋利感，不再读成"卡片"
+	   --rule     分栏用的实线；--rule-ink 是板块起头那条更重的墨色线
+	   --font-meta 小标签/日期字体：等宽拉丁 + 霞鹜文楷兜中文。
+	     直接用 --font-mono 排中文会回落系统宋体（lessons-learned #43），
+	     所以文楷必须排在通用族 monospace 之前。 */
+	--r-media: 6px;
+	--rule: 1px solid var(--line);
+	--rule-ink: 1px solid color-mix(in oklab, var(--ink) 78%, transparent);
+	--font-meta: ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, 'LXGW WenKai Screen',
+		'Atkinson', monospace;
+	--font-num: 'Atkinson', ui-monospace, 'SF Mono', Consolas, monospace;
 }
 
 @media (max-width: 480px) {
@@ -61,6 +75,8 @@ body {
 	cursor: var(--cursor-default);
 	font-size: 18px;
 	line-height: 1.85;
+	/* 中西文混排自动加空隙（数字/拉丁与汉字之间）。支持的浏览器生效，不支持的忽略。 */
+	text-autospace: normal;
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
 	word-wrap: break-word;
@@ -223,20 +239,106 @@ hr {
 	display: inline-flex;
 	align-items: center;
 	gap: 0.6em;
-	font-family: var(--font-mono);
+	font-family: var(--font-meta);
 	font-size: 0.72rem;
 	font-weight: 500;
-	letter-spacing: 0.22em;
+	letter-spacing: 0.18em;
 	text-transform: uppercase;
-	color: var(--primary);
+	color: var(--muted);
 	margin: 0 0 0.8rem;
 }
-.eyebrow::before {
-	content: '';
-	width: 1.6em;
-	height: 1px;
-	background: currentColor;
-	opacity: 0.75;
+
+/* ── 板块页眉 ──
+   墨色线起头 → 编号 → 标题 → 小字英文 → 右侧链接。取代旧的
+   "eyebrow + h2 + 渐变下划线"。编号是真实顺序，不是装饰。 */
+.sec-head {
+	display: flex;
+	align-items: baseline;
+	flex-wrap: wrap;
+	gap: 0.35rem 1.1rem;
+	border-top: var(--rule-ink);
+	padding-top: 0.9rem;
+	margin-bottom: 2.2rem;
+}
+.sec-head h2 {
+	margin: 0;
+	font-size: clamp(1.45rem, 1.15rem + 1vw, 1.9rem);
+	letter-spacing: -0.01em;
+}
+.sec-no {
+	font-family: var(--font-num);
+	font-size: 0.85rem;
+	font-variant-numeric: tabular-nums;
+	color: var(--primary);
+	min-width: 2ch;
+}
+.sec-en {
+	font-family: var(--font-meta);
+	font-size: 0.72rem;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+.sec-links {
+	margin-left: auto;
+	display: flex;
+	gap: 1.2rem;
+	flex-wrap: wrap;
+	font-size: 0.88rem;
+}
+
+/* 页面大标题：左对齐、下接墨色线。列表页（博客/游戏/Projects）共用。 */
+.page-title {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 0.5rem 2rem;
+	padding-bottom: 1.4rem;
+	border-bottom: var(--rule-ink);
+	margin-bottom: 3rem;
+}
+.page-title h1 {
+	margin: 0;
+	font-size: clamp(2.4rem, 1.5rem + 3.4vw, 3.8rem);
+	line-height: 1.1;
+}
+.page-title .lead {
+	grid-column: 1;
+	margin: 0.4rem 0 0;
+	max-width: 38em;
+	color: var(--ink-soft);
+	font-size: 1.02rem;
+}
+.page-title .count {
+	grid-column: 2;
+	grid-row: 1 / span 2;
+	align-self: end;
+	margin: 0;
+	font-family: var(--font-meta);
+	font-size: 0.78rem;
+	letter-spacing: 0.12em;
+	color: var(--muted);
+	text-align: right;
+	white-space: nowrap;
+}
+.page-title .count b {
+	display: block;
+	font-family: var(--font-num);
+	font-size: 2.6rem;
+	line-height: 1;
+	letter-spacing: -0.02em;
+	color: var(--ink);
+	font-weight: 700;
+}
+
+/* 技术栈等"属性清单"：一行斜线分隔的小字，不做成药丸云 */
+.stack {
+	margin: 0;
+	font-family: var(--font-meta);
+	font-size: 0.76rem;
+	letter-spacing: 0.02em;
+	color: var(--muted);
+	line-height: 1.7;
 }
 
 .section-title {
@@ -308,26 +410,32 @@ html:not(.has-js) .section-title h2::after {
 .btn {
 	display: inline-flex;
 	align-items: center;
-	gap: 0.45em;
-	padding: 0.65em 1.5em;
-	border-radius: 999px;
-	font-size: 0.98rem;
+	gap: 0.55em;
+	padding: 0.72em 1.35em;
+	border-radius: 3px;
+	font-size: 0.95rem;
 	line-height: 1.4;
+	letter-spacing: 0.02em;
 	text-decoration: none;
-	transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease,
-		color 0.2s ease, border-color 0.2s ease;
-	border: 1.5px solid transparent;
+	transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease,
+		border-color var(--dur-fast) ease, gap var(--dur-fast) var(--ease-soft);
+	border: 1px solid transparent;
 	cursor: var(--cursor-pointer);
 }
+.btn:hover {
+	gap: 0.85em;
+}
 .btn-primary {
-	background: var(--gradient);
+	background: var(--primary);
 	color: #fff;
-	box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover {
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-md);
+	background: var(--primary-bright);
 	color: #fff;
+}
+:root[data-theme='dark'] .btn-primary,
+:root[data-theme='dark'] .btn-primary:hover {
+	color: var(--on-accent);
 }
 .btn-ghost {
 	background: transparent;
@@ -335,49 +443,58 @@ html:not(.has-js) .section-title h2::after {
 	color: var(--ink);
 }
 .btn-ghost:hover {
-	border-color: var(--primary);
-	color: var(--primary);
-	transform: translateY(-2px);
+	border-color: var(--ink);
+	color: var(--ink);
 }
 
+/* 标签：斜线分隔的小字，不再是药丸。容器仍是 flex + gap（各页的 .tech）。
+   分隔符挂在前一个标签后面：换行时斜线留在行尾，不会跑到下一行开头。 */
 .tag {
-	display: inline-block;
-	font-size: 0.78rem;
-	font-family: var(--font-mono);
-	padding: 0.22em 0.85em;
-	border-radius: 999px;
-	background: var(--primary-ghost);
-	color: var(--primary);
-	border: 1px solid var(--line);
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.55em;
+	font-size: 0.76rem;
+	font-family: var(--font-meta);
+	letter-spacing: 0.02em;
+	color: var(--muted);
 	white-space: nowrap;
 }
+.tag:has(+ .tag)::after {
+	content: '/';
+	color: var(--line-strong);
+}
 
+/* 状态：一颗色点 + 小字，不再是彩色胶囊 */
 .status-badge {
-	display: inline-block;
-	font-size: 0.68rem;
-	font-family: var(--font-mono);
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45em;
+	font-size: 0.7rem;
+	font-family: var(--font-meta);
 	font-weight: 600;
-	letter-spacing: 0.08em;
-	padding: 0.18em 0.7em;
-	border-radius: 999px;
+	letter-spacing: 0.12em;
 	vertical-align: middle;
 	text-transform: uppercase;
+	white-space: nowrap;
+}
+.status-badge::before {
+	content: '';
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
 }
 .status-online {
-	background: oklch(0.9 0.09 155);
-	color: oklch(0.42 0.13 155);
+	color: oklch(0.5 0.13 155);
 }
 .status-developing {
-	background: oklch(0.92 0.08 85);
-	color: oklch(0.5 0.12 70);
+	color: oklch(0.54 0.13 65);
 }
 :root[data-theme='dark'] .status-online {
-	background: oklch(0.28 0.06 155);
-	color: oklch(0.82 0.11 155);
+	color: oklch(0.8 0.12 155);
 }
 :root[data-theme='dark'] .status-developing {
-	background: oklch(0.3 0.06 85);
-	color: oklch(0.85 0.1 80);
+	color: oklch(0.84 0.11 80);
 }
 
 /* 玻璃质感卡片：配方来自 design-kit base.css 的 .glass（含 -webkit- 前缀） */
@@ -388,6 +505,8 @@ html:not(.has-js) .section-title h2::after {
 .prose {
 	font-size: 1.03rem;
 	line-height: 1.9;
+	/* 中文长文的舒适行宽上限：约 40 字/行。宽屏上超出就截住，左对齐不居中 */
+	max-width: 42em;
 }
 .prose > :first-child {
 	margin-top: 0;
@@ -396,27 +515,22 @@ html:not(.has-js) .section-title h2::after {
 	margin-bottom: 1.6em;
 }
 .prose h2 {
-	margin-top: 2.4em;
-	padding-bottom: 0.45em;
-	border-bottom: 1px solid var(--line);
-	display: flex;
-	align-items: center;
-	gap: 0.6em;
+	margin-top: 2.6em;
+	padding-top: 0.8em;
+	border-top: var(--rule);
 	scroll-margin-top: 92px;
 }
 .prose h2::before {
 	content: '';
-	width: 0.8em;
-	height: 0.8em;
-	border-radius: 3px;
-	background: var(--gradient);
-	flex-shrink: 0;
+	display: block;
+	width: 2.2em;
+	height: 2px;
+	margin: calc(-0.8em - 1.5px) 0 0.8em;
+	background: var(--primary);
 }
 .prose h3 {
 	margin-top: 2em;
-	padding-left: 0.75em;
-	border-left: 4px solid var(--primary);
-	border-radius: 2px;
+	font-size: 1.2rem;
 	scroll-margin-top: 92px;
 }
 .prose a {
@@ -443,12 +557,9 @@ html:not(.has-js) .section-title h2::after {
 }
 .prose blockquote {
 	margin: 0 0 1.8em;
-	padding: 1em 1.4em;
-	border-left: 4px solid var(--primary);
-	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-	background: var(--primary-ghost);
+	padding: 0.2em 0 0.2em 1.3em;
+	border-left: 2px solid var(--primary);
 	color: var(--ink-soft);
-	font-size: 1.05em;
 }
 .prose blockquote p:last-child {
 	margin-bottom: 0;
@@ -456,22 +567,20 @@ html:not(.has-js) .section-title h2::after {
 .prose code {
 	font-family: var(--font-mono);
 	font-size: 0.88em;
-	padding: 0.15em 0.45em;
-	border-radius: 6px;
+	padding: 0.1em 0.4em;
+	border-radius: 3px;
 	background: var(--primary-ghost);
 	color: var(--primary);
-	border: 1px solid var(--line);
 }
 .prose pre {
 	font-family: var(--font-mono);
 	font-size: 0.86rem;
 	line-height: 1.7;
 	margin: 0 0 1.8em;
-	padding: 1.4em 1.6em;
-	border-radius: var(--radius);
+	padding: 1.3em 1.5em;
+	border-radius: var(--r-media);
 	background: var(--card-solid);
-	border: 1px solid var(--line);
-	box-shadow: var(--shadow-sm);
+	border: var(--rule);
 	overflow-x: auto;
 }
 .prose pre code {
@@ -508,17 +617,21 @@ html:not(.has-js) .section-title h2::after {
 }
 .prose th,
 .prose td {
-	padding: 0.6em 0.9em;
-	border: 1px solid var(--line);
+	padding: 0.6em 0.9em 0.6em 0;
+	border-bottom: var(--rule);
 	text-align: left;
+	vertical-align: top;
 }
 .prose th {
-	background: var(--primary-ghost);
-	color: var(--ink);
+	border-bottom: var(--rule-ink);
+	font-family: var(--font-meta);
+	font-size: 0.82em;
+	letter-spacing: 0.06em;
+	color: var(--muted);
+	font-weight: 600;
 }
 .prose img {
-	border-radius: var(--radius);
-	box-shadow: var(--shadow-sm);
+	border-radius: var(--r-media);
 }
 .prose hr {
 	border: none;

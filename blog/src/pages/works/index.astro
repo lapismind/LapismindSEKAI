@@ -11,156 +11,183 @@ import { works } from '../../data/projects';
 	<head>
 		<BaseHead title={`Projects - ${SITE_TITLE}`} description="Lapismind 的软件作品：工具、mod 与开源仓库" />
 		<style>
-			.page-head {
-				margin-bottom: 3rem;
-			}
-			.page-head p.lead {
-				color: var(--muted);
-				font-size: 1.08rem;
-				max-width: 42em;
-				margin: 0;
-			}
 			.work-list {
-				display: flex;
-				flex-direction: column;
-				gap: 1.6rem;
-			}
-			.work-item {
-				padding: 1.7rem 1.9rem;
-				border-radius: var(--radius-lg);
-				border: 1px solid var(--line);
-				background: var(--card-solid);
-				box-shadow: var(--shadow-sm);
-				transition: border-color var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft), transform var(--dur-base) var(--ease-soft);
-			}
-			.work-item:hover {
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
-				transform: translateY(-2px);
-			}
-			.work-head {
-				display: flex;
-				align-items: baseline;
-				gap: 0.7rem;
-				flex-wrap: wrap;
-			}
-			.work-head h2 {
+				list-style: none;
 				margin: 0;
-				font-size: 1.4rem;
+				padding: 0;
 			}
-			.work-head h2 :global(a) {
+			/* 一条作品一行：编号 / 正文 / 属性栏，行与行之间只有一道发丝线 */
+			.work {
+				display: grid;
+				grid-template-columns: 3rem minmax(0, 1fr) 15rem;
+				gap: 1rem 2.5rem;
+				padding: 2.2rem 0;
+				border-bottom: var(--rule);
+			}
+			.work-list > li:first-child .work {
+				padding-top: 0.4rem;
+			}
+			.work .no {
+				font-family: var(--font-num);
+				font-size: 0.9rem;
+				color: var(--primary);
+				line-height: 2.6;
+			}
+			.work h2 {
+				margin: 0 0 0.5rem;
+				font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+			}
+			.work h2 :global(a) {
 				color: inherit;
 				text-decoration: none;
-				transition: color 0.2s ease;
+				transition: color var(--dur-fast) ease;
 			}
-			.work-head h2 :global(a:hover) {
+			.work h2 :global(a:hover) {
 				color: var(--primary);
 			}
-			.work-subtitle {
-				margin: 0.45rem 0 0;
-				font-size: 0.88rem;
+			.work .sub {
+				margin: 0 0 0.9rem;
 				color: var(--primary);
-				font-family: var(--font-mono);
-			}
-			.work-desc {
-				margin: 0.8rem 0 0;
-				max-width: 68ch;
 				font-size: 0.95rem;
-				color: var(--ink-soft);
-				line-height: 1.8;
 			}
-			.work-foot {
-				display: flex;
+			.work .desc {
+				margin: 0;
+				max-width: 62ch;
+				color: var(--ink-soft);
+				font-size: 0.95rem;
+				line-height: 1.85;
+			}
+			.go {
+				display: inline-flex;
 				align-items: center;
-				justify-content: space-between;
-				gap: 0.9rem 1.5rem;
-				flex-wrap: wrap;
-				margin-top: 1.1rem;
+				gap: 0.45em;
+				margin-top: 1.3rem;
+				padding-bottom: 2px;
+				border-bottom: 1px solid currentColor;
+				font-size: 0.9rem;
+				color: var(--ink);
+				text-decoration: none;
+				transition: gap var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
+			}
+			.go:hover {
+				gap: 0.8em;
+				color: var(--primary);
+			}
+			.facts {
+				margin: 0.5rem 0 0;
+				display: grid;
+				align-content: start;
+			}
+			.facts > div {
+				display: grid;
+				grid-template-columns: 3.2rem minmax(0, 1fr);
+				gap: 0.8rem;
+				padding: 0.6rem 0;
+				border-top: var(--rule);
+			}
+			.facts > div:last-child {
+				border-bottom: var(--rule);
+			}
+			.facts dt {
+				font-family: var(--font-meta);
+				font-size: 0.74rem;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+				line-height: 1.9;
+			}
+			.facts dd {
+				margin: 0;
+				font-size: 0.86rem;
+				line-height: 1.7;
+			}
+			.facts .ver {
+				font-family: var(--font-meta);
+				font-size: 0.8rem;
+				color: var(--ink);
+			}
+			.facts .links {
+				display: flex;
+				gap: 1rem;
+			}
+			.facts .links :global(a) {
+				font-weight: 600;
 			}
 			.tech {
 				display: flex;
 				flex-wrap: wrap;
-				gap: 0.45rem;
-			}
-			.work-links {
-				display: flex;
-				align-items: center;
-				gap: 1rem;
-				font-size: 0.88rem;
-				color: var(--muted);
-			}
-			.work-links :global(a) {
-				color: var(--primary);
-				font-weight: 600;
-				text-decoration: none;
-			}
-			.work-links :global(a:hover) {
-				text-decoration: underline;
-			}
-			.work-go {
-				font-size: 0.9rem;
-				white-space: nowrap;
-				transition: transform var(--dur-fast) var(--ease-soft);
-			}
-			.work-item:hover .work-go {
-				transform: translateX(3px);
+				gap: 0.1rem 0.55rem;
 			}
 			.more-note {
-				margin-top: 2.5rem;
-				padding: 1.1rem 1.4rem;
-				border-radius: var(--radius);
-				border: 1px dashed var(--line-strong);
+				margin: 3rem 0 0;
 				color: var(--muted);
 				font-size: 0.9rem;
 			}
 			.more-note a {
 				font-weight: 600;
 			}
+
+			@media (max-width: 760px) {
+				.work {
+					grid-template-columns: 2.2rem minmax(0, 1fr);
+				}
+				.facts {
+					grid-column: 2;
+				}
+			}
 		</style>
 	</head>
 	<body>
 		<Header />
 		<main class="container page-main" id="main-content" tabindex="-1">
-			<header class="page-head reveal">
-				<p class="eyebrow">workbench · projects</p>
+			<header class="page-title reveal">
 				<h1>Projects</h1>
 				<p class="lead">
 					游戏之外的作品：工具、mod 与开源仓库，之后或许会发布到 GitHub。
 				</p>
+				<p class="count"><b>{works.length}</b>workbench</p>
 			</header>
-			<div class="work-list">
+			<ol class="work-list">
 				{
 					works.map((p, i) => (
-						<article class="work-item reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`}>
-							<div class="work-head">
-								<h2><a href={`/works/${p.slug}/`}>{p.name}</a></h2>
-								<span class={`status-badge status-${p.status}`}>
-									{p.version ?? (p.status === 'online' ? 'online' : '开发中')}
-								</span>
-							</div>
-							<p class="work-subtitle">{p.subtitle}</p>
-							<p class="work-desc">{p.description}</p>
-							<div class="work-foot">
-								<div class="tech">
-									{p.tech.map((t) => <span class="tag">{t}</span>)}
-								</div>
-								<div class="work-links">
-									{p.links.github && (
-										<a href={p.links.github} target="_blank" rel="noopener">
-											GitHub
-										</a>
-									)}
-									{p.links.download && <a href={p.links.download}>下载</a>}
-									<a class="work-go" href={`/works/${p.slug}/`}>
-										查看详情 →
+						<li class="reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`}>
+							<article class="work">
+								<span class="no">{String(i + 1).padStart(2, '0')}</span>
+								<div>
+									<h2><a href={`/works/${p.slug}/`}>{p.name}</a></h2>
+									<p class="sub">{p.subtitle}</p>
+									<p class="desc">{p.description}</p>
+									<a class="go" href={`/works/${p.slug}/`}>
+										查看详情 <span aria-hidden="true">→</span>
 									</a>
 								</div>
-							</div>
-						</article>
+								<dl class="facts">
+									<div>
+										<dt>版本</dt>
+										<dd class="ver">{p.version ?? (p.status === 'online' ? 'online' : '开发中')}</dd>
+									</div>
+									<div>
+										<dt>技术</dt>
+										<dd class="tech">{p.tech.map((t) => <span class="tag">{t}</span>)}</dd>
+									</div>
+									{(p.links.github || p.links.download) && (
+										<div>
+											<dt>获取</dt>
+											<dd class="links">
+												{p.links.github && (
+													<a href={p.links.github} target="_blank" rel="noopener">
+														GitHub
+													</a>
+												)}
+												{p.links.download && <a href={p.links.download}>下载</a>}
+											</dd>
+										</div>
+									)}
+								</dl>
+							</article>
+						</li>
 					))
 				}
-			</div>
+			</ol>
 			<p class="more-note reveal">
 				更多项目整理中——GitHub 上还有：<a href={GITHUB_URL} target="_blank" rel="noopener">@lapismind</a>
 			</p>

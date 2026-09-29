@@ -45,53 +45,38 @@ const waves = [
 			.page-head {
 				margin-bottom: 2.6rem;
 			}
+			/* 资料区：头像 + 大号名字直接排在页面上，不装盒；下面的板块页眉自带墨色线 */
 			.profile-card {
 				display: grid;
 				grid-template-columns: auto 1fr;
-				gap: 1.8rem;
+				gap: 2rem;
 				align-items: center;
-				padding: 2rem 2.2rem;
-				margin-bottom: 1.6rem;
-				position: relative;
-				overflow: hidden;
-			}
-			.profile-card::after {
-				content: '';
-				position: absolute;
-				inset: 0;
-				pointer-events: none;
-				background: radial-gradient(
-					420px 180px at 88% 8%,
-					oklch(0.72 0.14 var(--hue-accent) / 0.12),
-					transparent 70%
-				);
+				padding: 0.5rem 0 0;
+				margin-bottom: 1rem;
 			}
 			.avatar-wrap {
 				position: relative;
 			}
 			.avatar-wrap :global(img) {
-				width: 116px;
-				height: 116px;
-				border-radius: 28px;
+				width: 112px;
+				height: 112px;
+				border-radius: var(--r-media);
 				object-fit: cover;
-				border: 3px solid var(--card-solid);
-				box-shadow: 0 0 0 1px var(--line-strong), var(--shadow-md);
+				display: block;
 			}
 			.avatar-level {
 				position: absolute;
-				left: 50%;
-				bottom: -12px;
-				transform: translateX(-50%);
-				background: var(--gradient);
-				color: #fff;
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
+				left: 0;
+				bottom: -0.9rem;
+				background: var(--ink);
+				color: var(--page-bg);
+				font-family: var(--font-num);
+				font-size: 0.7rem;
 				font-weight: 700;
 				letter-spacing: 0.08em;
-				padding: 0.22em 0.9em;
-				border-radius: 999px;
+				padding: 0.15em 0.6em;
+				border-radius: 2px;
 				white-space: nowrap;
-				box-shadow: var(--shadow-sm);
 			}
 			.identity {
 				position: relative;
@@ -100,36 +85,39 @@ const waves = [
 			.identity .name-line {
 				display: flex;
 				align-items: center;
-				gap: 0.7rem;
+				gap: 1rem;
 				flex-wrap: wrap;
-				margin-bottom: 0.35rem;
+				margin-bottom: 0.4rem;
 			}
 			.identity h1 {
 				margin: 0;
-				font-size: 1.9rem;
+				font-size: clamp(2.2rem, 1.6rem + 2vw, 3rem);
+				line-height: 1.1;
 			}
 			.online-badge {
 				display: inline-flex;
 				align-items: center;
-				gap: 0.4em;
-				font-family: var(--font-mono);
-				font-size: 0.75rem;
-				letter-spacing: 0.12em;
-				color: oklch(0.52 0.13 155);
+				gap: 0.45em;
+				font-family: var(--font-meta);
+				font-size: 0.7rem;
+				font-weight: 600;
+				letter-spacing: 0.14em;
+				color: oklch(0.5 0.13 155);
 				text-transform: uppercase;
 			}
+			:global(:root[data-theme='dark']) .online-badge {
+				color: oklch(0.8 0.12 155);
+			}
 			.online-badge .dot {
-				width: 8px;
-				height: 8px;
+				width: 6px;
+				height: 6px;
 				border-radius: 50%;
-				background: oklch(0.68 0.16 150);
-				box-shadow: 0 0 0 3px oklch(0.68 0.16 150 / 0.18);
+				background: currentColor;
 			}
 			.identity .role {
 				margin: 0 0 0.7rem;
 				color: var(--primary);
 				font-size: 0.95rem;
-				font-family: var(--font-mono);
 			}
 			.identity .bio {
 				margin: 0;
@@ -138,59 +126,72 @@ const waves = [
 			}
 
 			.section-block {
-				margin-top: 2rem;
+				margin-top: 4rem;
 			}
+			/* 做过的东西：2×2 的发丝线表格，格与格之间只有线 */
 			.made-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-				gap: 1rem;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				border-top: var(--rule);
 			}
 			.made-card {
 				display: block;
 				text-decoration: none;
-				padding: 1.3rem 1.4rem;
-				min-height: 10rem;
+				color: inherit;
+				padding: 1.4rem 1.6rem 1.5rem 0;
+				border-bottom: var(--rule);
 			}
-			a.made-card {
-				transition: transform var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft);
-			}
-			a.made-card:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
+			.made-card:nth-child(even) {
+				padding-left: 1.6rem;
+				padding-right: 0;
+				border-left: var(--rule);
 			}
 			.made-card .made-type {
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
-				letter-spacing: 0.2em;
+				font-family: var(--font-meta);
+				font-size: 0.7rem;
+				letter-spacing: 0.18em;
 				text-transform: uppercase;
-				color: var(--primary);
-				margin: 0 0 0.5rem;
+				color: var(--muted);
+				margin: 0 0 0.6rem;
 			}
 			.made-card h3 {
 				margin: 0 0 0.4rem;
-				font-size: 1.15rem;
+				font-size: 1.2rem;
+				transition: color var(--dur-fast) ease;
+			}
+			a.made-card:hover h3 {
+				color: var(--primary);
 			}
 			.made-card p {
 				margin: 0;
-				font-size: 0.88rem;
-				color: var(--muted);
-				line-height: 1.7;
+				font-size: 0.9rem;
+				color: var(--ink-soft);
+				line-height: 1.75;
 			}
 			.made-card .go {
-				margin-top: 0.8rem;
+				margin-top: 0.9rem;
 				display: inline-flex;
 				align-items: center;
-				gap: 0.35em;
-				font-family: var(--font-mono);
-				font-size: 0.82rem;
-				color: var(--primary);
-				transition: gap 0.25s ease;
+				gap: 0.4em;
+				font-size: 0.85rem;
+				color: var(--ink);
+				border-bottom: 1px solid currentColor;
+				padding-bottom: 1px;
+				transition: gap var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
 			}
 			a.made-card:hover .go {
-				gap: 0.7em;
+				gap: 0.75em;
+				color: var(--primary);
+			}
+			@media (max-width: 560px) {
+				.made-grid {
+					grid-template-columns: minmax(0, 1fr);
+				}
+				.made-card,
+				.made-card:nth-child(even) {
+					padding: 1.3rem 0;
+					border-left: none;
+				}
 			}
 
 			/* ---------- 单推角色卡：一只水族箱 ----------
@@ -825,12 +826,9 @@ const waves = [
 	<body>
 		<Header />
 		<main class="container-narrow page-main" id="main-content" tabindex="-1">
-			<header class="page-head reveal">
-				<p class="eyebrow">player profile</p>
-				<h1>关于我</h1>
-			</header>
+			<p class="eyebrow page-head reveal">关于我 · player profile</p>
 
-			<section class="profile-card glass reveal">
+			<section class="profile-card reveal">
 				<div class="avatar-wrap">
 					<img src={Mascot.src} alt={`${profileIdentity.displayName} 玩家形象`} width="116" height="116" />
 					<span class="avatar-level">{profileIdentity.level}</span>
@@ -846,7 +844,11 @@ const waves = [
 			</section>
 
 			<section class="section-block reveal">
-				<p class="eyebrow">oshi · 单推</p>
+				<header class="sec-head">
+					<span class="sec-no">01</span>
+					<h2>单推</h2>
+					<span class="sec-en">oshi</span>
+				</header>
 				{/* 方形视觉卡：姓名和罗马音已写进昼夜图；短句留给网页排版。
 				   亮色＝白天（她抬头），暗色＝夜里（她低头）—— 切主题是换一个时辰。 */}
 				<div class="oshi-card">
@@ -933,25 +935,29 @@ const waves = [
 			</section>
 
 			<section class="section-block reveal">
-				<p class="eyebrow">made · 做过的东西</p>
+				<header class="sec-head">
+					<span class="sec-no">02</span>
+					<h2>做过的东西</h2>
+					<span class="sec-en">made</span>
+				</header>
 				<div class="made-grid">
-					<a class="made-card glass" href="/projects/">
+					<a class="made-card" href="/projects/">
 						<p class="made-type">games</p>
 						<h3>联机游戏</h3>
 						<p>真冬的海龟汤、出包魔法师、梭哈 Showhand。都可以在线玩。</p>
 						<span class="go">去游戏页 <span aria-hidden="true">→</span></span>
 					</a>
-					<article class="made-card glass">
+					<article class="made-card">
 						<p class="made-type">voice</p>
 						<h3>语音</h3>
 						<p>语音 TTS 合成台（widget），目前支持澄闪和洛茜。</p>
 					</article>
-					<article class="made-card glass">
+					<article class="made-card">
 						<p class="made-type">image</p>
 						<h3>生图</h3>
 						<p>在本地跑生图流程的 Agent。</p>
 					</article>
-					<a class="made-card glass" href="/works/">
+					<a class="made-card" href="/works/">
 						<p class="made-type">mod</p>
 						<h3>Mod</h3>
 						<p>《怪物猎人 荒野》的法杖盾斧外观。</p>

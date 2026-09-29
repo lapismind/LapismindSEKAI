@@ -11,6 +11,8 @@ const posts = (await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
 );
 const [first, ...rest] = posts;
+/** 期号：按发布先后从 1 编起，最新一篇号最大——像刊物的期数，不随列表位置变 */
+const issue = (i: number) => `No.${String(posts.length - i).padStart(2, '0')}`;
 ---
 
 <!doctype html>
@@ -18,206 +20,242 @@ const [first, ...rest] = posts;
 	<head>
 		<BaseHead title={`博客 - ${SITE_TITLE}`} description={SITE_DESCRIPTION} />
 		<style>
-			.page-head {
-				margin-bottom: 3rem;
-			}
-			.page-head p.lead {
-				color: var(--muted);
-				font-size: 1.08rem;
-				max-width: 42em;
-				margin: 0;
-			}
-
-			.featured {
+			/* 头条：图文跨栏，不装进盒子 */
+			.lead-story {
 				display: grid;
-				grid-template-columns: 1.15fr 1fr;
-				gap: 0;
-				border-radius: var(--radius-lg);
-				border: 1px solid var(--line);
-				background: var(--glass-bg);
-				box-shadow: var(--shadow-sm);
-				overflow: hidden;
+				grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+				gap: 2.8rem;
+				align-items: center;
 				text-decoration: none;
-				margin-bottom: 3rem;
-				transition: transform var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft);
+				color: inherit;
+				margin-bottom: 5rem;
 			}
-			.featured:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
-			}
-			.featured-media {
-				min-height: 260px;
+			.lead-media {
+				aspect-ratio: 16 / 10;
 				overflow: hidden;
+				border-radius: var(--r-media);
 				background: var(--primary-ghost);
 			}
-			.featured-media :global(img) {
+			.lead-media :global(img) {
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
 				display: block;
 				transition: transform var(--dur-slow) var(--ease-soft);
 			}
-			.featured:hover .featured-media :global(img) {
-				transform: scale(1.02);
+			.lead-story:hover .lead-media :global(img) {
+				transform: scale(1.03);
 			}
-			.featured-body {
-				padding: 2rem 2.2rem;
+			.meta {
 				display: flex;
-				flex-direction: column;
-				justify-content: center;
-			}
-			.featured-body .date {
-				margin: 0 0 0.8rem;
-				font-family: var(--font-mono);
-				font-size: 0.8rem;
-				color: var(--primary);
+				align-items: baseline;
+				gap: 0.9rem;
+				margin: 0 0 1rem;
+				font-family: var(--font-meta);
+				font-size: 0.76rem;
 				letter-spacing: 0.08em;
+				color: var(--muted);
 			}
-			.featured-body h2 {
-				margin: 0 0 0.8rem;
-				font-size: 1.55rem;
-				transition: color 0.2s ease;
-			}
-			.featured:hover .featured-body h2 {
-				color: var(--primary);
-			}
-			.featured-body p.desc {
-				margin: 0;
-				color: var(--ink-soft);
-				font-size: 0.95rem;
-				line-height: 1.75;
-			}
-			.featured-body .read-more {
-				margin-top: 1.2rem;
-				font-family: var(--font-mono);
+			.meta .no {
+				font-family: var(--font-num);
 				font-size: 0.85rem;
 				color: var(--primary);
+				letter-spacing: 0.02em;
+			}
+			.lead-story h2 {
+				margin: 0 0 0.9rem;
+				font-size: clamp(1.7rem, 1.2rem + 1.4vw, 2.4rem);
+				line-height: 1.25;
+				transition: color var(--dur-fast) ease;
+			}
+			.lead-story:hover h2 {
+				color: var(--primary);
+			}
+			.lead-story .desc {
+				margin: 0;
+				color: var(--ink-soft);
+				font-size: 0.98rem;
+				line-height: 1.85;
+			}
+			.go {
 				display: inline-flex;
 				align-items: center;
-				gap: 0.4em;
-				transition: gap 0.25s ease;
+				gap: 0.45em;
+				margin-top: 1.5rem;
+				padding-bottom: 2px;
+				border-bottom: 1px solid currentColor;
+				font-size: 0.9rem;
+				color: var(--ink);
+				transition: gap var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
 			}
-			.featured:hover .read-more {
+			.lead-story:hover .go {
 				gap: 0.8em;
+				color: var(--primary);
 			}
 
-			.card-grid {
+			/* 归档：一行一篇，期号 / 日期 / 标题与摘要 / 小图 */
+			.archive {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			.row {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-				gap: 1.6rem;
-			}
-			.post-card {
-				display: flex;
-				flex-direction: column;
-				border-radius: var(--radius-lg);
-				border: 1px solid var(--line);
-				background: var(--glass-bg);
-				box-shadow: var(--shadow-sm);
+				grid-template-columns: 4.2rem 8.5rem minmax(0, 1fr) 176px;
+				grid-template-areas: 'no date body thumb';
+				gap: 0.3rem 1.4rem;
+				align-items: start;
+				padding: 1.6rem 0;
+				border-bottom: var(--rule);
 				text-decoration: none;
-				overflow: hidden;
-				transition: transform var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft),
-					border-color var(--dur-base) var(--ease-soft);
+				color: inherit;
 			}
-			.post-card:hover {
-				transform: translateY(calc(-1 * var(--lift-hover)));
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
+			.archive > li:first-child .row {
+				padding-top: 0.3rem;
 			}
-			.post-card .media {
-				aspect-ratio: 16 / 9;
+			.row .no {
+				grid-area: no;
+				font-family: var(--font-num);
+				font-size: 0.85rem;
+				color: var(--primary);
+				line-height: 1.9;
+			}
+			.row .date {
+				grid-area: date;
+				margin: 0;
+				font-family: var(--font-meta);
+				font-size: 0.78rem;
+				color: var(--muted);
+				line-height: 2.1;
+				white-space: nowrap;
+			}
+			.row .body {
+				grid-area: body;
+				min-width: 0;
+			}
+			.row h3 {
+				margin: 0 0 0.4rem;
+				font-size: 1.18rem;
+				line-height: 1.5;
+				transition: color var(--dur-fast) ease;
+			}
+			.row:hover h3 {
+				color: var(--primary);
+			}
+			.row .desc {
+				margin: 0;
+				font-size: 0.9rem;
+				line-height: 1.75;
+				color: var(--muted);
+				display: -webkit-box;
+				-webkit-line-clamp: 2;
+				-webkit-box-orient: vertical;
 				overflow: hidden;
+			}
+			.row .thumb {
+				grid-area: thumb;
+				aspect-ratio: 16 / 10;
+				overflow: hidden;
+				border-radius: 4px;
 				background: var(--primary-ghost);
 			}
-			.post-card .media :global(img) {
+			.row .thumb :global(img) {
 				width: 100%;
 				height: 100%;
 				object-fit: cover;
 				display: block;
 				transition: transform var(--dur-slow) var(--ease-soft);
 			}
-			.post-card:hover .media :global(img) {
-				transform: scale(1.02);
-			}
-			.post-card .body {
-				padding: 1.3rem 1.45rem 1.45rem;
-				display: flex;
-				flex-direction: column;
-				gap: 0.5rem;
-				flex: 1;
-			}
-			.post-card h3 {
-				margin: 0;
-				font-size: 1.12rem;
-				line-height: 1.45;
-				transition: color 0.2s ease;
-			}
-			.post-card:hover h3 {
-				color: var(--primary);
-			}
-			.post-card .date {
-				margin: 0;
-				font-family: var(--font-mono);
-				font-size: 0.78rem;
-				color: var(--muted);
-				margin-top: auto;
+			.row:hover .thumb :global(img) {
+				transform: scale(1.04);
 			}
 
-			@media (max-width: 820px) {
-				.featured {
-					grid-template-columns: 1fr;
+			@media (max-width: 860px) {
+				.lead-story {
+					grid-template-columns: minmax(0, 1fr);
+					gap: 1.4rem;
+					margin-bottom: 4rem;
 				}
-				.featured-media {
-					min-height: 200px;
+				.row {
+					grid-template-columns: minmax(0, 1fr) 112px;
+					grid-template-areas:
+						'meta thumb'
+						'body thumb';
+					gap: 0.4rem 1rem;
 				}
+				.row > .no,
+				.row > .date {
+					display: none;
+				}
+				.row .m-meta {
+					display: flex;
+				}
+			}
+			.m-meta {
+				display: none;
+				grid-area: meta;
+				margin: 0;
 			}
 		</style>
 	</head>
 	<body>
 		<Header />
 		<main class="container page-main" id="main-content" tabindex="-1">
-			<header class="page-head reveal">
-				<p class="eyebrow">journal</p>
+			<header class="page-title reveal">
 				<h1>博客</h1>
 				<p class="lead">开发记录、踩坑笔记，和把想法变成作品的过程。</p>
+				<p class="count"><b>{posts.length}</b>篇文章</p>
 			</header>
 
 			{
 				first && (
-					<a class="featured reveal" href={`/blog/${first.id}/`}>
-						<div class="featured-media">
+					<a class="lead-story reveal" href={`/blog/${first.id}/`}>
+						<div class="lead-media">
 							{/* 头条大图不挂 img-fade：它是本页最靠上的大图，
 							    等淡入会把首屏观感往后推（其余卡片图照常淡入） */}
-							{first.data.heroImage && <Image width={760} height={430} src={first.data.heroImage} alt={first.data.heroImageAlt ?? ''} />}
+							{first.data.heroImage && <Image width={760} height={475} src={first.data.heroImage} alt={first.data.heroImageAlt ?? ''} />}
 						</div>
-						<div class="featured-body">
-							<p class="date"><FormattedDate date={first.data.pubDate} /></p>
+						<div>
+							<p class="meta">
+								<span class="no">{issue(0)}</span>
+								<span>最新</span>
+								<FormattedDate date={first.data.pubDate} />
+							</p>
 							<h2>{first.data.title}</h2>
 							<p class="desc">{first.data.description}</p>
-							<span class="read-more">阅读全文 <span aria-hidden="true">→</span></span>
+							<span class="go">阅读全文 <span aria-hidden="true">→</span></span>
 						</div>
 					</a>
 				)
 			}
 
-			<div class="card-grid">
+			<header class="sec-head reveal">
+				<h2>往期</h2>
+				<span class="sec-en">archive</span>
+			</header>
+			<ol class="archive">
 				{
 					rest.map((post, i) => (
-						<a class="post-card reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`} href={`/blog/${post.id}/`}>
-							<div class="media">
-								{post.data.heroImage && <Image class="img-fade" width={640} height={360} src={post.data.heroImage} alt={post.data.heroImageAlt ?? ''} />}
-							</div>
-							<div class="body">
-								<h3>{post.data.title}</h3>
+						<li class="reveal" style={`--reveal-delay:calc(var(--stagger) * ${Math.min(i, 4)})`}>
+							<a class="row" href={`/blog/${post.id}/`}>
+								<span class="no">{issue(i + 1)}</span>
 								<p class="date"><FormattedDate date={post.data.pubDate} /></p>
-							</div>
-						</a>
+								<p class="meta m-meta">
+									<span class="no">{issue(i + 1)}</span>
+									<FormattedDate date={post.data.pubDate} />
+								</p>
+								<div class="body">
+									<h3>{post.data.title}</h3>
+									<p class="desc">{post.data.description}</p>
+								</div>
+								<div class="thumb">
+									{post.data.heroImage && <Image class="img-fade" width={352} height={220} src={post.data.heroImage} alt={post.data.heroImageAlt ?? post.data.title} />}
+								</div>
+							</a>
+						</li>
 					))
 				}
-			</div>
+			</ol>
 		</main>
 		<Footer />
 	</body>

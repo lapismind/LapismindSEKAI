@@ -19,8 +19,19 @@ const body = post.body || '';
 const cjk = (body.match(/[\u4e00-\u9fff]/g) || []).length;
 const words = (body.match(/[a-zA-Z0-9]+/g) || []).length;
 const readingTime = Math.max(1, Math.round(cjk / 350 + words / 200));
+
+// 上一篇 / 下一篇：期号与博客索引同一套（No. = 总数 - 位置，最新一篇号最大）
+const sorted = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+const total = sorted.length;
+const idx = sorted.findIndex((p) => p.id === post.id);
+const slot = (p: (typeof sorted)[number]) =>
+	p && { href: `/blog/${p.id}/`, title: p.data.title, no: `No.${String(total - sorted.indexOf(p)).padStart(2, '0')}` };
+const newer = idx > 0 ? slot(sorted[idx - 1]) : null;
+const older = idx < total - 1 ? slot(sorted[idx + 1]) : null;
 ---
 
-<BlogPost {...post.data} readingTime={readingTime}>
+<BlogPost {...post.data} readingTime={readingTime} newer={newer} older={older}>
 	<Content />
 </BlogPost>

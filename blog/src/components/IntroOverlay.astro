@@ -87,7 +87,6 @@
 </style>
 
 <script>
-	const w = window as Window & { __introDone?: boolean };
 
 	// ---- 视觉常量（与 demo 同步） ----
 	// 宵崎奏 / 朝比奈まふゆ / 東雲絵名 / 暁山瑞希（萌娘百科代表色）
@@ -113,8 +112,10 @@
 		try {
 			playedBefore = sessionStorage.getItem('lapismind-intro') === '1';
 		} catch {}
-		// 已在本页播过/正在播：只跳过，别删正在播的元素（runIntro 会被调用两次）
-		if (w.__introDone) return;
+		// 这个元素正在播：只跳过，别删（runIntro 会被 page-load 与脚本首跑各调一次）。
+		// 标记必须挂在元素上而不是 window：切页回首页会渲染出一个新的 #intro，
+		// window 级标记会让新元素也被当成"正在播"而跳过清理，满屏遮罩就留在页面上。
+		if (root.dataset.playing) return;
 		// 所有“不该播”的情况都统一走这里：跳过播放，并把元素清掉
 		if (
 			!isHome ||
@@ -124,7 +125,7 @@
 			root.remove();
 			return;
 		}
-		w.__introDone = true;
+		root.dataset.playing = '1';
 		try {
 			sessionStorage.setItem('lapismind-intro', '1');
 		} catch {}
@@ -543,16 +544,21 @@
 
 	function cleanupStaleIntro() {
 		const el = document.getElementById('intro');
-		if (!el) return;
+		if (!el || el.dataset.playing) return;
+		let playedBefore = false;
+		try {
+			playedBefore = sessionStorage.getItem('lapismind-intro') === '1';
+		} catch {}
 		const isHome = window.location.pathname.replace(/\/+$/, '') === '';
-		if (!isHome || w.__introDone) {
+		if (!isHome || playedBefore) {
 			el.remove();
 		}
 	}
-	// 视图过渡换页时，Astro 可能携带旧页 DOM；离开主页或已播过时立刻清掉残留的动画层
+	// 视图过渡换页时，Astro 可能携带旧页 DOM；离开主页或已播过时立刻清掉残留的动画层。
+	// astro:after-swap 在 document 上派发、不冒泡到 window，监听必须挂 document。
 	document.addEventListener('astro:before-swap', () => {
 		cleanupStaleIntro();
 	});
-	window.addEventListener('astro:after-swap', cleanupStaleIntro);
+	document.addEventListener('astro:after-swap', cleanupStaleIntro);
 	runIntro();
 </script>

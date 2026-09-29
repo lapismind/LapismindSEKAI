@@ -125,13 +125,16 @@ const today = new Date();
 	.site-footer {
 		position: relative;
 		padding: 0 0 3rem;
-		margin-top: 4rem;
+		margin-top: 0;
 	}
+	/* 立绘队头顶上有一段图内透明留白。把整条横幅上提，让五个小人
+	   "站"在正文结束的位置附近，不再隔着一大段空档。 */
 	.footer-banner {
 		position: relative;
 		width: 100%;
 		overflow: hidden;
 		line-height: 0;
+		margin-top: -3.5rem;
 	}
 	.footer-banner img {
 		display: block;
@@ -359,5 +362,11 @@ const today = new Date();
 		text-align: center;
 		font-size: 0.75rem;
 		color: var(--muted);
+	}
+	@media (max-width: 720px) {
+		/* 手机上图片按宽度缩放，图内留白跟着变小，上提量也收一点 */
+		.footer-banner {
+			margin-top: -1.8rem;
+		}
 	}
 </style>

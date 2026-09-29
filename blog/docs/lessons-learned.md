@@ -563,3 +563,38 @@
 - 根因：重写组件时 frontmatter 只写了开头 `---` 没写闭合 `---`。Astro 不报错，把注释行当模板文本渲染——组件被 Footer 引用，文本就挂在页脚后。构建通过 ≠ frontmatter 正确。
 - 修法：补闭合。验证方式：构建产物 `grep` 注释关键词应为 0 命中，再实测页面 `innerText`。
 - 教训：给 `.astro` 补 frontmatter 注释时，写完立刻检查文件头两条 `---` 成对；这类"文本渲染出来"的错误要靠页面实拍/innerText 断言，不能只看 build 绿。
+
+## 2026-09-29 编辑式改版（去卡片化）中踩到的三件事
+
+### 71. Git Bash 的 heredoc 会把中文写成乱码
+
+- 现象：用 `cat > file <<'EOF'` 写一段含中文注释的 CSS 片段，落盘后中文全是「鏁村箙…」这类 GBK/UTF-8 错位乱码，且 heredoc 没正常闭合（`here-document delimited by end-of-file`）。
+- 教训：本机（Windows + Git Bash）**含中文的文件内容一律用 Write/Edit 工具写**；shell 里跑的 Python 只用 ASCII 做锚点和替换串。
+
+### 72. Windows 上 Python 文本模式写回会把 LF 变成 CRLF
+
+- 现象：`open(p,'w').write(s)` 改完的文件，`git diff` 报 "CRLF will be replaced by LF"。
+- 修法：读写都带 `newline=''`，并先 `.replace('\r\n','\n')`。`.gitattributes` 的 `eol=lf` 提交时会兜底，但工作区脏了会让 diff 难读。
+
+### 73. 320px 头部溢出是线上就有的老问题，不是这次改出来的
+
+- `tests/ui_ux_regression_v2.py::test_home` 断言 320 宽 `scrollWidth == 320`；线上与改版前同样是 363（五个两字导航 + 头像 + 主题钮放不下）。
+- 修法：`≤360px` 下导航自身宽度改 `calc(100% - 1.2rem)`、链接字号 0.88rem、左右内边距 0.4em（Header.astro）。
+- 教训：回归测试失败先拿**线上**同条件复跑一次，分清"本次引入"还是"原本就坏"，再决定修法和怎么报告。
+
+### 74. 首页 → 其他页 → 首页黑屏：入场层的"正在播"标记挂在了 window 上
+
+- 现象：播过入场动画后，经导航（ClientRouter）回到首页，整屏被深色遮罩盖住，只剩页头。线上同样复现。
+- 根因：`runIntro` 用 `window.__introDone` 表示"正在播，别删"。它播完后永不复位；回首页时 Astro 渲染出**新的** `#intro`，
+  `runIntro` 见到 window 标记直接 return，跳过了"已播过就移除"分支。兜底的 `astro:after-swap` 监听挂在 `window` 上，
+  而该事件在 `document` 上派发、不冒泡到 window，所以也从没触发过。
+- 修法：标记改挂元素本身（`root.dataset.playing`），新渲染的元素天然没有；清理监听改挂 `document`，按 sessionStorage 判定已播。
+- 教训：ClientRouter 下"一次性"状态要区分**元素级**还是**会话级**——挂 window 的布尔值会跨页存活，却会被新页面的同 id 元素误用。
+  复现脚本：`docs/agent/scripts/playwright-home-roundtrip.py`（先让入场动画真的播一次，再来回切页）。
+
+### 75. Astro 的 `<style>` 不做模板插值
+
+- 现象：在组件 `<style>` 里写 `src: url('${MinchoSubset}')`，页面上原样输出 `${MinchoSubset}`，字体 404。
+- 根因：Astro 只在 HTML 模板区插值；`<style>`（哪怕 scoped）是纯 CSS，不认识 frontmatter 变量。
+- 修法：需要注入变量时用 `<style is:inline set:html={...} />` 输出到 HTML；或把资源放进 public/ 用固定路径。
+- 教训：Astro 的 scoped style 是"处理过的 CSS"，不是模板——所有 JS/CSS 边界上的插值都要过 HTML 区。

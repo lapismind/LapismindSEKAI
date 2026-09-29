@@ -10,9 +10,13 @@ import { SITE_TITLE } from '../consts';
 
 type Props = CollectionEntry<'blog'>['data'] & {
 	readingTime?: number;
+	/** 上一篇（更早），由 [...slug].astro 算好传入 */
+	older?: { href: string; title: string; no: string } | null;
+	/** 下一篇（更新） */
+	newer?: { href: string; title: string; no: string } | null;
 };
 
-const { title, description, pubDate, updatedDate, heroImage, heroImageAlt = '', readingTime } = Astro.props;
+const { title, description, pubDate, updatedDate, heroImage, heroImageAlt = '', readingTime, older, newer } = Astro.props;
 // 评论区路径键：去掉尾斜杠的规范化路径，如 /blog/my-post
 const commentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
 // 分享卡：文章 hero 源图最大 1.5MB PNG，直接当 og:image 太重，先转成 1200 宽的小 jpg。
@@ -27,24 +31,21 @@ const ogImageUrl = heroImage
 		{/* 标题接站点名后缀，与站内其他页面同形（`关于 - Lapismind SEKAI`） */}
 		<BaseHead title={`${title} - ${SITE_TITLE}`} description={description} imageUrl={ogImageUrl} />
 		<style>
+			/* 文章抬头左对齐，和下面的正文栏同一条左边线；底部一道墨色线收住 */
 			.article-head {
-				text-align: center;
-				max-width: 46em;
-				margin: 0 auto 2.5rem;
-				padding-top: 2rem;
-			}
-			.article-head .eyebrow {
-				justify-content: center;
+				max-width: 48em;
+				margin: 0 0 2.4rem;
+				padding: 1rem 0 1.8rem;
+				border-bottom: var(--rule-ink);
 			}
 			.article-head .meta {
-				font-family: var(--font-mono);
-				font-size: 0.82rem;
+				font-family: var(--font-meta);
+				font-size: 0.78rem;
 				letter-spacing: 0.08em;
 				color: var(--muted);
-				margin: 0 0 1rem;
+				margin: 0 0 1.1rem;
 				display: flex;
 				align-items: center;
-				justify-content: center;
 				gap: 0.6rem;
 				flex-wrap: wrap;
 			}
@@ -59,13 +60,15 @@ const ogImageUrl = heroImage
 			}
 			.article-head h1 {
 				margin: 0 0 1rem;
-				line-height: 1.25;
+				font-size: clamp(2rem, 1.3rem + 2.6vw, 3.2rem);
+				line-height: 1.2;
+				text-wrap: balance;
 			}
 			.article-head .desc {
 				color: var(--ink-soft);
 				font-size: 1.05rem;
-				margin: 0 auto;
-				max-width: 32em;
+				margin: 0;
+				max-width: 36em;
 			}
 			.last-updated-on {
 				display: block;
@@ -81,17 +84,16 @@ const ogImageUrl = heroImage
 			.hero-image :global(img) {
 				display: block;
 				width: 100%;
-				border-radius: var(--radius-lg);
-				box-shadow: var(--shadow-md);
+				border-radius: var(--r-media);
 				object-fit: cover;
 			}
 			.back-link {
 				display: inline-flex;
 				align-items: center;
 				gap: 0.4em;
-				margin-bottom: 2.4rem;
-				font-family: var(--font-mono);
-				font-size: 0.88rem;
+				margin-bottom: 1.6rem;
+				font-family: var(--font-meta);
+				font-size: 0.82rem;
 				text-decoration: none;
 				color: var(--muted);
 				transition: color 0.2s ease, gap 0.25s ease;
@@ -99,6 +101,41 @@ const ogImageUrl = heroImage
 			.back-link:hover {
 				color: var(--primary);
 				gap: 0.7em;
+			}
+
+			/* 上一篇 / 下一篇：左右两格，中间一道发丝线，像刊物的对页 */
+			.post-pager {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+				gap: 1.5rem;
+				margin-top: 3.5rem;
+				padding-top: 1.4rem;
+				border-top: var(--rule);
+			}
+			.post-pager .pg {
+				display: grid;
+				gap: 0.3rem;
+				text-decoration: none;
+				color: inherit;
+				min-width: 0;
+			}
+			.post-pager .no {
+				font-family: var(--font-num);
+				font-size: 0.8rem;
+				color: var(--primary);
+			}
+			.post-pager .t {
+				font-size: 0.95rem;
+				line-height: 1.6;
+				color: var(--ink-soft);
+				transition: color var(--dur-fast) ease;
+			}
+			.post-pager .pg:hover .t {
+				color: var(--primary);
+			}
+			.post-pager .pg-next {
+				text-align: right;
+				justify-items: end;
 			}
 
 			/* 正文 + 目录双栏 */
@@ -111,16 +148,11 @@ const ogImageUrl = heroImage
 			.article-main {
 				min-width: 0;
 			}
+			/* 目录：一条竖向发丝线做轨道，当前节在轨道上亮一段主色，不再是玻璃盒 */
 			.toc {
 				position: sticky;
 				top: calc(64px + 2rem);
-				border-radius: var(--radius);
-				border: 1px solid var(--line);
-				background: var(--glass-bg);
-				backdrop-filter: blur(14px) saturate(1.15);
-				-webkit-backdrop-filter: blur(14px) saturate(1.15);
-				box-shadow: var(--shadow-sm);
-				padding: 1.1rem 1.15rem;
+				padding: 0.2rem 0 0.2rem;
 				max-height: calc(100vh - 120px);
 				overflow-y: auto;
 			}
@@ -128,42 +160,39 @@ const ogImageUrl = heroImage
 				display: flex;
 				align-items: center;
 				justify-content: space-between;
-				font-family: var(--font-mono);
-				font-size: 0.72rem;
+				font-family: var(--font-meta);
+				font-size: 0.7rem;
 				font-weight: 600;
 				letter-spacing: 0.2em;
 				text-transform: uppercase;
 				color: var(--muted);
-				margin: 0 0 0.7rem;
+				margin: 0 0 0.8rem;
 			}
 			.toc-nav {
 				display: flex;
 				flex-direction: column;
-				gap: 0.35rem;
+				border-left: var(--rule);
 			}
 			.toc-nav :global(a) {
 				display: block;
-				padding: 0.28em 0.7em;
-				border-radius: 8px;
-				font-size: 0.86rem;
+				margin-left: -1px;
+				padding: 0.35em 0 0.35em 1em;
+				font-size: 0.85rem;
 				line-height: 1.5;
-				color: var(--ink-soft);
+				color: var(--muted);
 				text-decoration: none;
-				border-left: 2px solid transparent;
-				transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+				transition: color 0.2s ease, box-shadow 0.2s ease;
 			}
 			.toc-nav :global(a:hover) {
-				color: var(--primary);
-				background: var(--primary-ghost);
+				color: var(--ink);
 			}
 			.toc-nav :global(a.lvl-3) {
-				padding-left: 1.35em;
-				font-size: 0.82rem;
+				padding-left: 1.9em;
+				font-size: 0.8rem;
 			}
 			.toc-nav :global(a.active) {
-				color: var(--primary);
-				border-left-color: var(--primary);
-				background: var(--primary-ghost);
+				color: var(--ink);
+				box-shadow: inset 2px 0 0 var(--primary);
 			}
 			.toc-empty {
 				font-size: 0.85rem;
@@ -199,7 +228,9 @@ const ogImageUrl = heroImage
 					position: static;
 					order: -1;
 					max-height: none;
-					padding: 0.9rem 1.1rem;
+					padding: 0.2rem 0;
+					border-top: var(--rule);
+					border-bottom: var(--rule);
 				}
 				.toc-nav {
 					display: none;
@@ -230,7 +261,6 @@ const ogImageUrl = heroImage
 			<a class="back-link" href="/blog/">← 返回博客</a>
 			<article>
 				<header class="article-head">
-					<p class="eyebrow">journal · article</p>
 					<div class="meta">
 						<time><FormattedDate date={pubDate} /></time>
 						{readingTime && (
@@ -273,6 +303,30 @@ const ogImageUrl = heroImage
 						<nav class="toc-nav" id="toc-nav"></nav>
 					</aside>
 				</div>
+
+				<!-- 上一篇 / 下一篇：期号与博客索引同一套 -->
+				{
+					(older || newer) && (
+						<nav class="post-pager" aria-label="文章翻页">
+							{older ? (
+								<a class="pg pg-prev" href={older.href}>
+									<span class="no">{older.no}</span>
+									<span class="t"><span aria-hidden="true">← </span>{older.title}</span>
+								</a>
+							) : (
+								<span />
+							)}
+							{newer ? (
+								<a class="pg pg-next" href={newer.href}>
+									<span class="no">{newer.no}</span>
+									<span class="t">{newer.title}<span aria-hidden="true"> →</span></span>
+								</a>
+							) : (
+								<span />
+							)}
+						</nav>
+					)
+				}
 
 				<!-- 评论区：GitHub 登录后可发，游客可读 -->
 				<Comments pagePath={commentPath} />

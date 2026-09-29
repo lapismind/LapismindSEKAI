@@ -98,8 +98,8 @@ def test_music_controls_have_touch_targets(page):
 
 def test_blog_cover_alt(page):
     page.set_viewport_size({"width": 375, "height": 812})
-    open_page(page, "blog/", ".featured-media img")
-    alts = page.locator(".featured-media img, .post-card .media img").evaluate_all(
+    open_page(page, "blog/", ".lead-media img")
+    alts = page.locator(".lead-media img, .row .thumb img").evaluate_all(
         "els => els.map(el => el.getAttribute('alt'))"
     )
     assert alts

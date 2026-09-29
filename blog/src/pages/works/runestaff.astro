@@ -32,8 +32,8 @@ const devlog = { href: '/blog/rune-staff/', title: '首谈法杖盾斧的开发�
 				align-items: center;
 				gap: 0.4em;
 				margin-bottom: 2.2rem;
-				font-family: var(--font-mono);
-				font-size: 0.88rem;
+				font-family: var(--font-meta);
+				font-size: 0.82rem;
 				text-decoration: none;
 				color: var(--muted);
 				transition: color 0.2s ease, gap 0.25s ease;
@@ -80,9 +80,8 @@ const devlog = { href: '/blog/rune-staff/', title: '首谈法杖盾斧的开发�
 				width: 100%;
 				height: auto;
 				display: block;
-				border-radius: var(--radius);
-				border: 1px solid var(--line);
-				box-shadow: var(--shadow-sm);
+				border-radius: var(--r-media);
+				border: var(--rule);
 			}
 			.shots figcaption {
 				margin-top: 0.6rem;
@@ -121,23 +120,17 @@ const devlog = { href: '/blog/rune-staff/', title: '首谈法杖盾斧的开发�
 				align-items: baseline;
 				gap: 0.9rem;
 				flex-wrap: wrap;
-				padding: 1rem 1.3rem;
-				border-radius: var(--radius);
-				border: 1px solid var(--line);
-				background: var(--card-solid);
-				box-shadow: var(--shadow-sm);
+				padding: 1rem 0;
+				border-top: var(--rule);
+				border-bottom: var(--rule);
 				text-decoration: none;
 				color: inherit;
-				transition: border-color var(--dur-base) var(--ease-soft),
-					box-shadow var(--dur-base) var(--ease-soft), transform var(--dur-base) var(--ease-soft);
 			}
-			.devlog:hover {
-				border-color: var(--primary-soft);
-				box-shadow: var(--shadow-md);
-				transform: translateY(-2px);
+			.devlog:hover .title {
+				color: var(--primary);
 			}
 			.devlog .label {
-				font-family: var(--font-mono);
+				font-family: var(--font-meta);
 				font-size: 0.82rem;
 				color: var(--primary);
 				letter-spacing: 0.04em;

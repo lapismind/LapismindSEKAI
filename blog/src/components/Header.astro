@@ -12,6 +12,7 @@ const { overHero = false } = Astro.props;
 		<a class="brand" href="/">
 			<span class="brand-mark" aria-hidden="true">L</span>
 			<span class="brand-name">Lapismind</span>
+			<span class="brand-sub">SEKAI</span>
 		</a>
 		<div class="internal-links">
 			<HeaderLink href="/">首页</HeaderLink>
@@ -84,8 +85,16 @@ const { overHero = false } = Astro.props;
 		border-bottom-color: var(--line);
 		box-shadow: 0 1px 0 oklch(0 0 0 / 0.03), 0 8px 28px oklch(0.3 0.03 250 / 0.08);
 	}
-	.site-header.over-hero {
-		background: color-mix(in oklab, var(--page-bg) 26%, transparent);
+	/* 压在首页卡面上、还没滚动时：去掉毛玻璃灰带，只留一层顶部压暗，
+	   文字令牌就地换成白色——整条导航像印在画上。滚动后回到常规底色。 */
+	.site-header.over-hero:not(.scrolled) {
+		--ink: #fff;
+		--ink-soft: oklch(1 0 0 / 0.82);
+		--page-bg: oklch(0.2 0.03 268);
+		--primary: oklch(0.86 0.07 var(--hue-accent));
+		background: linear-gradient(180deg, oklch(0.12 0.03 268 / 0.5), oklch(0.12 0.03 268 / 0));
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
 		border-bottom-color: transparent;
 	}
 	.site-header.over-hero.scrolled {
@@ -101,33 +110,38 @@ const { overHero = false } = Astro.props;
 
 	.brand {
 		display: inline-flex;
-		align-items: center;
-		gap: 0.55em;
+		align-items: baseline;
+		gap: 0.5em;
 		text-decoration: none;
 		color: var(--ink);
 		font-weight: 700;
-		font-size: 1.06rem;
+		font-size: 1.08rem;
 		letter-spacing: -0.01em;
 		margin-right: auto;
 	}
+	/* 字标：一个墨色小方块托着 L，不用渐变——渐变只留给少数需要被看见的地方 */
 	.brand-mark {
 		display: grid;
 		place-items: center;
-		width: 30px;
-		height: 30px;
-		border-radius: 9px;
-		background: var(--gradient);
-		color: #fff;
-		font-size: 0.92rem;
-		font-family: var(--font-mono);
+		align-self: center;
+		width: 26px;
+		height: 26px;
+		border-radius: 4px;
+		background: var(--ink);
+		color: var(--page-bg);
+		font-size: 0.85rem;
+		font-family: var(--font-num);
 		font-weight: 700;
-		box-shadow: var(--shadow-sm);
 	}
 	.brand-name {
-		background: var(--gradient);
-		-webkit-background-clip: text;
-		background-clip: text;
-		color: transparent;
+		color: var(--ink);
+	}
+	.brand-sub {
+		font-family: var(--font-meta);
+		font-size: 0.66rem;
+		font-weight: 500;
+		letter-spacing: 0.2em;
+		color: var(--primary);
 	}
 
 	.internal-links {
@@ -141,36 +155,34 @@ const { overHero = false } = Astro.props;
 		/* 标签绝不能断行：flex 在窄屏会把容器挤到标签宽度以下，
 		   一旦允许换行就会变成"首/页"竖排并顶出头部（2026-09-17 修） */
 		white-space: nowrap;
-		padding: 0.5em 0.8em;
+		padding: 0.5em 0.75em;
 		text-decoration: none;
-		color: var(--ink);
+		color: var(--ink-soft);
 		font-size: 0.95rem;
-		border-radius: 999px;
-		transition: color 0.2s ease, background-color 0.2s ease;
+		transition: color 0.2s ease;
 	}
+	/* 当前页 / 悬停：文字下一道 1px 墨线，从左侧画出 */
 	.internal-links :global(a)::after {
 		content: '';
 		position: absolute;
-		left: 50%;
-		bottom: 0.25em;
-		width: 0;
-		height: 2px;
-		transform: translateX(-50%);
-		border-radius: 2px;
-		background: var(--gradient);
-		transition: width 0.25s ease;
+		left: 0.75em;
+		right: 0.75em;
+		bottom: 0.3em;
+		height: 1px;
+		background: currentColor;
+		transform: scaleX(0);
+		transform-origin: left center;
+		transition: transform var(--dur-base) var(--ease-soft);
 	}
 	.internal-links :global(a:hover) {
-		background: var(--primary-ghost);
-		color: var(--primary);
+		color: var(--ink);
 	}
 	.internal-links :global(a:hover)::after,
 	.internal-links :global(a.active)::after {
-		width: 60%;
+		transform: scaleX(1);
 	}
 	.internal-links :global(a.active) {
 		color: var(--ink);
-		background: var(--primary-ghost);
 	}
 	/* Projects 英文标签比两字中文长得多，窄屏换短标签「作品」，
 	   避免五个导航项在 360px 挤压换行（2026-09-17 修过一次同类问题） */
@@ -241,7 +253,8 @@ const { overHero = false } = Astro.props;
 			height: 56px;
 			gap: 0.7rem;
 		}
-		.brand-name {
+		.brand-name,
+		.brand-sub {
 			display: none;
 		}
 		.gh {
@@ -268,12 +281,16 @@ const { overHero = false } = Astro.props;
 			padding-inline: 0.7em;
 		}
 	}
+	/* 320 档：五个两字标签 + 头像 + 主题钮刚好放不下（线上版本就溢出 43px）。
+	   收窄导航自己的左右留白、字号降一档，才能在 301px 内排开。 */
 	@media (max-width: 360px) {
 		nav {
 			gap: 0.35rem;
+			width: calc(100% - 1.2rem);
 		}
 		.internal-links :global(a) {
-			padding-inline: 0.6em;
+			padding-inline: 0.4em;
+			font-size: 0.88rem;
 		}
 	}
 </style>
