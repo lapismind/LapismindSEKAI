@@ -32,6 +32,9 @@
   音乐修复——12 个 mp3 剪掉开头约 9 秒前导静音（歌词轴本对官方完整版，剪后反而对齐，lessons #76）、
   起播 1.5s WebAudio 淡入、第一句开唱前字幕留空。
 - 计划文件：`.planning/2026-09-29-blog-frontend-editorial/`；踩坑 lessons #71–76。
+- 音游元素（2026-09-29 上线）：首页状态条下迷你谱面 `NoteLane.astro`（自动演奏、离屏暂停、减少动效时静帧）、
+  全站点击打击特效 `.tap-fx`（BaseHead 脚本 + global.css）、板块页眉音符滑入打中编号。
+  冒烟：`py -3.14 docs/agent/scripts/playwright-blog-rhythm.py`（需先 `npx astro preview --port 4399`）。
 
 ## 任务二：niigo-party 事件格与梗素材重调研（⏸️ 暂停中，未被本轮改动）
 

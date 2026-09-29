@@ -714,6 +714,109 @@ html:not(.has-js) img.img-fade {
 	}
 }
 
+/* ── 音游元素（2026-09-29）──
+   PJSK 的打击感只做两处"点缀"，不改编辑式排版的骨架：
+   1. 点击任意处：判定线式扁圈 + 四粒碎光（.tap-fx，JS 在 BaseHead）
+   2. 板块页眉：进入视口时，一枚音符沿墨色线滑向编号并"打中"它
+   首页另有迷你谱面组件 NoteLane。减少动效时全部不出现。 */
+.tap-fx {
+	position: fixed;
+	z-index: 9999;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+	animation: tap-fx-life 0.45s linear forwards;
+}
+.tap-fx::before,
+.tap-fx::after {
+	content: '';
+	position: absolute;
+	left: -22px;
+	top: -8px;
+	width: 44px;
+	height: 16px;
+	border-radius: 50%;
+	border: 2px solid var(--primary-bright);
+	animation: tap-fx-ring 0.45s var(--ease-out) forwards;
+}
+.tap-fx::after {
+	border-color: oklch(0.82 0.12 200);
+	animation-delay: 0.05s;
+	opacity: 0;
+}
+.tap-fx i {
+	position: absolute;
+	left: -2px;
+	top: -2px;
+	width: 4px;
+	height: 4px;
+	border-radius: 1px;
+	background: var(--primary-bright);
+	animation: tap-fx-spark 0.45s var(--ease-out) forwards;
+}
+.tap-fx i:nth-child(1) { --sx: -26px; --sy: -18px; }
+.tap-fx i:nth-child(2) { --sx: -9px; --sy: -30px; background: oklch(0.85 0.13 85); }
+.tap-fx i:nth-child(3) { --sx: 9px; --sy: -30px; background: oklch(0.8 0.12 350); }
+.tap-fx i:nth-child(4) { --sx: 26px; --sy: -18px; background: oklch(0.82 0.12 200); }
+@keyframes tap-fx-life {
+	to { opacity: 1; }
+}
+@keyframes tap-fx-ring {
+	0% { transform: scale(0.35); opacity: 1; }
+	100% { transform: scale(1.5); opacity: 0; }
+}
+@keyframes tap-fx-spark {
+	0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+	100% { transform: translate(var(--sx), var(--sy)) rotate(90deg); opacity: 0; }
+}
+
+/* 板块页眉的音符：从墨色线右端滑到编号处，打中时编号闪一下。只在入场播一次。 */
+.sec-head {
+	position: relative;
+}
+.has-js .sec-head.reveal::before {
+	content: '';
+	position: absolute;
+	top: -3px;
+	left: 0;
+	width: 2.4rem;
+	height: 5px;
+	border-radius: 3px;
+	background: var(--primary-bright);
+	box-shadow: 0 0 8px var(--primary-bright);
+	opacity: 0;
+	left: calc(100% - 2.4rem);
+}
+.has-js .sec-head.reveal.is-visible::before {
+	animation: sec-note 0.9s var(--ease-soft) 0.1s both;
+}
+.has-js .sec-head.reveal.is-visible .sec-no {
+	animation: sec-hit 0.5s ease-out 0.85s both;
+}
+@keyframes sec-note {
+	0% { opacity: 0; left: calc(100% - 2.4rem); }
+	15% { opacity: 1; }
+	80% { opacity: 1; left: 0; transform: scaleX(1); }
+	100% { opacity: 0; left: 0; transform: scaleX(1.8); }
+}
+@keyframes sec-hit {
+	0% { text-shadow: 0 0 0 transparent; transform: scale(1); }
+	30% { text-shadow: 0 0 10px var(--primary-bright); transform: scale(1.35); }
+	100% { text-shadow: 0 0 0 transparent; transform: scale(1); }
+}
+.sec-no {
+	display: inline-block;
+}
+@media (prefers-reduced-motion: reduce) {
+	.tap-fx,
+	.has-js .sec-head.reveal::before {
+		display: none;
+	}
+	.has-js .sec-head.reveal.is-visible .sec-no {
+		animation: none;
+	}
+}
+
 /* 滚动进度条 */
 .reading-progress {
 	position: fixed;
