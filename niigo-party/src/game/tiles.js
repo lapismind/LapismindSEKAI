@@ -8,7 +8,9 @@
  *   locked         编辑器里不可放置、不可替换（交点由拓扑决定，不是可选地块）
  *   placeable      出现在编辑器调色板里
  *
- * ctx = { state, p, rng, api }；api 由 engine 注入（log / damage / gainCoins / drawCards …），
+ * 落地表现：加钱走 api.gainCoins（UI 头顶掉金币）；事件走 api.popup（UI 弹事件窗口，插画缺省时占位）。
+ *
+ * ctx = { state, p, rng, api }；api 由 engine 注入（log / popup / damage / gainCoins / drawCards …），
  * 所以本文件保持纯数据 + 纯函数，不依赖 Vue / DOM，服务器端可直接复用。
  */
 
@@ -45,7 +47,15 @@ export const TILE_TYPES = {
   card: {
     name: '卡牌奖励', label: '卡', icon: '🃏', color: '#22c55e', placeable: true,
     desc: '抽 2 张卡',
-    onLand: ({ state, p, rng, api }) => api.drawCards(state, p, 2, rng),
+    onLand: ({ state, p, rng, api }) => {
+      const before = p.hand.length;
+      api.drawCards(state, p, 2, rng);
+      const got = p.hand.slice(before).map((id) => `「${api.CARDS[id].name}」`);
+      api.popup(state, p, {
+        title: '卡牌奖励', tone: 'good', art: 'card',
+        text: got.length ? `${p.name} 抽到 ${got.join('、')}` : `${p.name} 的手牌已满，这次什么也没拿到`,
+      });
+    },
   },
   misfortune: {
     name: '天降横祸', label: '祸', icon: '⚡', color: '#ef4444', placeable: true,
@@ -53,6 +63,8 @@ export const TILE_TYPES = {
     onLand: ({ state, p, api }) => {
       api.log(state, `${p.name} 天降横祸！`);
       api.damage(state, p, 2, null, '天降横祸');
+      api.popup(state, p, { title: '天降横祸', tone: 'bad', art: 'misfortune',
+        text: `${p.name} 受到 2 点伤害${p.ko ? '，被 KO 了' : `（剩余 HP ${p.hp}）`}` });
     },
   },
   trial: {
@@ -60,8 +72,16 @@ export const TILE_TYPES = {
     desc: '掷 1d6：≥5 得 15 星币，≤4 受 3 伤',
     onLand: ({ state, p, rng, api }) => {
       const r = api.d6(rng);
-      if (r >= 5) { api.log(state, `试炼成功（${r}）！`); api.gainCoins(state, p, 15); }
-      else { api.log(state, `试炼失败（${r}）…`); api.damage(state, p, 3, null, '试炼失败'); }
+      if (r >= 5) {
+        api.log(state, `试炼成功（${r}）！`);
+        api.gainCoins(state, p, 15);
+        api.popup(state, p, { title: '试炼成功', tone: 'good', art: 'trial', text: `掷出 ${r}！${p.name} 获得 15 星币` });
+      } else {
+        api.log(state, `试炼失败（${r}）…`);
+        api.damage(state, p, 3, null, '试炼失败');
+        api.popup(state, p, { title: '试炼失败', tone: 'bad', art: 'trial',
+          text: `掷出 ${r}…${p.name} 受到 3 点伤害${p.ko ? '，被 KO 了' : ''}` });
+      }
     },
   },
   hospital: {
@@ -71,18 +91,25 @@ export const TILE_TYPES = {
       p.hp = Math.min(p.maxHp, p.hp + 2);
       p.immune = true;
       api.log(state, `${p.name} 住院休养：回 2 HP，免疫到下次自己回合`);
+      api.popup(state, p, { title: '医院', tone: 'info', art: 'hospital',
+        text: `${p.name} 住院休养：回复 2 HP（现有 ${p.hp}），到下次自己回合前不受伤害、不可被指定` });
     },
   },
   shop: {
     name: '商店', label: '店', icon: '🛍', color: '#f97316', placeable: true,
     desc: '免费拿 1 张，可花 5 星币/张买库存 3 张',
     onLand: ({ state, p, rng, api }) => {
-      api.drawSpecific(state, p, api.pick(api.CARD_IDS, rng));
-      state.pending = {
-        type: 'shop',
-        stock: [api.pick(api.CARD_IDS, rng), api.pick(api.CARD_IDS, rng), api.pick(api.CARD_IDS, rng)],
-      };
-      api.log(state, `${p.name} 到商店：免费拿 1 张，可花 5 星币/张补货`);
+      const free = api.pick(api.CARD_IDS, rng);
+      api.drawSpecific(state, p, free);
+      const stock = [api.pick(api.CARD_IDS, rng), api.pick(api.CARD_IDS, rng), api.pick(api.CARD_IDS, rng)];
+      if (!api.canShop(p, stock)) {
+        // 没钱或手牌满：没有可做的决定，只发通知，不开店
+        api.popup(state, p, { title: '商店', tone: 'info', art: 'shop',
+          text: `${p.name} 免费拿到「${api.CARDS[free].name}」（${p.hand.length >= 10 ? '手牌已满' : '星币不足'}，这次买不了）` });
+        return;
+      }
+      state.pending = { type: 'shop', stock, free };
+      api.log(state, `${p.name} 到商店：免费拿到「${api.CARDS[free].name}」，可花 5 星币/张补货`);
     },
   },
   swift: {
@@ -91,6 +118,7 @@ export const TILE_TYPES = {
     onLand: ({ state, p, api }) => {
       p.extraRoll = true;
       api.log(state, `${p.name} 踩中疾行，可再掷一次移动骰`);
+      api.popup(state, p, { title: '疾行', tone: 'good', art: 'swift', text: `${p.name} 可以再掷一次移动骰` });
     },
   },
   teleport: {

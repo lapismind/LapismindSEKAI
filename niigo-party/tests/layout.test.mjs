@@ -60,7 +60,7 @@ test('注册表：交点锁定不可放置；每个可放置类型都有展示�
   assert.equal(tileDef('不存在').name, TILE_TYPES.blank.name);
 });
 
-test('空格：落地无效果，直接进入行动阶段', () => {
+test('空格：落地无效果，停在结算态', () => {
   const s = createGame([{ charKey: 'ena', playerName: 'P1' }, { charKey: 'knd', playerName: 'P2' }]);
   const saved = TILES[1].type;
   TILES[1].type = 'blank';           // 临时改地块（TILES 是可变数组，测完还原）

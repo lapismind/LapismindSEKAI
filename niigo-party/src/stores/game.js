@@ -1,13 +1,29 @@
 /**
  * src/stores/game.js —— Pinia store：包一层引擎，M0 热座用；
  * 联机时把这里的本地调用换成 ws 消息（engine 的纯函数形态可直接搬到服务端）。
+ *
+ * 节奏（pace）：移动每格、掷骰大字、落地结算缓冲、事件通知停留、战斗自动步进都由这里按
+ * 「常态 / 快速」两档计时驱动。玩家只做真正的决定（出牌、选路、战斗/放过、选牌、防御/躲避、买卡），
+ * 纯展示的环节（掷 D6、掷战斗牌、结算、事件通知、结束回合）一律自动推进。
  */
 import { defineStore } from 'pinia';
 import * as E from '@/game/engine';
 import { CHARACTERS } from '@/game/characters';
 
 const SAVE_KEY = 'niigo-party-save-v1';
-export const ROLL_SHOW_MS = 900; // 掷骰后大字停留时间，之后才开始逐格移动
+const FAST_KEY = 'niigo-party-fast';
+
+/** 两档节奏（毫秒）：常态比快速慢，给动画与通知留足时间 */
+export const PACES = {
+  normal: { step: 340, rollShow: 1100, settle: 1800, popup: 2600, battleStep: 950, battleEnd: 2000 },
+  fast: { step: 150, rollShow: 600, settle: 1100, popup: 1500, battleStep: 480, battleEnd: 1100 },
+};
+
+let dropSeq = 0;
+let settleSeq = 0;
+let popupTimer = null;
+let battleTimer = null;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export const useGameStore = defineStore('game', {
   state: () => ({
@@ -15,6 +31,10 @@ export const useGameStore = defineStore('game', {
     view: 'setup',  // setup | game
     moving: false,  // 自动步进动画中
     lastFx: null,   // {type, playerId} 触发全屏特效（KO/复活/传送/升级）
+    coinDrops: [],  // 头顶掉金币：{id, playerId, amount}
+    popups: [],     // 事件通知队列：{title, text, tone, art, playerId}，按节奏自动轮播
+    battleLive: false, // 战斗过场已播完，可以自动步进
+    fast: localStorage.getItem(FAST_KEY) === '1',
     picked: [],     // 设置界面选中的角色键
     hasSave: !!localStorage.getItem(SAVE_KEY), // 热座存档（F5 恢复用）
   }),
@@ -23,15 +43,19 @@ export const useGameStore = defineStore('game', {
     started: (st) => st.view === 'game',
     current: (st) => (st.s ? st.s.players[st.s.current] : null),
     log: (st) => (st.s ? [...st.s.log].reverse().slice(0, 60) : []),
+    pace: (st) => (st.fast ? PACES.fast : PACES.normal),
     canRoll(st) {
       if (!st.s) return false;
-      const p = st.s.players[st.s.current];
-      return !st.moving && !st.s.pending && !st.s.battle
-        && (st.s.phase === 'roll' || (st.s.phase === 'action' && (p.extraRoll || p.fixedRollPending)));
+      return !st.moving && !st.s.pending && !st.s.battle && st.s.phase === 'roll';
     },
   },
 
   actions: {
+    setFast(v) {
+      this.fast = !!v;
+      localStorage.setItem(FAST_KEY, this.fast ? '1' : '0');
+    },
+
     // ── 设置 ──
     togglePick(key) {
       const at = this.picked.indexOf(key);
@@ -53,7 +77,7 @@ export const useGameStore = defineStore('game', {
       if (!raw) return false;
       try {
         const parsed = JSON.parse(raw);
-        // 只接受稳定态存档（roll/action/over）。moving 态存档属历史遗留，丢弃让玩家重掷
+        // 只接受稳定态存档。moving 态存档属历史遗留，丢弃让玩家重掷
         if (parsed.phase === 'moving' || !Array.isArray(parsed.players)) {
           localStorage.removeItem(SAVE_KEY);
           this.hasSave = false;
@@ -61,6 +85,7 @@ export const useGameStore = defineStore('game', {
         }
         this.s = parsed;
         this.view = 'game';
+        this.settleIfIdle(); // 存档停在结算态：照常自动轮到下一位
         return true;
       } catch { localStorage.removeItem(SAVE_KEY); this.hasSave = false; return false; }
     },
@@ -75,107 +100,178 @@ export const useGameStore = defineStore('game', {
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(this.s)); this.hasSave = true; } catch { /* 存储满等，忽略 */ }
     },
 
+    /** 每次调完引擎：取特效、落盘，然后按状态决定下一步（继续走 / 结算后换人） */
+    afterEngine() {
+      this.consumeFx();
+      this.persist();
+      if (!this.s) return;
+      if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
+      else this.settleIfIdle();
+    },
+
+    /**
+     * 落地结算完（结算态、没有挂起、不在战斗）：先等动画与事件通知播完，再自动轮到下一位。
+     * 同一时刻只保留最后一次调度（settleSeq 令牌），防止重复换人。
+     */
+    async settleIfIdle() {
+      if (!this.s || this.s.phase !== 'action' || this.s.pending || this.s.battle) return;
+      const token = ++settleSeq;
+      await sleep(this.pace.settle);
+      while (this.popups.length && token === settleSeq) await sleep(120);
+      if (token !== settleSeq) return;
+      if (!this.s || this.s.phase !== 'action' || this.s.pending || this.s.battle) return;
+      E.endAction(this.s);
+      this.consumeFx();
+      this.persist();
+    },
+
     // ── 回合 ──
     roll(fixed) {
       if (!this.s) return;
       E.rollMove(this.s, Math.random, { fixed });
       this.persist();
-      if (this.s.phase === 'moving') this.autoMove(ROLL_SHOW_MS); // 先让大字骰点亮一会儿再走
+      if (this.s.phase === 'moving') this.autoMove(this.pace.rollShow); // 先让大字骰点亮一会儿再走
     },
     async autoMove(delay = 60) {
-      // 逐步自动推进（220ms/格），遇 pending 停下等玩家决策；
-      // 每步只在稳定态落盘（moving 态 persist 内部跳过），胜利当步立即清档，不留竞态窗口
+      // 逐格自动推进，遇 pending（路口 / 遭遇）停下等玩家决策
       if (this.moving) return;
       this.moving = true;
       try {
-        await new Promise((r) => setTimeout(r, delay));
+        await sleep(delay);
         while (this.s && this.s.phase === 'moving' && !this.s.pending) {
           E.moveStep(this.s, Math.random);
           this.consumeFx();
-          if (this.s.phase !== 'moving') break; // 落地/胜利：稳定态，跳出立即持久化
-          await new Promise((r) => setTimeout(r, 220));
+          if (this.s.phase !== 'moving') break;
+          await sleep(this.pace.step);
         }
       } finally {
         this.moving = false;
         this.persist();
       }
       this.consumeFx();
+      this.settleIfIdle();
     },
     chooseBranch(next) {
       if (!this.s) return;
       E.chooseBranch(this.s, next);
-this.persist();
-      this.consumeFx();
-      if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
+      this.afterEngine();
     },
     acceptBattle() {
       if (!this.s) return;
       E.resolveBattleOffer(this.s, true, Math.random);
-this.persist();
+      this.persist();
+      // 战斗自动步进等过场播完（BattleOverlay 调 battleReady）
     },
     declineBattle() {
       if (!this.s) return;
       E.resolveBattleOffer(this.s, false, Math.random);
-this.persist();
-      this.consumeFx();
-      if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
+      this.afterEngine();
     },
 
-    // ── 战斗 ──
-    playBattle(cardId) {
-      if (!this.s) return;
-      E.playBattleCard(this.s, cardId, Math.random);
-this.persist();
+    // ── 战斗：玩家只选牌与 防御/躲避，其余自动 ──
+    battleReady() {
+      this.battleLive = true;
+      this.battleTick();
     },
-    confirmCards() {
+    /** 按阶段安排下一次自动步进：掷攻骰 → 掷防骰 → 掷战斗牌（攻、守各一拍）→ 结算后自动收尾 */
+    battleTick() {
+      clearTimeout(battleTimer);
+      const b = this.s?.battle;
+      if (!b || !this.battleLive) return;
+      const P = this.pace;
+      const s = this.s;
+      const steps = {
+        atk_d6: () => { E.rollAttackD6(s, Math.random); this.persist(); this.battleTick(); },
+        def_d6: () => { E.rollDefenseD6(s, Math.random); this.consumeFx(); this.persist(); this.battleTick(); },
+        card_roll: () => {
+          E.rollBattleCards(s, b.atk.rolled ? 'def' : 'atk', Math.random);
+          this.consumeFx(); this.persist(); this.battleTick();
+        },
+        done: () => this.closeBattle(),
+      };
+      const step = steps[b.phase];
+      if (step) battleTimer = setTimeout(step, b.phase === 'done' ? P.battleEnd : P.battleStep);
+    },
+    selectBattleCard(side, cardId) {
       if (!this.s) return;
-      E.confirmBattleCards(this.s);
-this.persist();
+      E.selectBattleCard(this.s, side, cardId);
+      this.persist();
+      this.battleTick();
+    },
+    lockBattleSide(side) {
+      if (!this.s) return;
+      E.lockBattleSide(this.s, side);
+      this.persist();
+      this.battleTick();
     },
     chooseDefense(mode) {
       if (!this.s) return;
-      E.chooseDefense(this.s, mode, Math.random);
-this.persist();
-      this.consumeFx();
+      E.chooseDefense(this.s, mode);
+      this.persist();
+      this.battleTick();
     },
     closeBattle() {
       if (!this.s) return;
+      clearTimeout(battleTimer);
+      this.battleLive = false;
       E.closeBattle(this.s, Math.random);
-this.persist();
-      this.consumeFx();
-      if (this.s.phase === 'moving' && !this.s.pending) this.autoMove();
+      this.afterEngine();
     },
 
-    // ── 行动阶段 ──
+    // ── 掷骰前出牌 / 商店 ──
     playCard(cardId, opts) {
       if (!this.s) return;
       E.playEffectCard(this.s, cardId, opts || {}, Math.random);
-this.persist();
+      this.persist();
       this.consumeFx();
     },
     buy(cardId) {
       if (!this.s) return;
-      E.buyCard(this.s, cardId);
-this.persist();
+      E.buyCard(this.s, cardId); // 买到再也买不了会自动关店
+      this.afterEngine();
     },
     closeShop() {
       if (!this.s) return;
       E.closeShop(this.s);
-this.persist();
-    },
-    endTurn() {
-      if (!this.s) return;
-      E.endAction(this.s);
-this.persist();
-      this.consumeFx();
+      this.afterEngine();
     },
 
     consumeFx() {
       if (this.s?.fx?.length) {
-        this.lastFx = this.s.fx[this.s.fx.length - 1];
+        for (const f of this.s.fx) {
+          if (f.type === 'coins') {
+            const drop = { id: ++dropSeq, playerId: f.playerId, amount: f.amount };
+            this.coinDrops.push(drop);
+            setTimeout(() => { this.coinDrops = this.coinDrops.filter((d) => d.id !== drop.id); }, 1600);
+          } else {
+            this.lastFx = f;
+            setTimeout(() => { if (this.lastFx === f) this.lastFx.consumed = true; }, 900);
+          }
+        }
         this.s.fx = [];
-        setTimeout(() => { if (this.lastFx) this.lastFx.consumed = true; }, 900);
       }
+      if (this.s?.popups?.length) {
+        this.popups.push(...this.s.popups);
+        this.s.popups = [];
+        this.armPopup();
+      }
+    },
+
+    /** 事件通知自动轮播：队首停留 pace.popup 毫秒后换下一条（点一下可提前跳过） */
+    armPopup() {
+      if (popupTimer || !this.popups.length) return;
+      const head = this.popups[0];
+      popupTimer = setTimeout(() => {
+        popupTimer = null;
+        if (this.popups[0] === head) this.popups.shift();
+        this.armPopup();
+      }, this.pace.popup);
+    },
+    skipPopup() {
+      clearTimeout(popupTimer);
+      popupTimer = null;
+      this.popups.shift();
+      this.armPopup();
     },
   },
 });

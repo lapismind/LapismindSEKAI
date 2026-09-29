@@ -7,6 +7,9 @@
  *   联机时由服务端掷骰后走状态帧广播；
  * - 移动骰 1d10（规格 v2.6），战斗判定骰 1d6，两套分开；
  * - 战斗胜利（未 KO）无星币效果；KO 才由加害者抢走败者一半星币（§6.2）。
+ * - 回合节奏（2026-09-29 用户拍板）：掷骰前可出 1 张效果牌 → 掷骰移动 → 落地结算 → 结算态 'action'
+ *   → 由调用方在动画/通知播完后调 endAction 轮到下一位（UI 按「常态 / 快速」节奏自动调，没有按钮）。
+ *   落在商店则停在商店直到关店；踩疾行则回到掷骰态再掷一次。
  */
 
 import {
@@ -27,6 +30,10 @@ function log(state, text) {
 function fx(state, type, playerId, extra = {}) {
   state.fx.push({ type, playerId, ...extra });
 }
+/** 事件窗口：UI 排队弹出（title / text / tone: good|bad|info；art 为插画 key，缺省时显示占位） */
+function popup(state, p, data) {
+  (state.popups ??= []).push({ playerId: p.id, ...data });
+}
 
 // ── 建局 ───────────────────────────────────────────────────
 
@@ -43,6 +50,7 @@ export function createGame(seats) {
     battle: null,
     overlays: [], // {tile, kind, ownerId, ...}
     fx: [],
+    popups: [], // 事件窗口队列（UI 取走后清空）
     log: [],
     moveTeleported: false, // 本次移动是否已触发传送门（防无限跳）
     players: seats.map((s, i) => {
@@ -126,6 +134,7 @@ function koPlayer(state, victim, attacker) {
 function gainCoins(state, p, n) {
   p.coins += n;
   log(state, `${p.name} 获得 ${n} 星币（现有 ${p.coins}）`);
+  fx(state, 'coins', p.id, { amount: n }); // 头顶掉金币
 }
 
 function tryLevelUp(state, p) {
@@ -163,8 +172,9 @@ export function rollMove(state, rng, opts = {}) {
   }
   // 供 UI 播放大字骰点（seq 递增，同点数连掷也能触发）
   state.lastRoll = { value: steps, seq: (state.lastRoll?.seq ?? 0) + 1, playerId: p.id, fixed: !!opts.fixed };
-  if (state.phase === 'action') p.extraRoll = false;
+  p.extraRoll = false;
   state.remaining = steps;
+  state.moveFrom = p.tile;
   state.phase = 'moving';
   state.moveTeleported = false;
   p.choice = null;
@@ -191,7 +201,6 @@ export function moveStep(state, rng = Math.random) {
   p.tile = next;
   p.loop = ringOfTile(next) ?? p.loop;
   state.remaining -= 1;
-  log(state, `${p.name} 移动到 ${p.tile} 号格`);
 
   // 到达检查（顺序：叠加物 → 传送门 → 对手）
   const ovIdx = state.overlays.findIndex((o) => o.tile === p.tile);
@@ -264,72 +273,160 @@ export function resolveBattleOffer(state, accept, rng = Math.random) {
   const afterLand = state.remaining <= 0;
   state.pending = null;
   if (accept) {
+    const side = () => ({ cards: [], spent: 0, locked: false, d6: null, rolled: false });
     state.battle = {
       attackerId: cur(state).id,
       defenderId,
-      phase: 'attack_cards', // attack_cards → defense_cards → defend_choice → done
-      atkCards: [], defCards: [], atkSpent: 0, defSpent: 0,
+      phase: 'select', // select → atk_d6 → def_choice → def_d6 → (card_roll) → done
+      atk: side(),     // cards: [{ id, value }]，value 在 card_roll 才掷出
+      def: side(),
+      mode: null,      // 'defend' | 'dodge'
+      dodged: null,
       outcome: null, afterLand,
     };
     state.phase = 'battle';
     log(state, `战斗开始：${cur(state).name} → ${findPlayer(state, defenderId).name}`);
+    autoLock(state, 'atk');
+    autoLock(state, 'def');
   } else if (afterLand) {
     land(state, rng);
   }
 }
 
-// ── 战斗（规格 §4：攻防骰 1d6、闪避 = 防骰>攻骰或防骰=6、伤害 ≥1）──
+// ── 战斗（规格 §4；2026-09-29 用户拍板的流程）──────────────
+//   select     双方同时选战斗牌：互相可见、选定即从手牌扣除（不可撤回、不退回）、各自锁定
+//              （攻 9 秒 / 守 10 秒的限时由 UI 负责，超时按已选锁定）
+//   atk_d6     攻方掷 D6
+//   def_choice 守方看到攻骰后选 防御 / 躲避（UI 限时 10 秒，超时默认防御）
+//   def_d6     守方掷 D6
+//     躲避：防骰 > 攻骰 或 防骰 = 6 → 成功，done（双方已选的牌照样消耗）
+//           失败 → card_roll：只攻方掷战斗牌，守方吃满 ATK + 攻骰 + 攻击牌
+//     防御 → card_roll：双方各掷战斗牌，伤害 = max(1, 攻总 − 防总)
+//   done
+// 头顶的圈（battleTotals）：掷 D6 时出现、显示骰点；掷战斗牌后增长为实际数值
+// （基础 ATK/DEF + 骰点 + 牌点）。躲避只比 D6，守方的圈始终是骰点。
 
-const sideActor = (state) => {
-  const b = state.battle;
-  return b.phase === 'attack_cards' ? findPlayer(state, b.attackerId)
-    : findPlayer(state, b.defenderId);
-};
+const SIDE_OF = { atk: 'attack', def: 'defense' };
+const sidePlayer = (state, side) => findPlayer(state, side === 'atk' ? state.battle.attackerId : state.battle.defenderId);
+const cardSum = (sd) => sd.cards.reduce((t, c) => t + (c.value ?? 0), 0);
 
-/** 打出战斗牌（三档 1~3 费，roll 范围 1~4 / 1~7 / 1~10；每人每场 3 费上限） */
-export function playBattleCard(state, cardId, rng) {
+/** 选一张战斗牌（side: 'atk' | 'def'）。选定即扣出手牌，不能撤回；每场每人 3 费上限 */
+export function selectBattleCard(state, side, cardId) {
   const b = state.battle;
-  if (!b || !['attack_cards', 'defense_cards'].includes(b.phase)) return;
-  const actor = sideActor(state);
+  if (b?.phase !== 'select' || !b[side] || b[side].locked) return;
+  const p = sidePlayer(state, side);
   const card = CARDS[cardId];
-  if (!card || card.kind !== 'battle' || !actor.hand.includes(cardId)) return;
-  const spent = b.phase === 'attack_cards' ? b.atkSpent : b.defSpent;
-  if (spent + card.cost > 3) return;
-  const value = card.min + Math.floor(rng() * (card.max - card.min + 1));
-  actor.hand.splice(actor.hand.indexOf(cardId), 1);
-  (b.phase === 'attack_cards' ? b.atkCards : b.defCards).push({ id: cardId, value });
-  if (b.phase === 'attack_cards') b.atkSpent += card.cost;
-  else b.defSpent += card.cost;
-  log(state, `${actor.name} 打出「${card.name}」→ ${value} 点`);
+  if (!card || card.kind !== 'battle' || card.side !== SIDE_OF[side] || !p.hand.includes(cardId)) return;
+  if (b[side].spent + card.cost > 3) return;
+  p.hand.splice(p.hand.indexOf(cardId), 1);
+  b[side].cards.push({ id: cardId, value: null });
+  b[side].spent += card.cost;
+  log(state, `${p.name} 选了「${card.name}」`);
+  autoLock(state, side);
 }
 
-export function confirmBattleCards(state) {
+/** 一方还能选的战斗牌（去重）；没有就等于没有可做的决定 */
+export function battleOptions(state, side) {
   const b = state.battle;
-  if (b?.phase === 'attack_cards') b.phase = 'defense_cards';
-  else if (b?.phase === 'defense_cards') b.phase = 'defend_choice';
+  if (b?.phase !== 'select' || !b[side] || b[side].locked) return [];
+  const p = sidePlayer(state, side);
+  return [...new Set(p.hand)].filter((id) => {
+    const c = CARDS[id];
+    return c.kind === 'battle' && c.side === SIDE_OF[side] && b[side].spent + c.cost <= 3;
+  });
 }
 
-/** 防守方选择防御或躲避，结算整场战斗 */
-export function chooseDefense(state, mode, rng) {
+/** 没有可选的牌 → 自动锁定（不让玩家为「无事可做」点确定） */
+function autoLock(state, side) {
   const b = state.battle;
-  if (!b || b.phase !== 'defend_choice') return;
+  if (b?.phase === 'select' && !b[side].locked && !battleOptions(state, side).length) lockBattleSide(state, side);
+}
+
+/** 锁定一方的选牌；双方都锁定后进入攻方掷 D6 */
+export function lockBattleSide(state, side) {
+  const b = state.battle;
+  if (b?.phase !== 'select' || !b[side] || b[side].locked) return;
+  b[side].locked = true;
+  if (b.atk.locked && b.def.locked) b.phase = 'atk_d6';
+}
+
+export function rollAttackD6(state, rng) {
+  const b = state.battle;
+  if (b?.phase !== 'atk_d6') return;
+  b.atk.d6 = d6(rng);
+  log(state, `${sidePlayer(state, 'atk').name} 掷出攻骰 ${b.atk.d6}`);
+  b.phase = 'def_choice';
+}
+
+/** 守方看到攻骰后选择 防御 / 躲避 */
+export function chooseDefense(state, mode) {
+  const b = state.battle;
+  if (b?.phase !== 'def_choice' || !['defend', 'dodge'].includes(mode)) return;
+  b.mode = mode;
+  log(state, `${sidePlayer(state, 'def').name} 选择${mode === 'dodge' ? '躲避' : '防御'}`);
+  b.phase = 'def_d6';
+}
+
+export function rollDefenseD6(state, rng) {
+  const b = state.battle;
+  if (b?.phase !== 'def_d6') return;
+  b.def.d6 = d6(rng);
+  log(state, `${sidePlayer(state, 'def').name} 掷出防骰 ${b.def.d6}`);
+  if (b.mode === 'dodge') {
+    b.dodged = b.def.d6 > b.atk.d6 || b.def.d6 === 6;
+    if (b.dodged) { finishBattle(state); return; }
+  }
+  b.phase = 'card_roll';
+  // 没选牌的一方无需掷，直接视为已掷（躲避时守方的牌作废，也不掷）
+  if (!b.atk.cards.length) b.atk.rolled = true;
+  if (b.mode === 'dodge' || !b.def.cards.length) b.def.rolled = true;
+  if (b.atk.rolled && b.def.rolled) finishBattle(state);
+}
+
+/** 掷自己选的战斗牌（三档 roll 范围 1~4 / 1~7 / 1~10） */
+export function rollBattleCards(state, side, rng) {
+  const b = state.battle;
+  if (b?.phase !== 'card_roll' || !b[side] || b[side].rolled) return;
+  for (const c of b[side].cards) {
+    const card = CARDS[c.id];
+    c.value = card.min + Math.floor(rng() * (card.max - card.min + 1));
+  }
+  b[side].rolled = true;
+  log(state, `${sidePlayer(state, side).name} 掷战斗牌：${b[side].cards.map((c) => `${CARDS[c.id].name}=${c.value}`).join('、')}`);
+  if (b.atk.rolled && b.def.rolled) finishBattle(state);
+}
+
+/** 两人头上圈里的数值（UI 与结算共用同一套口径）。未出现时为 null */
+export function battleTotals(state) {
+  const b = state.battle;
+  if (!b) return { red: null, blue: null };
+  const A = findPlayer(state, b.attackerId);
+  const D = findPlayer(state, b.defenderId);
+  const red = b.atk.d6 == null ? null
+    : b.atk.rolled && b.phase !== 'def_d6' && !(b.mode === 'dodge' && b.dodged)
+      ? { value: A.atk + b.atk.d6 + cardSum(b.atk), parts: [['ATK', A.atk], ['D6', b.atk.d6], ['牌', cardSum(b.atk)]] }
+      : { value: b.atk.d6, parts: [['D6', b.atk.d6]] };
+  const blue = b.def.d6 == null ? null
+    : b.mode === 'defend' && b.def.rolled
+      ? { value: D.def + b.def.d6 + cardSum(b.def), parts: [['DEF', D.def], ['D6', b.def.d6], ['牌', cardSum(b.def)]] }
+      : { value: b.def.d6, parts: [['D6', b.def.d6]] };
+  return { red, blue };
+}
+
+function finishBattle(state) {
+  const b = state.battle;
   const attacker = findPlayer(state, b.attackerId);
   const defender = findPlayer(state, b.defenderId);
-  const dA = d6(rng);
-  const dD = d6(rng);
-  const atkTotal = attacker.atk + b.atkCards.reduce((s, c) => s + c.value, 0) + dA;
+  const { red, blue } = battleTotals(state);
   let dmg;
-  let dodged = false;
-  const defTotal = defender.def + b.defCards.reduce((s, c) => s + c.value, 0) + dD;
-  if (mode === 'dodge') {
-    dodged = dD > dA || dD === 6;
-    dmg = dodged ? 0 : atkTotal; // 躲避失败：防御视为 0，承受全部攻击点数
-  } else {
-    dmg = Math.max(1, atkTotal - defTotal); // 伤害最小 1
-  }
-  b.outcome = { mode, dA, dD, atkTotal, defTotal: mode === 'dodge' ? null : defTotal, dmg, dodged };
+  if (b.mode === 'dodge') dmg = b.dodged ? 0 : red.value;   // 躲避失败：吃满攻击
+  else dmg = Math.max(1, red.value - blue.value);             // 防御：相减，最小 1
+  b.outcome = {
+    mode: b.mode, dA: b.atk.d6, dD: b.def.d6,
+    atkTotal: red.value, defTotal: b.mode === 'dodge' ? null : blue.value, dmg, dodged: !!b.dodged,
+  };
   b.phase = 'done';
-  log(state, `战斗结算：攻 ${atkTotal} vs 守 ${mode === 'dodge' ? `闪避(${dodged ? '成功' : '失败'})` : defTotal} → 伤害 ${dmg}`);
+  log(state, `战斗结算：${b.mode === 'dodge' ? `躲避${b.dodged ? '成功' : '失败'}` : `攻 ${red.value} vs 守 ${blue.value}`} → 伤害 ${dmg}`);
   if (dmg > 0) damage(state, defender, dmg, attacker, '战斗');
   else log(state, `${defender.name} 闪避成功，未受伤`);
 }
@@ -340,7 +437,8 @@ export function closeBattle(state, rng = Math.random) {
   if (!b || b.phase !== 'done') return;
   state.battle = null;
   const p = cur(state);
-  if (state.phase === 'over' || p.ko) { endTurn(state); return; }
+  if (state.phase === 'over') return;
+  if (p.ko) { state.phase = 'action'; return; }
   if (b.afterLand || state.remaining <= 0) land(state, rng);
   else state.phase = 'moving';
 }
@@ -350,11 +448,21 @@ export function closeBattle(state, rng = Math.random) {
 function land(state, rng) {
   const p = cur(state);
   state.remaining = 0;
-  if (p.ko) { endTurn(state); return; } // 移动中把自己走没了（试炼/陷阱）
+  if (p.ko) { state.phase = 'action'; return; } // 移动中把自己走没了（陷阱）：停在结算态
+  if (state.moveFrom != null) {
+    log(state, `${p.name} 走到 ${p.tile} 号格（${tileDef(TILES[p.tile].type).name}）`);
+    state.moveFrom = null;
+  }
   tileDef(TILES[p.tile].type).onLand?.({ state, p, rng, api: TILE_API });
   if (state.phase === 'over') return;
-  if (p.ko) { endTurn(state); return; } // 被横祸/试炼走没了
-  state.phase = 'action';
+  if (p.ko) { state.phase = 'action'; return; } // 被横祸/试炼走没了：停在结算态
+  afterLanding(state);
+}
+
+/** 落地结算完：疾行 → 回到掷骰态再掷；否则停在结算态（商店等挂起也在这里等处理） */
+function afterLanding(state) {
+  const p = cur(state);
+  state.phase = p.extraRoll && !state.pending ? 'roll' : 'action';
 }
 
 function drawSpecific(state, p, cardId) {
@@ -365,7 +473,8 @@ function drawSpecific(state, p, cardId) {
 
 /** 地块钩子可用的引擎能力（tiles.js 不直接 import engine，避免循环依赖） */
 const TILE_API = {
-  log, fx, damage, gainCoins, drawCards, drawSpecific, tryLevelUp, mirrorTile, pick, d6, CARD_IDS,
+  log, fx, popup, damage, gainCoins, drawCards, drawSpecific, tryLevelUp, mirrorTile, pick, d6, CARDS, CARD_IDS,
+  canShop: (p, stock) => canShop(p, stock),
 };
 
 // ── 行动阶段：效果牌 / 商店 ────────────────────────────────
@@ -386,10 +495,10 @@ function applyTargeted(state, caster, target, apply) {
   apply(target, caster);
 }
 
-/** 出效果牌 / 反制牌。effect 每回合限 1 张；opts: {targetId?, tileIdx?} */
+/** 出效果牌 / 反制牌（掷骰前）。effect 每回合限 1 张；opts: {targetId?, tileIdx?} */
 export function playEffectCard(state, cardId, opts = {}, rng) {
   const p = cur(state);
-  if (state.phase !== 'action' || state.pending) return;
+  if (state.phase !== 'roll' || state.pending) return;
   const card = CARDS[cardId];
   if (!card || !p.hand.includes(cardId)) return;
   if (card.kind === 'effect' && p.effectPlayed) { log(state, '本回合的效果牌已经用过了'); return; }
@@ -473,11 +582,19 @@ export function buyCard(state, cardId) {
   p.coins -= SHOP_PRICE;
   p.hand.push(cardId);
   log(state, `${p.name} 买下「${CARDS[cardId].name}」（剩 ${p.coins} 星币）`);
+  // 再也买不了（售罄 / 没钱 / 手牌满）→ 不必让玩家点「离开」
+  if (!canShop(p, s)) closeShop(state);
+}
+
+/** 还能不能在商店里买：有库存、够钱、手牌没满 */
+export function canShop(p, stock) {
+  return stock.length > 0 && p.coins >= SHOP_PRICE && p.hand.length < HAND_LIMIT;
 }
 
 export function closeShop(state) {
   if (state.pending?.type !== 'shop') return;
   state.pending = null;
+  afterLanding(state);
 }
 
 /** 结束行动阶段 → 下一位 */
