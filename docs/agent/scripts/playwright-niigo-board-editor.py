@@ -52,18 +52,60 @@ with sync_playwright() as pw:
     check(bg_ok > 0, f"棋盘底图加载（宽 {bg_ok}）")
     check(page.locator("svg polygon").count() >= 68, f"格子热区 {page.locator('svg polygon').count()} ≥ 68")
     check(page.locator("svg image[href*='chibi_base']").count() == 2, "2 个棋子渲染")
-    tile0 = page.evaluate("window.__game.s.players[0].tile")
     page.screenshot(path=str(OUT / "game_start.png"))
-    page.get_by_role("button", name="掷骰移动").click()
-    page.wait_for_function("window.__game.s.phase !== 'moving' || window.__game.s.pending", timeout=8000)
-    if page.evaluate("window.__game.s.pending?.type") == "branch":
-        page.screenshot(path=str(OUT / "game_branch.png"))
-        page.evaluate("window.__game.chooseBranch('A')")
-        page.wait_for_function("window.__game.s.phase !== 'moving' || window.__game.s.pending", timeout=8000)
+
+    # HUD：缩放三挡
+    vb = lambda: [float(v) for v in page.locator("svg").first.get_attribute("viewBox").split()]
+    check(abs(vb()[2] - 2400) < 1, "默认全图 viewBox 宽 2400")
+    page.get_by_role("button", name="特写").click()
+    check(abs(vb()[2] - 2400 / 2.6) < 1, f"特写挡 viewBox 宽 {vb()[2]:.0f}")
+    page.get_by_role("button", name="全图").click()
+
+    # HUD：点头像定位（第二位玩家）
+    p2 = page.evaluate("window.__game.s.players[1]")
+    page.get_by_role("button", name=f"在地图上定位 {p2['name']}").click()
+    v = vb()
+    check(v[2] < 2400, f"定位后已放大（viewBox 宽 {v[2]:.0f}）")
+    page.screenshot(path=str(OUT / "game_locate.png"))
+    page.get_by_role("button", name="全图").click()
+
+    # 掷骰：右下 d10 → 中央大字
+    tile0 = page.evaluate("window.__game.s.players[0].tile")
+    page.get_by_role("button", name="掷 d10 移动骰").click()
+    page.wait_for_selector(".roll-big", timeout=3000)
+    big = page.locator(".roll-big div").first.inner_text().strip()
+    rolled = page.evaluate("window.__game.s.lastRoll.value")
+    check(big == str(rolled) and 1 <= rolled <= 10, f"中央大字 {big} = 骰点 {rolled}")
+    page.screenshot(path=str(OUT / "game_roll_big.png"))
+    page.wait_for_function("window.__game.s.phase !== 'moving' || window.__game.s.pending", timeout=12000)
+    while page.evaluate("window.__game.s.pending?.type") == "branch":
+        page.evaluate("window.__game.chooseBranch(window.__game.s.pending.options[0])")
+        page.wait_for_function("window.__game.s.phase !== 'moving' || window.__game.s.pending", timeout=12000)
     tile1 = page.evaluate("window.__game.s.players[0].tile")
     check(tile1 != tile0, f"掷骰后移动 {tile0} → {tile1}")
-    page.wait_for_timeout(400)
+    page.wait_for_timeout(300)
     page.screenshot(path=str(OUT / "game_after_roll.png"))
+
+    # 十字路口 22：三个方向，点地图上的箭头选路
+    page.evaluate("""() => { const g = window.__game, s = g.s;
+        if (s.pending?.type === 'shop') g.closeShop();
+        if (s.phase === 'action') g.endTurn();
+        const p = s.players[s.current]; p.tile = 22; p.prev = 21; p.choice = null;
+        s.players.forEach((o) => { if (o !== p) o.tile = 40; });
+        s.phase = 'roll'; s.pending = null; }""")
+    page.get_by_role("button", name="掷 d10 移动骰").click()
+    page.wait_for_function("window.__game.s.pending?.type === 'branch'", timeout=6000)
+    opts = page.evaluate("window.__game.s.pending.options")
+    check(len(opts) == 3 and 21 not in opts, f"路口 22 给出 3 个方向 {opts}（不含来路 21）")
+    labels = sorted(page.locator("svg g.cursor-pointer text").all_text_contents())
+    check(sum(1 for t in labels if t in ('直行', '左转', '右转')) == 3, f"地图上 3 个方向箭头 {[t for t in labels if len(t) == 2]}")
+    page.wait_for_timeout(1400)  # 等掷骰大字淡出再截图
+    page.screenshot(path=str(OUT / "game_crossroad.png"))
+    pick = opts[1]
+    page.locator(f"svg g[data-branch='{pick}'] circle").click()
+    page.wait_for_function("window.__game.s.phase !== 'moving' || window.__game.s.pending", timeout=12000)
+    first_step = page.evaluate("window.__game.s.log.map(l => l.text).find(t => t.includes('号路口选择'))")
+    check(first_step is not None and f"前往 {pick}" in first_step, f"点箭头选路生效：{first_step}")
 
     # ── 2. 编辑器 ──
     print("[editor]")

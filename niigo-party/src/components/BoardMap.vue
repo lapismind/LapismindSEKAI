@@ -172,13 +172,15 @@ const clickBranch = (n) => { if (!dragged) emit('chooseBranch', n); };
     </g>
 
     <!-- 十字路口：三个方向，点箭头选路 -->
-    <g v-for="ar in branchArrows" :key="'br' + ar.next" class="cursor-pointer" @click="clickBranch(ar.next)">
+    <g v-for="ar in branchArrows" :key="'br' + ar.next" class="cursor-pointer" :data-branch="ar.next" @click="clickBranch(ar.next)">
+      <!-- 透明粗线作点击区：整条箭头都能点，不会穿透到下面的格子热区 -->
+      <line :x1="ar.x" :y1="ar.y" :x2="ar.ax" :y2="ar.ay" stroke="transparent" stroke-width="70" stroke-linecap="round" />
       <line :x1="ar.x" :y1="ar.y" :x2="ar.ax" :y2="ar.ay" :stroke="ar.color" stroke-width="10"
             stroke-dasharray="18 12" stroke-linecap="round" />
       <polygon :points="ar.head" :fill="ar.color" stroke="#111827" stroke-width="3" />
       <circle :cx="ar.mx" :cy="ar.my" r="36" :fill="ar.color" stroke="#111827" stroke-width="5" />
-      <text :x="ar.mx" :y="ar.my + 10" text-anchor="middle" font-size="26" font-weight="900" fill="#111827">{{ ar.name }}</text>
-      <text :x="ar.lx" :y="ar.ly + 9" text-anchor="middle" font-size="24" font-weight="800" fill="#ffffff"
+      <text :x="ar.mx" :y="ar.my + 10" style="pointer-events: none" text-anchor="middle" font-size="26" font-weight="900" fill="#111827">{{ ar.name }}</text>
+      <text :x="ar.lx" :y="ar.ly + 9" style="pointer-events: none" text-anchor="middle" font-size="24" font-weight="800" fill="#ffffff"
             stroke="#111827" stroke-width="6" paint-order="stroke">{{ ar.next }} · {{ defOf(ar.next).name }}</text>
     </g>
   </svg>
