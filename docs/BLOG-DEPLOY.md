@@ -1,6 +1,6 @@
 # 博客部署指南
 
-> 博客地址：https://blog.qmzhj.top
+> 博客地址：https://sekai.qmzhj.top（老域名 blog.qmzhj.top 会 308 过来）
 > 技术栈：Astro + Tailwind CSS，部署在 Cloudflare Workers（纯静态）
 
 ## 日常发布流程
@@ -14,7 +14,7 @@ git add -A; git commit -m "post: 文章标题"; git push  # 归档源码
 ```
 
 构建成功标志：输出末尾出现 `[build] Complete!` 和页面列表。
-部署成功标志：wrangler 输出 `Deployed blog triggers` 和 `blog.qmzhj.top (custom domain)`。
+部署成功标志：wrangler 输出 `Deployed blog triggers` 和两条 custom domain（`sekai.qmzhj.top` 与保留做重定向的 `blog.qmzhj.top`）。
 
 ## 写一篇新文章
 
@@ -38,7 +38,8 @@ heroImage: '../../assets/xxx.png'   # 可选，封面图放 src/assets/
 ### wrangler.toml
 
 - `name = "blog"`：Worker 名称
-- `routes`：绑定自定义域名 blog.qmzhj.top（Custom Domain 模式，自动创建 DNS + 证书）
+- `routes`：两条 Custom Domain——`sekai.qmzhj.top`（新主域）与 `blog.qmzhj.top`（保留只为 308 重定向，见 `src/worker.ts` 顶部），均自动创建 DNS + 证书
+- `assets.run_worker_first = true`：所有请求先进 Worker——资产请求默认不过 Worker，老域名的 308 重定向依赖它
 - `assets.directory = "./dist"`：静态资源目录
 - `not_found_handling = "404-page"`：404 走 Astro 的 404 页面
 

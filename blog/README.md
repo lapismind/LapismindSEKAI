@@ -1,6 +1,6 @@
-# blog — Lapismind 的 SEKAI（blog.qmzhj.top）
+# blog — Lapismind 的 SEKAI（sekai.qmzhj.top）
 
-真冬主题的个人博客 / 作品集，跑在 Cloudflare 免费栈上：Astro 静态构建，`blog.qmzhj.top` 自定义域名 + Workers ASSETS 资产托管（Worker 只对 `/live2d/*` 做防盗链，见 `src/worker.ts`）。
+真冬主题的个人博客 / 作品集，跑在 Cloudflare 免费栈上：Astro 静态构建，`sekai.qmzhj.top` 自定义域名 + Workers ASSETS 资产托管。老域名 `blog.qmzhj.top` 保留在同一个 Worker 上做 308 重定向（`wrangler.toml` 绑了两个 Custom Domain，`run_worker_first = true` 让所有请求先进 Worker，见 `src/worker.ts`：老域重定向 + `/live2d/*` 防盗链 + `/api/visits` 访客数）。
 
 ## 栏目与页面
 
@@ -10,7 +10,7 @@
 | `/projects/` | 游戏作品集（数据在 `src/data/projects.ts`） |
 | `/works/` | Projects 板块：游戏之外的作品（工具 / mod / 开源仓库 + 自制 MV），数据在 `src/data/projects.ts` 的 `works` 与 `src/data/mvs.ts` |
 | `/blog/` | 文章列表 + 文章页（目录 / 阅读进度 / 评论区） |
-| `/about/` | 兴趣简介 + 单推角色卡 + 游戏、工具与 Mod |
+| `/about/` | 兴趣简介 + 单推角色卡 + 游戏、工具与 Mod + 友链（数据 `src/data/friends.ts`） |
 | `/profile/` | 个人资料：身份 / 头像 / 成就展馆（登录后） |
 | `/login/` | 进入 SEKAI：GitHub 登录 / 用户名密码注册登录（依赖 auth 服务） |
 | `/404` | 404 页 |

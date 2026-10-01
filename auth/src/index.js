@@ -91,18 +91,18 @@ function json(data, status = 200, extraHeaders = {}) {
 }
 
 function sessionCookie(token) {
-  // HttpOnly + Secure + SameSite=Lax；domain 带前导点让 blog/soup/showhand 子域共享
+  // HttpOnly + Secure + SameSite=Lax；domain 带前导点让 sekai/soup/showhand 等子域共享
   const maxAge = Math.floor(SESSION_TTL_MS / 1000)
   return `session=${token}; Domain=.qmzhj.top; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAge}`
 }
 
-const DEFAULT_DEST = 'https://blog.qmzhj.top/'
+const DEFAULT_DEST = 'https://sekai.qmzhj.top/'
 
 // 开放重定向防护：只允许 qmzhj.top 及其子域的完整 URL（拦截外域与协议相对写法）
 function sanitizeRedirect(dest) {
   if (!dest) return DEFAULT_DEST
   try {
-    const u = new URL(dest, 'https://blog.qmzhj.top')
+    const u = new URL(dest, 'https://sekai.qmzhj.top')
     const host = u.hostname
     const allowed = host === 'qmzhj.top' || host.endsWith('.qmzhj.top')
     return allowed ? u.href : DEFAULT_DEST

@@ -1,6 +1,6 @@
 # blog-editor — 博客文章编辑器
 
-本地跑的文章编辑器：左边编 frontmatter + Markdown，右边实时预览，一键保存并发布到 `blog.qmzhj.top`。
+本地跑的文章编辑器：左边编 frontmatter + Markdown，右边实时预览，一键保存并发布到 `sekai.qmzhj.top`。
 
 为什么是本地应用：它要直接写 `blog/src/content/blog/*.md`、往 `blog/src/assets/` 塞图、还要跑 `npx wrangler deploy`——纯网页做不到这三件事。
 

@@ -1,4 +1,4 @@
-# AGENTS.md — blog（qmzhj.top 博客）
+# AGENTS.md — blog（sekai.qmzhj.top 博客）
 
 ## 会话启动（必读）
 
@@ -18,7 +18,7 @@
   **设计令牌（品牌色阶 / 表面色 / 圆角 / 阴影 / 字体栈）的真源在 `packages/design-kit`**，
   本站通过 `@import "@lapismind/design-kit/tokens.css"` 引入，不要在 global.css 里重写这些值
   （2026-09-14 收口；`public/fonts/` 也是由 design-kit 同步生成、已 gitignore）
-- src/worker.ts — `/live2d/*` 防盗链 + moc3 返回预压缩 `.br` + 设缓存头（详见 docs/site-features.md 第 8 节）
+- src/worker.ts — 老域名 blog.qmzhj.top 整站 308 到 sekai.qmzhj.top + `/live2d/*` 防盗链 + moc3 返回预压缩 `.br` + 设缓存头（wrangler.toml `run_worker_first = true` 让所有请求先进 Worker，老域重定向依赖它；详见 docs/site-features.md 第 7、8 节）
 - scripts/precompress-live2d.mjs — 构建后置步骤（`postbuild`），把 moc3 预压成 `.br`
 
 ## 不要动的地方（已确认的边界）

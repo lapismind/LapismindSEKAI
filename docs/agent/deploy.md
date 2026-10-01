@@ -34,7 +34,7 @@
 
 | 站 | Cloudflare name | 域名 | 命令（在对应目录） |
 |---|---|---|---|
-| 博客 | `blog` | blog.qmzhj.top | `npm run build && npx wrangler deploy` |
+| 博客 | `blog` | sekai.qmzhj.top | `npm run build && npx wrangler deploy` |
 | 海龟汤 | `turtle-soup` | soup.qmzhj.top | `npm run deploy` |
 | 梭哈 | `showhand` | showhand.qmzhj.top | `npm run deploy` |
 | 出包魔法师 | `abracadawhat` | abracadawhat.qmzhj.top | `npm run deploy` |

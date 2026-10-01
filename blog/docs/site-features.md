@@ -1,10 +1,10 @@
-# qmzhj.top 博客 · 功能与实现记录
+# sekai.qmzhj.top 博客 · 功能与实现记录
 
 > 归档于 2026-08-22。记录站点当前的栏目结构、设计系统、交互功能与资源获取规范，供后续维护与续作参考。
 
 ## 0. 概览
 
-- 域名：`blog.qmzhj.top`（Cloudflare Custom Domain）
+- 域名：`sekai.qmzhj.top`（Cloudflare Custom Domain）。老域名 `blog.qmzhj.top` 保留在同一 Worker 上：worker 顶部按 host 308 到新域（保 path + query），旧链接与搜索收录无损迁移（2026-10-01 起）。
 - 技术栈：Astro 7（静态输出）+ Tailwind CSS v4 + Cloudflare Workers（纯静态 assets 托管）
 - 定位：个人粉丝向二次元博客 —— "真冬主题的独立游戏作者小屋"（非官方，无直接商业用途）
 - **站名与文案的真源**：站名 `Lapismind SEKAI`、站内描述「可能是一位马批的 SEKAI，有一些作品在这里涌现了。」
@@ -26,7 +26,7 @@
 | `/projects/` | 游戏 | 个人游戏作品（海龟汤、Card Game），ACG "关卡选择" 语感 |
 | `/works/` | Projects | 游戏之外的作品：软件作品（mod / 工具 / 开源仓库，数据 `src/data/projects.ts` 的 `works`）+ 自制 MV 板块（数据 `src/data/mvs.ts`，正片外链 B 站 @清明葬花祭） |
 | `/blog/` | 博客 | 头条大卡 + 卡片网格 + 文章页（目录/阅读时长/进度条） |
-| `/about/` | 关于 | 音游与真冬主题的个人简介 + 单推角色卡（朝比奈真冬）+ 游戏、工具与 Mod |
+| `/about/` | 关于 | 音游与真冬主题的个人简介 + 单推角色卡（朝比奈真冬）+ 游戏、工具与 Mod + 友链（数据 `src/data/friends.ts`，加友链追加一条） |
 | `/404` | 404 | 编辑式排版：墨色线 + 大号 404 + 右缘竖排「この道は、まだ。」 |
 
 导航：首页 / 游戏 / Projects / 博客 / 关于。`Projects` 标签在 ≤480px 换成「作品」（避免五个导航项挤压换行）。
@@ -126,7 +126,7 @@
 - 演劇暂无 LRC：用中文行比例估算同步，属兜底体验。
 - 中文歌词字幕运行时依赖 pjsk 翻译接口（仅文本，量小）；音乐本体完全本地。
 - 仓库因音乐资源增大约 55MB（Cloudflare 免费托管不受影响）。
-- 待办候选：首页原创雪夜 Hero 插画；友链页；按需把更多游戏/歌曲入站。
+- 待办候选：首页原创雪夜 Hero 插画；按需把更多游戏/歌曲入站。（友链已于 2026-10-01 落在 about 页 03 板块，`src/data/friends.ts` 数据驱动；友链多了再考虑升级成独立页）
 - 后续 MV 上线（2026-10-01 起）：封面图放进 `src/assets/mv/`，在 `src/data/mvs.ts` 追加一条即可——works 页 MV 板块与首页精选（带 `featured` 标记时）自动多一行；封面必须站内自托管（B 站图床防盗链，见 lessons #77）。
 
 ## 7. 部署
@@ -137,7 +137,7 @@ npm run build        # 产物在 dist/（含 public 下所有资源）
 npx wrangler deploy  # 或 wrangler pages deploy dist
 ```
 
-wrangler.toml：`[[routes]] pattern = "blog.qmzhj.top" custom_domain = true`；`[assets] directory = "./dist"`、`not_found_handling = "404-page"`（404.html 由 `src/pages/404.astro` 生成）。
+wrangler.toml：两条 `[[routes]]`——`sekai.qmzhj.top`（新主域）与 `blog.qmzhj.top`（老域，保留只为 308 重定向，worker 顶部按 host 判断）；`[assets]` 的 `run_worker_first = true` 让所有请求先进 Worker（资产请求默认不过 Worker，老域 308 依赖它），`directory = "./dist"`、`not_found_handling = "404-page"`（404.html 由 `src/pages/404.astro` 生成）。
 
 > `npm run build` 会触发 `postbuild`：`scripts/precompress-live2d.mjs` 把 `dist/live2d` 下的 `model.moc3` 预压成 `.br`（见第 8 节）。直接 `npx wrangler deploy` 而不 build，会部署上一次的 `dist/`——这一步不会自动补。
 

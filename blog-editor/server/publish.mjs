@@ -57,7 +57,7 @@ export async function publish({ fields, onEvent }) {
 			onEvent({ type: 'error', message: `部署失败（退出码 ${deployCode}）`, errors: [] });
 			return;
 		}
-		onEvent({ type: 'done', versionId, url: 'https://blog.qmzhj.top' });
+		onEvent({ type: 'done', versionId, url: 'https://sekai.qmzhj.top' });
 	} finally {
 		running = false;
 	}

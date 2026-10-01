@@ -1,9 +1,14 @@
-// 轻量入口：静态资产照常由 ASSETS 提供，只做三件额外的事。
+// 轻量入口：静态资产照常由 ASSETS 提供，只做四件额外的事。
 //
-// 1. /live2d/ 防盗链：同源请求、直接在地址栏打开（Sec-Fetch-Site: none）、
+// 1. 老域名 308：sekai.qmzhj.top（新主域）与 blog.qmzhj.top（老域）都绑在本 Worker 上
+//    （见 wrangler.toml 的两条 routes）。资产请求默认不过 Worker，所以 run_worker_first
+//    开成 true——老域名的每个请求都进到这里，308（永久重定向）到新域名，
+//    保留 path + query，旧链接与搜索收录无损迁移。
+//
+// 2. /live2d/ 防盗链：同源请求、直接在地址栏打开（Sec-Fetch-Site: none）、
 //    无来源头均放行；其他网站的页面嵌入或直链（cross-site）返回 403。
 //
-// 2. /live2d/ 的传输优化：
+// 3. /live2d/ 的传输优化：
 //    - 缓存：子目录资产的名字里没有内容哈希，所以不给 immutable，只给 1 天。
 //      之前是全站默认的 max-age=0, must-revalidate，重复访问每次都要往返校验。
 //    - moc3 压缩：CF 的自动压缩按 Content-Type 判断，而 .moc3 没有 MIME，
@@ -169,7 +174,14 @@ async function handleVisits(
 
 export default {
 	async fetch(request: Request, env: Env, ctx: CfExecutionContext): Promise<Response> {
-		const { pathname } = new URL(request.url);
+		const url = new URL(request.url);
+
+		// 老域名整站 308 到新域名（永久，保留 path + query；见文件头注释 1）
+		if (url.hostname === 'blog.qmzhj.top') {
+			return Response.redirect(new URL(`${url.pathname}${url.search}`, 'https://sekai.qmzhj.top'), 308);
+		}
+
+		const { pathname } = url;
 
 		if (pathname === '/api/visits') {
 			return handleVisits(request, env, ctx);

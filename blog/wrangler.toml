@@ -2,7 +2,13 @@ name = "blog"
 compatibility_date = "2025-06-01"
 main = "src/worker.ts"
 
-# 自定义域名（Custom Domain：自动创建 DNS + 证书）
+# 自定义域名（Custom Domain：自动创建 DNS + 证书）。
+# 两个域都绑在本 Worker 上：sekai 是新主域；blog 保留只为 308 重定向（见 src/worker.ts 顶部），
+# 旧链接与搜索收录无损迁移，不依赖仪表板手工操作。
+[[routes]]
+pattern = "sekai.qmzhj.top"
+custom_domain = true
+
 [[routes]]
 pattern = "blog.qmzhj.top"
 custom_domain = true
@@ -12,7 +18,10 @@ custom_domain = true
 binding = "ASSETS"
 directory = "./dist"
 not_found_handling = "404-page"
-run_worker_first = ["/live2d/*", "/api/*"]
+# true = 所有请求先进 Worker：老域名的 308 重定向依赖它（资产请求默认不过 Worker，
+# worker 里的 host 判断根本没机会跑）。新域名的普通请求在 Worker 里原样转发给 ASSETS，
+# 行为不变；代价是每个请求都计一次 Worker 调用（个人站流量无所谓）。
+run_worker_first = true
 
 [vars]
 # GraphQL 查询 RUM 数据用（账户 ID 非敏感）。RUM siteTag = Web Analytics 的 beacon

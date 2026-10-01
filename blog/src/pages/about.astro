@@ -8,6 +8,7 @@ import OshiNight from '../assets/oshi/oshi-night-lettered.webp';
 import { Image } from 'astro:assets';
 import { SITE_TITLE } from '../consts';
 import { oshiCard, oshiInner, profileIdentity } from '../data/profile';
+import { friends } from '../data/friends';
 
 /* 水线的正弦路径：n 个周期铺满 viewBox（宽 1000、高 40、中心 y=20），a 是振幅。
    生成而不是手写，是为了改周期数 / 振幅时不用重数控制点。
@@ -191,6 +192,94 @@ const waves = [
 				.made-card:nth-child(even) {
 					padding: 1.3rem 0;
 					border-left: none;
+				}
+			}
+
+			/* ---------- 03 友链：数据在 src/data/friends.ts，加友链就追加一条 ---------- */
+			.friend-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+				border-top: var(--rule);
+			}
+			.friend-row {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) 13rem;
+				gap: 0.8rem 2.5rem;
+				padding: 1.7rem 0;
+				border-bottom: var(--rule);
+				color: inherit;
+				text-decoration: none;
+			}
+			.friend-list > li:first-child .friend-row {
+				padding-top: 0.4rem;
+			}
+			.friend-row h3 {
+				margin: 0 0 0.35rem;
+				font-size: 1.2rem;
+				transition: color var(--dur-fast) ease;
+			}
+			.friend-row:hover h3 {
+				color: var(--primary);
+			}
+			.friend-sub {
+				margin: 0 0 0.55rem;
+				color: var(--primary);
+				font-size: 0.9rem;
+			}
+			.friend-desc {
+				margin: 0;
+				max-width: 62ch;
+				color: var(--ink-soft);
+				font-size: 0.9rem;
+				line-height: 1.8;
+			}
+			.friend-row .go {
+				margin-top: 0.9rem;
+				display: inline-flex;
+				align-items: center;
+				gap: 0.4em;
+				font-size: 0.85rem;
+				color: var(--ink);
+				border-bottom: 1px solid currentColor;
+				padding-bottom: 1px;
+				transition: gap var(--dur-fast) var(--ease-soft), color var(--dur-fast) ease;
+			}
+			.friend-row:hover .go {
+				gap: 0.75em;
+				color: var(--primary);
+			}
+			.friend-facts {
+				margin: 0.3rem 0 0;
+				display: grid;
+				align-content: start;
+				gap: 0.55rem;
+			}
+			.friend-facts > div {
+				display: grid;
+				grid-template-columns: 3rem minmax(0, 1fr);
+				gap: 0.7rem;
+			}
+			.friend-facts dt {
+				font-family: var(--font-meta);
+				font-size: 0.7rem;
+				letter-spacing: 0.12em;
+				color: var(--muted);
+				line-height: 1.9;
+			}
+			.friend-facts dd {
+				margin: 0;
+				font-size: 0.84rem;
+				line-height: 1.7;
+			}
+			.friend-note {
+				margin: 1.4rem 0 0;
+				color: var(--muted);
+				font-size: 0.85rem;
+			}
+			@media (max-width: 560px) {
+				.friend-row {
+					grid-template-columns: minmax(0, 1fr);
 				}
 			}
 
@@ -964,6 +1053,49 @@ const waves = [
 						<span class="go">去作品页 <span aria-hidden="true">→</span></span>
 					</a>
 				</div>
+			</section>
+
+			<section class="section-block reveal">
+				<header class="sec-head">
+					<span class="sec-no">03</span>
+					<h2>友链</h2>
+					<span class="sec-en">friends</span>
+				</header>
+				<ul class="friend-list">
+					{
+						friends.map((f) => (
+							<li>
+								<a class="friend-row" href={f.url} target="_blank" rel="noopener">
+									<div>
+										<h3>{f.name}</h3>
+										<p class="friend-sub">{f.subtitle}</p>
+										<p class="friend-desc">{f.description}</p>
+										<span class="go">
+											去 GitHub 看看 <span aria-hidden="true">→</span>
+										</span>
+									</div>
+									<dl class="friend-facts">
+										<div>
+											<dt>作者</dt>
+											<dd>{f.owner}</dd>
+										</div>
+										<div>
+											<dt>技术</dt>
+											<dd>{f.tech.join(' / ')}</dd>
+										</div>
+										{f.license && (
+											<div>
+												<dt>协议</dt>
+												<dd>{f.license}</dd>
+											</div>
+										)}
+									</dl>
+								</a>
+							</li>
+						))
+					}
+				</ul>
+				<p class="friend-note">都是我自己在用、觉得值得推荐的东西；友链不定期补充。</p>
 			</section>
 		</main>
 		<Footer />

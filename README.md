@@ -9,7 +9,7 @@
 | 联机海龟汤 | [soup.qmzhj.top](https://soup.qmzhj.top) | 回合制推理游戏。向主持人提问（只能答是/否/无关），推出真相即胜出，支持真人/AI 主持 |
 | 出包魔法师 | [abracadawhat.qmzhj.top](https://abracadawhat.qmzhj.top) | 2–5 人暗牌推理对决，宣告魔法由服务端判定成败 |
 | 多人梭哈 | [showhand.qmzhj.top](https://showhand.qmzhj.top) | 五张/七张两种模式，固定局数积分赛 |
-| 博客 | [blog.qmzhj.top](https://blog.qmzhj.top) | 开发记录和作品集 |
+| 博客 | [sekai.qmzhj.top](https://sekai.qmzhj.top) | 开发记录和作品集（老域 blog.qmzhj.top 308 到新域） |
 
 ## 这个仓库里有什么
 
