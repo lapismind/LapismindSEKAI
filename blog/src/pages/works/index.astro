@@ -4,12 +4,18 @@ import Footer from '../../components/Footer.astro';
 import Header from '../../components/Header.astro';
 import { SITE_TITLE, GITHUB_URL } from '../../consts';
 import { works } from '../../data/projects';
+import { mvs } from '../../data/mvs';
+import { Image } from 'astro:assets';
+
+/** 95 → "1:35" */
+const fmtDuration = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const pad2 = (n: number) => String(n).padStart(2, '0');
 ---
 
 <!doctype html>
 <html lang="zh-CN">
 	<head>
-		<BaseHead title={`Projects - ${SITE_TITLE}`} description="Lapismind 的软件作品：工具、mod 与开源仓库" />
+		<BaseHead title={`Projects - ${SITE_TITLE}`} description="Lapismind 的作品：工具、mod、开源仓库与自制 MV" />
 		<style>
 			.work-list {
 				list-style: none;
@@ -126,11 +132,116 @@ import { works } from '../../data/projects';
 				font-weight: 600;
 			}
 
+			/* ============ MV 板块：正片在 B 站，这里只放门口 ============ */
+			.mv-sec-head {
+				display: flex;
+				align-items: baseline;
+				justify-content: space-between;
+				gap: 2rem;
+				margin: 4.5rem 0 0;
+			}
+			.mv-sec-head h2 {
+				margin: 0;
+				font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem);
+			}
+			.mv-sec-sub {
+				margin: 0.3rem 0 0;
+				color: var(--muted);
+				font-size: 0.9rem;
+			}
+			.mv-sec-head .count {
+				margin: 0;
+				flex-shrink: 0;
+			}
+			.mv-list {
+				list-style: none;
+				margin: 0;
+				padding: 0;
+			}
+			/* 一支 MV 一行：编号 / 封面 / 正文，与上面的软件作品共用发丝线节奏 */
+			.mv {
+				display: grid;
+				grid-template-columns: 3rem minmax(0, 20rem) minmax(0, 1fr);
+				gap: 1rem 2.5rem;
+				padding: 2.2rem 0;
+				border-bottom: var(--rule);
+				color: inherit;
+				text-decoration: none;
+			}
+			.mv-list > li:first-child .mv {
+				padding-top: 2rem;
+			}
+			.mv .no {
+				font-family: var(--font-num);
+				font-size: 0.9rem;
+				color: var(--primary);
+			}
+			.mv-media {
+				overflow: hidden;
+				border-radius: var(--r-media);
+				background: var(--primary-ghost);
+				aspect-ratio: 16 / 9;
+			}
+			.mv-media :global(img) {
+				width: 100%;
+				height: 100%;
+				object-fit: cover;
+				display: block;
+				transition: transform var(--dur-slow) var(--ease-soft);
+			}
+			.mv:hover .mv-media :global(img) {
+				transform: scale(1.03);
+			}
+			.mv h3 {
+				margin: 0 0 0.5rem;
+				font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+				transition: color var(--dur-fast) ease;
+			}
+			.mv:hover h3 {
+				color: var(--primary);
+			}
+			.mv .mv-meta {
+				margin: 0 0 0.9rem;
+				font-family: var(--font-meta);
+				font-size: 0.74rem;
+				letter-spacing: 0.08em;
+				color: var(--muted);
+			}
+			.mv .sub {
+				margin: 0 0 0.9rem;
+				color: var(--primary);
+				font-size: 0.95rem;
+			}
+			.mv .desc {
+				margin: 0;
+				max-width: 62ch;
+				color: var(--ink-soft);
+				font-size: 0.95rem;
+				line-height: 1.85;
+			}
+			.mv .go {
+				margin-top: 1.3rem;
+			}
+			.mv:hover .go {
+				gap: 0.8em;
+				color: var(--primary);
+			}
+
 			@media (max-width: 760px) {
 				.work {
 					grid-template-columns: 2.2rem minmax(0, 1fr);
 				}
 				.facts {
+					grid-column: 2;
+				}
+				.mv {
+					grid-template-columns: 2.2rem minmax(0, 1fr);
+				}
+				/* 封面显式占第 2 列后，正文若不显式定位会被自动放置进编号列 */
+				.mv-media {
+					grid-column: 2;
+				}
+				.mv > div:last-child {
 					grid-column: 2;
 				}
 			}
@@ -142,7 +253,7 @@ import { works } from '../../data/projects';
 			<header class="page-title reveal">
 				<h1>Projects</h1>
 				<p class="lead">
-					游戏之外的作品：工具、mod 与开源仓库，之后或许会发布到 GitHub。
+					游戏之外的作品：工具、mod 与开源仓库——以及自制 MV。
 				</p>
 				<p class="count"><b>{works.length}</b>workbench</p>
 			</header>
@@ -188,6 +299,49 @@ import { works } from '../../data/projects';
 					))
 				}
 			</ol>
+
+			{
+				mvs.length > 0 && (
+					<section class="mv-block" id="mv">
+						<header class="mv-sec-head reveal">
+							<div>
+								<h2>MV</h2>
+								<p class="mv-sec-sub">自制 2D MV——正片住在 B 站，这里只放门口。</p>
+							</div>
+							<p class="count"><b>{mvs.length}</b>film</p>
+						</header>
+						<ol class="mv-list">
+							{mvs.map((m, i) => (
+								<li class="reveal" style={`--reveal-delay:calc(var(--stagger) * ${i})`}>
+									<a class="mv" href={m.url} target="_blank" rel="noopener">
+										<span class="no">{pad2(i + 1)}</span>
+										<div class="mv-media">
+											<Image
+												src={m.cover}
+												alt={`${m.name} MV 封面`}
+												widths={[480, 760]}
+												sizes="(max-width: 760px) 92vw, 320px"
+											/>
+										</div>
+										<div>
+											<p class="mv-meta">
+												{m.date} · {fmtDuration(m.duration)} · bilibili
+											</p>
+											<h3>{m.name}</h3>
+											<p class="sub">{m.subtitle}</p>
+											<p class="desc">{m.description}</p>
+											<span class="go">
+												去 B 站观看 <span aria-hidden="true">→</span>
+											</span>
+										</div>
+									</a>
+								</li>
+							))}
+						</ol>
+					</section>
+				)
+			}
+
 			<p class="more-note reveal">
 				更多项目整理中——GitHub 上还有：<a href={GITHUB_URL} target="_blank" rel="noopener">@lapismind</a>
 			</p>

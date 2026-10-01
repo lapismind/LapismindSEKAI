@@ -8,7 +8,7 @@
 |---|---|
 | `/` | 首页：Hero + 玩家档案 + 箱曲电台入口 + 现在在做 + 精选游戏 + 最新博客 |
 | `/projects/` | 游戏作品集（数据在 `src/data/projects.ts`） |
-| `/works/` | Projects 板块：游戏之外的作品（工具 / mod / 开源仓库），数据在 `src/data/projects.ts` 的 `works` |
+| `/works/` | Projects 板块：游戏之外的作品（工具 / mod / 开源仓库 + 自制 MV），数据在 `src/data/projects.ts` 的 `works` 与 `src/data/mvs.ts` |
 | `/blog/` | 文章列表 + 文章页（目录 / 阅读进度 / 评论区） |
 | `/about/` | 兴趣简介 + 单推角色卡 + 游戏、工具与 Mod |
 | `/profile/` | 个人资料：身份 / 头像 / 成就展馆（登录后） |

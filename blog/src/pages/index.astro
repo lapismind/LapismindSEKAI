@@ -14,8 +14,10 @@ import MinchoSubset from '../assets/fonts/shippori-mincho-subset.woff2';
 import AbracadawhatCover from '../assets/covers/abracadawhat-cover.png';
 import StaffCard from '../assets/works/staff-card.jpg';
 import NiigoPartyLineup from '../assets/covers/niigo-party-cover.jpg';
+import KyomuSanCover from '../assets/mv/kyomu-san.jpg';
 import songs from '../data/music-player.json';
 import { games, works } from '../data/projects';
+import { mvs } from '../data/mvs';
 
 const allPosts = (await getCollection('blog')).sort(
 	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
@@ -26,16 +28,20 @@ const latestPost = allPosts[0];
 
 const onlineCount = games.filter((p) => p.status === 'online').length;
 
-/** 首页「SEKAI 精选」：游戏与项目各取 featured 条目，详情页分属 /projects/ 与 /works/。 */
+/** 首页「SEKAI 精选」：游戏 / 项目 / MV 各取 featured 条目；前两者详情页在站内，MV 外链 B 站。 */
 const featured = [
-	...games.filter((p) => p.featured).map((p) => ({ ...p, kind: '游戏', href: `/projects/${p.slug}/` })),
-	...works.filter((p) => p.featured).map((p) => ({ ...p, kind: 'Projects', href: `/works/${p.slug}/` })),
+	...games.filter((p) => p.featured).map((p) => ({ ...p, kind: '游戏', href: `/projects/${p.slug}/`, external: false })),
+	...works.filter((p) => p.featured).map((p) => ({ ...p, kind: 'Projects', href: `/works/${p.slug}/`, external: false })),
+	...mvs
+		.filter((m) => m.featured)
+		.map((m) => ({ ...m, kind: 'MV', href: m.url, external: true, status: 'online' as const, version: 'bilibili' })),
 ];
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const projectImages: Record<string, typeof AbracadawhatCover> = {
 	abracadawhat: AbracadawhatCover,
 	runestaff: StaffCard,
+	'kyomu-san': KyomuSanCover,
 };
 
 ---
@@ -811,7 +817,12 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 					{
 						featured.map((p) => (
 							<li class="reveal">
-								<a class="feature" href={p.href}>
+								<a
+									class="feature"
+									href={p.href}
+									target={p.external ? '_blank' : undefined}
+									rel={p.external ? 'noopener' : undefined}
+								>
 									<div class="feature-media">
 										{projectImages[p.slug] ? (
 											<Image class="img-fade" src={projectImages[p.slug]} alt={`${p.name} 封面`} widths={[480, 760, 1100]} sizes="(max-width: 860px) 92vw, 640px" />
@@ -832,7 +843,7 @@ const projectImages: Record<string, typeof AbracadawhatCover> = {
 										<div class="tech">
 											{p.tech.map((t) => <span class="tag">{t}</span>)}
 										</div>
-										<span class="go">查看详情 <span aria-hidden="true">→</span></span>
+										<span class="go">{p.external ? '去 B 站观看' : '查看详情'} <span aria-hidden="true">→</span></span>
 									</div>
 								</a>
 							</li>
