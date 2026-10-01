@@ -9,13 +9,14 @@
 import { defineStore } from 'pinia';
 import * as E from '@/game/engine';
 import { CHARACTERS } from '@/game/characters';
+import { pickVoiceLine, speakLine, cancelSpeech } from '@/game/voices';
 
 const SAVE_KEY = 'niigo-party-save-v1';
 const FAST_KEY = 'niigo-party-fast';
 
 /** 两档节奏（毫秒）：常态比快速慢，给动画与通知留足时间 */
 export const PACES = {
-  normal: { step: 340, rollShow: 1100, settle: 1800, popup: 2600, battleStep: 950, battleEnd: 2000 },
+  normal: { step: 340, rollShow: 1100, settle: 1800, popup: 3000, battleStep: 950, battleEnd: 2000 },
   fast: { step: 150, rollShow: 600, settle: 1100, popup: 1500, battleStep: 480, battleEnd: 1100 },
 };
 
@@ -32,7 +33,8 @@ export const useGameStore = defineStore('game', {
     moving: false,  // 自动步进动画中
     lastFx: null,   // {type, playerId} 触发全屏特效（KO/复活/传送/升级）
     coinDrops: [],  // 头顶掉金币：{id, playerId, amount}
-    popups: [],     // 事件通知队列：{title, text, tone, art, playerId}，按节奏自动轮播
+    popups: [],     // 事件特写队列：{title, text, tone, art, playerId, charKey, line}，按节奏自动轮播
+    popupHold: 0,   // 队首特写本次的停留毫秒（与 EventPopup 的进度条同步）
     battleLive: false, // 战斗过场已播完，可以自动步进
     fast: localStorage.getItem(FAST_KEY) === '1',
     picked: [],     // 设置界面选中的角色键
@@ -251,27 +253,45 @@ export const useGameStore = defineStore('game', {
         this.s.fx = [];
       }
       if (this.s?.popups?.length) {
-        this.popups.push(...this.s.popups);
+        // 补上角色键与占位台词（引擎只发事件，语音展示是 UI 层的事）
+        const byId = new Map(this.s.players.map((p) => [p.id, p]));
+        this.popups.push(...this.s.popups.map((pp) => {
+          const pl = byId.get(pp.playerId);
+          return { ...pp, charKey: pl?.charKey ?? null, line: pl ? pickVoiceLine(pl.charKey, pp.tone) : null };
+        }));
         this.s.popups = [];
         this.armPopup();
       }
     },
 
-    /** 事件通知自动轮播：队首停留 pace.popup 毫秒后换下一条（点一下可提前跳过） */
+    /**
+     * 事件特写自动轮播：队首停留后换下一条（点一下可提前跳过）。
+     * 常态档朗读占位电子音，停留按台词长度保底；快速档不读，保节奏。
+     */
     armPopup() {
       if (popupTimer || !this.popups.length) return;
       const head = this.popups[0];
+      let hold = this.pace.popup;
+      if (head.line && !this.fast) {
+        speakLine(head.charKey, head.line);
+        hold = Math.max(hold, Math.min(6000, 700 + head.line.length * 280));
+      } else {
+        cancelSpeech();
+      }
+      this.popupHold = hold;
       popupTimer = setTimeout(() => {
         popupTimer = null;
         if (this.popups[0] === head) this.popups.shift();
-        this.armPopup();
-      }, this.pace.popup);
+        if (this.popups.length) this.armPopup();
+        else { this.popupHold = 0; cancelSpeech(); }
+      }, hold);
     },
     skipPopup() {
       clearTimeout(popupTimer);
       popupTimer = null;
       this.popups.shift();
-      this.armPopup();
+      if (this.popups.length) this.armPopup();
+      else { this.popupHold = 0; cancelSpeech(); }
     },
   },
 });

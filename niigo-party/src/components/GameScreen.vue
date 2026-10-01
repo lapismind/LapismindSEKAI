@@ -20,6 +20,7 @@ import BattleOverlay from '@/components/BattleOverlay.vue';
 import EventPopup from '@/components/EventPopup.vue';
 import HandFan from '@/components/HandFan.vue';
 import PortraitPanel from '@/components/PortraitPanel.vue';
+import TargetPicker from '@/components/TargetPicker.vue';
 
 const store = useGameStore();
 const s = computed(() => store.s);
@@ -103,10 +104,9 @@ const rangeTiles = computed(() => {
       && !s.value.overlays.some((o) => o.tile === t.i))
     .map((t) => t.i);
 });
-// 出牌时机：掷骰前（落地后自动轮到下一位，没有「结束回合」）
+// 出牌时机：掷骰前（落地后自动轮到下一位，没有「结束回合」）；每回合合计限 1 张（效果 + 反制）
 const canAct = computed(() => s.value?.phase === 'roll' && !s.value.pending && !store.moving);
-const cardPlayable = (id) => canAct.value && CARDS[id]?.kind !== 'battle'
-  && !(CARDS[id]?.kind === 'effect' && cur.value.effectPlayed);
+const cardPlayable = (id) => canAct.value && CARDS[id]?.kind !== 'battle' && !cur.value.effectPlayed;
 function useSkill() { notify('主动技能待技能设计轮实装（规格 §5.3）'); }
 const popupPlayer = computed(() => s.value?.players.find((p) => p.id === store.popups[0]?.playerId) ?? null);
 const shopStock = computed(() => (s.value?.pending?.type === 'shop' ? s.value.pending.stock : []));
@@ -115,8 +115,8 @@ function clickHandCard(id) {
   const card = CARDS[id];
   if (!canAct.value) { notify('掷骰前才能出牌'); return; }
   if (card.kind === 'battle') { notify('战斗牌要在战斗里才能用'); return; }
+  if (cur.value.effectPlayed) { notify('本回合已经出过牌了'); return; }
   if (card.kind === 'effect') {
-    if (cur.value.effectPlayed) { notify('本回合的效果牌已经用过了'); return; }
     if (card.target === 'opponent') {
       const ts = targetsFor(id);
       if (!ts.length) { notify(card.range ? `${card.range} 格内没有可指定的目标` : '没有可指定的目标（住院 / KO 免疫）'); return; }
@@ -230,22 +230,19 @@ const curTileDef = computed(() => (cur.value ? tileDef(TILES[cur.value.tile].typ
 
     <!-- 正下：扇形手牌 + 出牌提示 -->
     <div class="pointer-events-none absolute bottom-0 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center">
-      <div v-if="selectedCard?.need === 'opponent'" class="pointer-events-auto mb-2 flex flex-wrap items-center gap-1.5 rounded-xl border border-white/15 bg-slate-900/85 px-3 py-2 shadow-lg backdrop-blur-md">
-        <span class="text-[11px] text-slate-300">「{{ cardName(selectedCard.id) }}」选择目标：</span>
-        <button
-          v-for="t in targets" :key="t.id"
-          class="rounded bg-red-500/25 px-2 py-1 text-[11px] text-red-100 hover:bg-red-500/45"
-          @click="confirmTarget(t.id)"
-        >{{ t.name }}（{{ t.tile }} 号格 · {{ t.coins }} 币）</button>
-        <button class="text-[11px] text-slate-400 underline" @click="selectedCard = null">取消</button>
-      </div>
+      <TargetPicker
+        v-if="selectedCard?.need === 'opponent'"
+        class="mb-2"
+        :card-name="cardName(selectedCard.id)" :targets="targets"
+        @select="confirmTarget" @cancel="selectedCard = null"
+      />
       <div v-else-if="selectedCard?.need === 'tile'" class="pointer-events-auto mb-2 flex items-center gap-2 rounded-xl border border-white/15 bg-slate-900/85 px-3 py-2 text-[11px] text-slate-200 shadow-lg backdrop-blur-md">
         在地图上点选高亮格放置「{{ cardName(selectedCard.id) }}」（{{ CARDS[selectedCard.id].range }} 格内，{{ rangeTiles.length }} 个可选）
         <button class="text-slate-400 underline" @click="selectedCard = null">取消</button>
       </div>
       <div class="pointer-events-none mb-0.5 rounded-full bg-slate-900/70 px-3 py-0.5 text-[11px] text-slate-300">
         手牌 {{ cur.hand.length }}/10
-        <template v-if="canAct"> · <span :class="cur.effectPlayed ? 'text-slate-500' : 'text-emerald-300'">{{ cur.effectPlayed ? '效果牌已用' : '可用 1 张效果牌' }}</span></template>
+        <template v-if="canAct"> · <span :class="cur.effectPlayed ? 'text-slate-500' : 'text-emerald-300'">{{ cur.effectPlayed ? '本回合已出牌' : '可出 1 张牌' }}</span></template>
       </div>
       <div class="pointer-events-auto -mb-6">
         <HandFan :hand="cur.hand" :playable="cardPlayable" :selected-id="selectedCard?.id ?? null" @play="clickHandCard" />
@@ -328,10 +325,10 @@ const curTileDef = computed(() => (cur.value ? tileDef(TILES[cur.value.tile].typ
       </div>
     </transition>
 
-    <!-- 事件窗口（落在事件类地块时，排队逐个弹出） -->
+    <!-- 事件特写（角色遭遇事件时，排队逐个弹出） -->
     <EventPopup
       v-if="store.popups.length && !rollBig" :key="store.popups.length + ':' + store.popups[0].title"
-      :popup="store.popups[0]" :player="popupPlayer" :duration="store.pace.popup" @skip="store.skipPopup()"
+      :popup="store.popups[0]" :player="popupPlayer" :duration="store.popupHold || store.pace.popup" @skip="store.skipPopup()"
     />
 
 

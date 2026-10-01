@@ -37,12 +37,20 @@ export const TILE_TYPES = {
   coin: {
     name: '天降横财', label: '财', icon: '🪙', color: '#d69e05', placeable: true,
     desc: '随机获得 8/12/16/20/32 星币',
-    onLand: ({ state, p, rng, api }) => api.gainCoins(state, p, api.pick([8, 12, 16, 20, 32], rng)),
+    onLand: ({ state, p, rng, api }) => {
+      const n = api.pick([8, 12, 16, 20, 32], rng);
+      api.gainCoins(state, p, n);
+      api.popup(state, p, { title: '天降横财', tone: 'good', art: 'coin', text: `${p.name} 捡到 ${n} 星币` });
+    },
   },
   coinhi: {
     name: '横财·高收益', label: '财', icon: '💰', color: '#fff3a0', placeable: true,
     desc: '随机获得 20/28/40 星币',
-    onLand: ({ state, p, rng, api }) => api.gainCoins(state, p, api.pick([20, 28, 40], rng)),
+    onLand: ({ state, p, rng, api }) => {
+      const n = api.pick([20, 28, 40], rng);
+      api.gainCoins(state, p, n);
+      api.popup(state, p, { title: '横财·高收益', tone: 'good', art: 'coin', text: `${p.name} 一笔横财到手：${n} 星币` });
+    },
   },
   card: {
     name: '卡牌奖励', label: '卡', icon: '🃏', color: '#22c55e', placeable: true,

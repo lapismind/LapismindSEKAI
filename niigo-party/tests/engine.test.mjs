@@ -336,6 +336,71 @@ test('效果牌：掷骰前出、每回合限 1 张；遥控骰子指定 1~10', 
   assert.ok(s.players[0].hand.includes('cake'));
 });
 
+test('限牌：反制牌与效果牌合计每回合 1 张', () => {
+  const s = newGame();
+  s.players[0].hand.push('shield', 'cake', 'mirror');
+  playEffectCard(s, 'shield', {});
+  assert.equal(s.players[0].status.shield, 1, '反制牌打出成功');
+  assert.equal(s.players[0].effectPlayed, true, '反制牌也计入每回合一张');
+  s.players[0].hp = 5;
+  playEffectCard(s, 'cake', {});                  // 同回合再出效果牌被拒
+  assert.equal(s.players[0].hp, 5);
+  assert.ok(s.players[0].hand.includes('cake'), '被拒不消耗');
+  playEffectCard(s, 'mirror', {});                // 反制牌同样被拒
+  assert.equal(s.players[0].status.reflect, 0);
+  assert.ok(s.players[0].hand.includes('mirror'));
+  endTurn(s, constRng(face10(1)));
+  assert.equal(s.players[s.current].effectPlayed, false, '换人后重置');
+});
+
+test('限牌：战斗牌不能在掷骰前打出（不被消耗）', () => {
+  const s = newGame();
+  s.players[0].hand.push('atk1');
+  playEffectCard(s, 'atk1', {});
+  assert.ok(s.players[0].hand.includes('atk1'), '战斗牌原样在手');
+  assert.equal(s.players[0].effectPlayed, false);
+});
+
+test('定向效果弹事件特写：受害者坏事 + 施放者好事；反弹时角色对调', () => {
+  const s = newGame();
+  s.players[0].hand.push('snatch');
+  playEffectCard(s, 'snatch', { targetId: 'p2' });
+  const tones = s.popups.map((pp) => `${pp.playerId}:${pp.tone}`);
+  assert.ok(tones.includes('p2:bad'), tones.join(','));
+  assert.ok(tones.includes('p1:good'), tones.join(','));
+  assert.ok(s.popups.every((pp) => pp.line == null), '引擎只发事件，台词由 UI 层补');
+
+  const s2 = newGame();
+  s2.players[1].status.reflect = 1;
+  s2.players[1].coins = 0;
+  s2.players[0].coins = 20;
+  s2.players[0].hand.push('snatch');
+  playEffectCard(s2, 'snatch', { targetId: 'p2' });
+  const t2 = s2.popups.map((pp) => `${pp.playerId}:${pp.tone}`);
+  assert.ok(t2.includes('p1:bad') && t2.includes('p2:good'), `反弹后应对调：${t2.join(',')}`);
+});
+
+test('陷阱触发弹事件特写：踩中者坏事 + 主人好事', () => {
+  const s = newGame();
+  s.overlays.push({ tile: 1, kind: 'bomb', ownerId: 'p2', dmg: 3 });
+  s.players[0].hp = 9;
+  rollMove(s, constRng(face10(1)));
+  moveStep(s, constRng(face10(1)));
+  assert.equal(s.players[0].hp, 6);
+  const tones = s.popups.map((pp) => `${pp.playerId}:${pp.tone}`);
+  assert.ok(tones.includes('p1:bad'), tones.join(','));
+  assert.ok(tones.includes('p2:good'), tones.join(','));
+});
+
+test('横财落地弹好事特写', () => {
+  const s = newGame();
+  s.players[1].tile = 40;
+  rollMove(s, constRng(face10(1)));
+  moveStep(s, constRng(face10(1))); // 落 1 号横财格
+  const good = s.popups.find((pp) => pp.playerId === 'p1' && pp.tone === 'good' && /星币/.test(pp.text));
+  assert.ok(good, '应有带金额的好事弹窗');
+});
+
 test('商店：5 星币一张、库存内购买', () => {
   const s = newGame();
   s.players[0].coins = 12;
@@ -374,9 +439,9 @@ test('整局随机模拟：随机合法操作 8000 步内分出胜负', () => {
       turns++;
       const p = s.players[s.current];
       if (s.phase === 'roll') {
-        // 掷骰前三成概率出效果牌（随机合法目标）
+        // 掷骰前三成概率出牌（效果/反制合计限 1 张，随机合法目标）
         const held = p.hand.map((id) => CARDS[id]).filter((c) => c.kind !== 'battle');
-        const effect = held.find((c) => !(c.kind === 'effect' && p.effectPlayed));
+        const effect = p.effectPlayed ? null : held[0];
         if (!s.pending && effect && rng() < 0.35) {
           if (effect.target === 'self' || effect.kind === 'counter') playEffectCard(s, effect.id, {}, rng);
           else if (effect.target === 'opponent') {

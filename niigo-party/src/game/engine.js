@@ -211,10 +211,18 @@ export function moveStep(state, rng = Math.random) {
     const o = ov;
     if (ov.kind === 'roadblock') {
       state.remaining = 0;
+      const owner = findPlayer(state, ov.ownerId);
       log(state, `${p.name} 撞上路障，停止移动`);
+      popup(state, p, { title: '路障', tone: 'bad', art: 'roadblock', text: `${p.name} 撞上路障，移动被迫停止` });
+      if (owner) popup(state, owner, { title: '路障', tone: 'good', art: 'roadblock', text: `${p.name} 被 ${owner.name} 的路障拦下` });
     } else if (ov.kind === 'bomb') {
       const owner = findPlayer(state, ov.ownerId);
+      const wasKo = p.ko;
       damage(state, p, ov.dmg, owner, '爆破陷阱');
+      popup(state, p, { title: '爆破陷阱', tone: 'bad', art: 'bomb',
+        text: `${p.name} 踩中爆破陷阱，受到 ${ov.dmg} 点伤害${p.ko && !wasKo ? '，被 KO 了' : ''}` });
+      if (owner) popup(state, owner, { title: '爆破专家', tone: 'good', art: 'bomb',
+        text: `${owner.name} 的炸弹命中 ${p.name}，造成 ${ov.dmg} 点伤害` });
       state.overlays.splice(ovIdx, 1);
     } else if (ov.kind === 'phish') {
       const owner = findPlayer(state, ov.ownerId);
@@ -222,6 +230,10 @@ export function moveStep(state, rng = Math.random) {
       p.coins -= pay;
       if (owner) owner.coins += pay;
       log(state, `${p.name} 触发钓鱼执法，付给 ${owner?.name ?? '？'} ${pay} 星币`);
+      popup(state, p, { title: '钓鱼执法', tone: 'bad', art: 'phish',
+        text: `${p.name} 触发钓鱼执法，付给 ${owner?.name ?? '？'} ${pay} 星币` });
+      if (owner) popup(state, owner, { title: '钓鱼执法', tone: 'good', art: 'phish',
+        text: `${owner.name} 的陷阱收网：从 ${p.name} 处收到 ${pay} 星币` });
       state.overlays.splice(ovIdx, 1);
     }
   }
@@ -479,29 +491,34 @@ const TILE_API = {
 
 // ── 行动阶段：效果牌 / 商店 ────────────────────────────────
 
-/** 应用"指定型"效果，处理保护屏障（无效）与以牙还牙（反弹） */
-function applyTargeted(state, caster, target, apply) {
+/** 应用"指定型"效果，处理保护屏障（无效）与以牙还牙（反弹）。遭遇双方都弹事件特写。 */
+function applyTargeted(state, caster, target, card, apply) {
   if (target.status.shield > 0) {
     target.status.shield -= 1;
     log(state, `${target.name} 的保护屏障生效，效果被无效化`);
+    popup(state, target, { title: '保护屏障', tone: 'info', art: 'shield',
+      text: `${target.name} 的保护屏障生效，「${card.name}」被无效化` });
     return;
   }
   if (target.status.reflect > 0) {
     target.status.reflect -= 1;
     log(state, `${target.name} 的以牙还牙生效，效果反弹给 ${caster.name}！`);
+    popup(state, target, { title: '以牙还牙', tone: 'good', art: 'reflect',
+      text: `${target.name} 的以牙还牙生效，「${card.name}」反弹给 ${caster.name}！` });
     apply(caster, target); // 受害人 = 原施放者，受益人 = 原目标
     return;
   }
   apply(target, caster);
 }
 
-/** 出效果牌 / 反制牌（掷骰前）。effect 每回合限 1 张；opts: {targetId?, tileIdx?} */
+/** 出效果牌 / 反制牌（掷骰前）。每回合合计限 1 张（效果 + 反制都算）；opts: {targetId?, tileIdx?} */
 export function playEffectCard(state, cardId, opts = {}, rng) {
   const p = cur(state);
   if (state.phase !== 'roll' || state.pending) return;
   const card = CARDS[cardId];
   if (!card || !p.hand.includes(cardId)) return;
-  if (card.kind === 'effect' && p.effectPlayed) { log(state, '本回合的效果牌已经用过了'); return; }
+  if (card.kind === 'battle') return; // 战斗牌只能在战斗里经 selectBattleCard 消耗
+  if (p.effectPlayed) { log(state, '本回合已经出过牌了'); return; }
 
   // 目标校验先行：不合法不消耗卡牌（远格/无目标/占位冲突都不白费一张卡）
   const needsTarget = ['band', 'brick', 'snatch'].includes(cardId); // 对手指向（band/brick/snatch）
@@ -523,7 +540,7 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
 
   // 校验通过，正式消耗
   p.hand.splice(p.hand.indexOf(cardId), 1);
-  if (card.kind === 'effect') p.effectPlayed = true;
+  p.effectPlayed = true;
   log(state, `${p.name} 打出「${card.name}」`);
 
   if (card.kind === 'counter') {
@@ -542,17 +559,26 @@ export function playEffectCard(state, cardId, opts = {}, rng) {
       break;
     case 'band':
     case 'brick': {
-      applyTargeted(state, p, target, (t) => {
-        damage(state, t, card.dmg, p, card.name);
+      applyTargeted(state, p, target, card, (t, gainer) => {
+        const wasKo = t.ko;
+        damage(state, t, card.dmg, gainer, card.name);
+        popup(state, t, { title: card.name, tone: 'bad', art: cardId,
+          text: `${t.name} 被「${card.name}」击中，受到 ${card.dmg} 点伤害${t.ko && !wasKo ? '，被 KO 了' : ''}` });
+        popup(state, gainer, { title: card.name, tone: 'good', art: cardId,
+          text: `命中 ${t.name}，造成 ${card.dmg} 点伤害` });
       });
       break;
     }
     case 'snatch': {
-      applyTargeted(state, p, target, (t, gainer) => {
+      applyTargeted(state, p, target, card, (t, gainer) => {
         const take = Math.min(card.coins, t.coins);
         t.coins -= take;
         gainer.coins += take;
         log(state, `${gainer.name} 抢走 ${t.name} ${take} 星币`);
+        popup(state, t, { title: '抢夺', tone: 'bad', art: 'snatch',
+          text: `${t.name} 被抢走 ${take} 星币` });
+        popup(state, gainer, { title: '抢夺', tone: 'good', art: 'snatch',
+          text: `${gainer.name} 抢到 ${take} 星币` });
       });
       break;
     }
